@@ -26,7 +26,7 @@ try:
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
-    os.system('pip install python-telegram-bot==20.7 requests beautifulsoup4 flask')
+    os.system('pip install python-telegram-bot requests beautifulsoup4 flask')
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
@@ -540,8 +540,8 @@ def main():
     print("🚀 HARSH HACKER OSINT & VEHICLE BOT STARTING...")
     print("=" * 50)
     
-    # Fully corrected application initialization to prevent Updater errors
-    application = Application.builder().token(BOT_TOKEN).build()
+    # Fully explicit application initialization for python-telegram-bot v21+ / Python 3.14 compatibility
+    application = Application.builder().token(BOT_TOKEN).updater(None).build()
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("info", info_command))
@@ -554,7 +554,17 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(CallbackQueryHandler(button_callback))
     
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Run using Webhook to match Render Web Service requirements cleanly
+    if RENDER_EXTERNAL_HOSTNAME:
+        webhook_url = f"https://{RENDER_EXTERNAL_HOSTNAME}/{BOT_TOKEN}"
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=BOT_TOKEN,
+            webhook_url=webhook_url
+        )
+    else:
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     main()
