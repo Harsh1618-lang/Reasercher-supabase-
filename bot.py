@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Number & Vehicle Info Bot - Complete Final Edition
+# Number & Vehicle Info Bot - Final Nested JSON Edition
 """
 Developer: HARSH
 Description: Advanced OSINT & Vehicle Info Telegram Bot with Custom Vehicle Scraper, Clean JSON Response, Threaded Flask & Fast UI
@@ -167,7 +167,7 @@ async def get_phone_info(phone):
         return {"status": False, "error": str(e)}
 
 def vehicle_lookup(num: str):
-    """Advanced vehicle RC details scraper using BeautifulSoup and custom headers"""
+    """Advanced vehicle RC details scraper using user-provided BeautifulSoup selectors"""
     try:
         veh_num = num.upper().strip()
         url = f"https://www.carinfo.app/rc-details/{veh_num}"
@@ -222,10 +222,14 @@ def vehicle_lookup(num: str):
         output += "──────────────────────────\n"
         output += "✅ Data fetched successfully!\n"
         output += "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        output += "👨‍💻 Developer : Harsh"
+        output += "👨‍💻 Developer : @dev2dex\n"
+        output += "📢 Channel   : t.me/Catalyst_Mystery\n"
+        output += "━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
         return output
 
+    except requests.exceptions.RequestException:
+        return "❌ Network error or unable to reach the RC details site. Please check your connection or try again later."
     except Exception as e:
         return f"❌ An error occurred while fetching the RC details: {e}"
 
@@ -255,7 +259,7 @@ async def show_hacking_animation(msg_obj, target_str, is_vehicle=False):
             pass
 
 # ============================================
-# FORMAT RESPONSE (EXACT REFERENCE JSON FORMAT)
+# FORMAT RESPONSE (NESTED JSON TRAVERSAL FIX)
 # ============================================
 def format_response(data, phone):
     if not data or (isinstance(data, dict) and data.get('status') == False):
@@ -263,24 +267,44 @@ def format_response(data, phone):
         return f"❌ Error: {error_msg}"
     
     actual_results = []
-    if isinstance(data, dict):
-        for key in ['result', 'results', 'data', 'payload', 'response']:
-            val = data.get(key)
-            if isinstance(val, list):
-                actual_results.extend(val)
-            elif isinstance(val, dict):
-                for sub_key in ['result', 'results', 'data', 'records']:
-                    sub_val = val.get(sub_key)
-                    if isinstance(sub_val, list):
-                        actual_results.extend(sub_val)
-                    elif isinstance(sub_val, dict):
-                        actual_results.append(sub_val)
-                if not actual_results:
-                    actual_results.append(val)
-        if not actual_results:
-            actual_results = [data]
-    elif isinstance(data, list):
-        actual_results = data
+    
+    try:
+        if isinstance(data, dict):
+            res_layer1 = data.get('result', data)
+            if isinstance(res_layer1, dict):
+                res_layer2 = res_layer1.get('result', res_layer1)
+                if isinstance(res_layer2, dict):
+                    val = res_layer2.get('result')
+                    if isinstance(val, list):
+                        actual_results.extend(val)
+                    elif isinstance(val, dict):
+                        actual_results.append(val)
+                elif isinstance(res_layer2, list):
+                    actual_results.extend(res_layer2)
+            elif isinstance(res_layer1, list):
+                actual_results.extend(res_layer1)
+    except Exception:
+        pass
+
+    if not actual_results:
+        if isinstance(data, dict):
+            for key in ['result', 'results', 'data', 'payload', 'response']:
+                val = data.get(key)
+                if isinstance(val, list):
+                    actual_results.extend(val)
+                elif isinstance(val, dict):
+                    for sub_key in ['result', 'results', 'data', 'records']:
+                        sub_val = val.get(sub_key)
+                        if isinstance(sub_val, list):
+                            actual_results.extend(sub_val)
+                        elif isinstance(sub_val, dict):
+                            actual_results.append(sub_val)
+                    if not actual_results:
+                        actual_results.append(val)
+            if not actual_results:
+                actual_results = [data]
+        elif isinstance(data, list):
+            actual_results = data
 
     if not actual_results:
         actual_results = [data]
@@ -295,13 +319,13 @@ def format_response(data, phone):
         address = rec.get('address') or rec.get('Address') or 'N/A'
         circle = rec.get('circle') or rec.get('operator') or 'N/A'
         
-        aadhar_display = rec.get('aadhar') or rec.get('id') or 'N/A'
+        aadhar_val = rec.get('aadhar') or rec.get('id') or 'N/A'
 
         results_list.append({
             "address": address,
             "circle": circle,
             "father_name": fname,
-            "id": aadhar_display,
+            "id": aadhar_val,
             "name": name,
             "number": rec.get('mobile', rec.get('phone', phone)),
             "result": f"Result {i}"
@@ -320,7 +344,7 @@ def format_response(data, phone):
         "response_time": "0.89s",
         "status": True,
         "Dev": "@Endgame55",
-        "Channel": "https://t.me/+QUg-JvyJizkxMzAl",
+        "Channel": "https://t.me/Modedbyharsh",
         "Bot": "@Reasercherinfobot"
     }
 
