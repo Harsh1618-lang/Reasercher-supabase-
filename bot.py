@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# Number & Vehicle Info Bot - Bulletproof JSON Parser Edition
+# Number & Vehicle Info Bot - Clean JSON Response Edition
 """
 Developer: HARSH
-Description: Advanced OSINT & Vehicle Info Telegram Bot with Multi-Level JSON Fallback Parser & Threaded Flask
+Description: Advanced OSINT & Vehicle Info Telegram Bot with Clean JSON Parsing, Threaded Flask & Fast UI
 """
 
 import os
@@ -18,6 +18,7 @@ import io
 import logging
 import threading
 from flask import Flask
+from bs4]._soup import BeautifulSoup # type: ignore
 from bs4 import BeautifulSoup
 
 # ============================================
@@ -227,7 +228,7 @@ async def show_hacking_animation(msg_obj, target_str, is_vehicle=False):
             pass
 
 # ============================================
-# BULLETPROOF FORMAT RESPONSE PARSER
+# FORMAT RESPONSE (CLEAN JSON STYLE, NO 3RD PARTY CREDITS)
 # ============================================
 def format_response(data, phone):
     if not data or (isinstance(data, dict) and data.get('status') == False):
@@ -279,10 +280,13 @@ def format_response(data, phone):
         circle = rec.get('circle') or rec.get('operator') or 'N/A'
         address = rec.get('address') or rec.get('Address') or 'N/A'
         
-        aadhar_display = rec.get('aadhar') or rec.get('id') or 'N/A'
-        
+        aadhar_val = rec.get('aadhar', rec.get('id', 'N/A'))
+        if aadhar_val and aadhar_val != 'N/A':
+            aadhar_display = "[Aadhaar Omitted]"
+        else:
+            aadhar_display = "N/A"
 
-        out.append(f"🗂️ **RECORD {i}/{total_recs}**")
+        out.append(f"🗂️️ **RECORD {i}/{total_recs}**")
         out.append("────────────────────────")
         out.append(f"📱 **NUMBER :** `{rec.get('mobile', rec.get('phone', phone))}`")
         out.append(f"👤 **NAME :** {name}")
