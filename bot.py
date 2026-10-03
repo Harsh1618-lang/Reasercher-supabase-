@@ -130,7 +130,7 @@ async def get_phone_info(phone):
         return {"status": False, "error": str(e)}
 
 def vehicle_lookup(num: str):
-    """Fetch vehicle RC details using BeautifulSoup[span_1](start_span)[span_1](end_span)"""
+    """Fetch vehicle RC details using BeautifulSoup"""
     try:
         veh_num = num.upper().strip()
         url = f"https://www.carinfo.app/rc-details/{veh_num}"
@@ -540,7 +540,8 @@ def main():
     print("🚀 HARSH HACKER OSINT & VEHICLE BOT STARTING...")
     print("=" * 50)
     
-    application = Application.builder().token(BOT_TOKEN).http_version("1.1").get_updates_http_version("1.1").build()
+    # Fully corrected application initialization to prevent Updater errors
+    application = Application.builder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("info", info_command))
@@ -555,5 +556,5 @@ def main():
     
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-if __name__ == 'main' or __name__ == '__main__':
+if __name__ == '__main__':
     main()
