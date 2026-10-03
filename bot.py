@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# Number & Vehicle Info Bot - Lightning Fast Webhook Edition
+# Number & Vehicle Info Bot - Harsh Developer Edition
 """
-Developer: HARSH HACKER
-Description: Advanced OSINT & Vehicle Info Telegram Bot with Instant Webhook Response & Admin Panel
+Developer: HARSH
+Description: Advanced OSINT & Vehicle Info Telegram Bot with Lightning-Fast Admin Panel & Developer Credits
 """
 
 import os
@@ -199,7 +199,7 @@ def vehicle_lookup(num: str):
         output += "──────────────────────────\n"
         output += "✅ Data fetched successfully!\n"
         output += "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        output += f"⚡ Powered by {OWNER_USERNAME} | Developed by HARSH HACKER\n"
+        output += f"⚡ Powered by {OWNER_USERNAME} | Developed by HARSH\n"
         output += "━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
         return output
@@ -235,36 +235,20 @@ async def show_hacking_animation(msg_obj, target_str, is_vehicle=False):
             pass
 
 # ============================================
-# CLEAN JSON FORMAT RESPONSE
+# CLEAN JSON FORMAT RESPONSE (HARSH DEVELOPER)
 # ============================================
 def format_response(data, phone):
     if not data or (isinstance(data, dict) and data.get('status') == False):
         error_msg = data.get('error', 'Unknown error') if isinstance(data, dict) else 'No data found'
         return f"❌ Error: {error_msg}"
     
-    def redact_sensitive(obj):
-        if isinstance(obj, dict):
-            new_dict = {}
-            for k, v in obj.items():
-                if any(sub in str(k).lower() for sub in ['aadhar', 'adhar', 'aadhaar']):
-                    new_dict[k] = "[Aadhaar Omitted]"
-                else:
-                    new_dict[k] = redact_sensitive(v)
-            return new_dict
-        elif isinstance(obj, list):
-            return [redact_sensitive(item) for item in obj]
-        else:
-            return obj
-
-    cleaned_data = redact_sensitive(data)
-    
     formatted_json = {
         "status": True,
         "query": str(phone),
-        "data": cleaned_data,
+        "data": data,
         "response_time": "0.35s",
         "🤖 Bot": OWNER_USERNAME,
-        "👨‍💻 Dev": "HARSH HACKER",
+        "👨‍💻 Dev": "HARSH",
         "📢 Channel": "t.me/Catalyst_Mystery"
     }
     
@@ -274,7 +258,7 @@ def format_response(data, phone):
     output += f"📌 **SEARCHED -** `/info {phone}`\n\n"
     output += f"```json\n{json_str}\n```\n"
     output += f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-    output += f"⚡ Powered by {OWNER_USERNAME} | Developed by HARSH HACKER"
+    output += f"⚡ Powered by {OWNER_USERNAME} | Developed by HARSH"
     return output
 
 # ============================================
@@ -297,7 +281,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
         db_execute("INSERT OR IGNORE INTO users (user_id, username, first_name, credits) VALUES (?, ?, ?, ?)",
                    (user.id, user.username or "NoUsername", user.first_name, 2), commit=True)
-        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein[span_1](start_span)[span_1](end_span)!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein[span_1](start_span)[span_1](end_span)!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     await send_welcome_menu(update, context, user)
@@ -401,7 +385,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
         
         panel_text = f"""
-📊 *ADVANCED ADMIN PANEL* (HARSH HACKER)
+📊 *ADVANCED ADMIN PANEL* (HARSH)
 ━━━━━━━━━━━━━━━━━━
 👥 Total Users: `{total_users}`
 🔍 Total Lookups: `{total_searches}`
@@ -412,7 +396,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🛠️ 🔄 Toggle Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
+            [InlineKeyboardButton("🛠️️ 🔄 Toggle Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return
@@ -466,7 +450,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
         
         panel_text = f"""
-📊 *ADVANCED ADMIN PANEL* (HARSH HACKER)
+📊 *ADVANCED ADMIN PANEL* (HARSH)
 ━━━━━━━━━━━━━━━━━━
 👥 Total Users: `{total_users}`
 🔍 Total Lookups: `{total_searches}`
@@ -596,7 +580,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sent = 0
     for u in users:
         try:
-            await context.bot.send_message(chat_id=u['user_id'], text=f"📢 *ANNOUNCEMENT (HARSH HACKER)*\n\n{msg}", parse_mode='Markdown')
+            await context.bot.send_message(chat_id=u['user_id'], text=f"📢 *ANNOUNCEMENT (HARSH)*\n\n{msg}", parse_mode='Markdown')
             sent += 1
         except: pass
     await update.message.reply_text(f"📢 Broadcast sent to {sent} users.")
@@ -616,7 +600,7 @@ async def user_inspect_command(update: Update, context: ContextTypes.DEFAULT_TYP
 
 def main():
     print("=" * 50)
-    print("🚀 HARSH HACKER OSINT & VEHICLE BOT STARTING (WEBHOOK MODE)...")
+    print("🚀 HARSH OSINT & VEHICLE BOT STARTING (WEBHOOK MODE)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
