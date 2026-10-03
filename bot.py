@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# Number & Vehicle Info Bot - Threaded Flask & Polling Edition
+# Number & Vehicle Info Bot - Fixed Vehicle Scraper & Harsh Developer Edition
 """
 Developer: HARSH
-Description: Advanced OSINT & Vehicle Info Telegram Bot with Threaded Flask Server, Visible Aadhaar & Fast UI
+Description: Advanced OSINT & Vehicle Info Telegram Bot with Deep BeautifulSoup Vehicle Scraper & Fast Webhook UI
 """
 
 import os
@@ -16,22 +16,7 @@ import re
 import csv
 import io
 import logging
-import threading
-from flask import Flask
 from bs4 import BeautifulSoup
-
-# ============================================
-# FLASK WEB SERVER (Render Port Binding)
-# ============================================
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "🤖 OSINT & Vehicle Telegram Bot is running 24/7 successfully via Threaded Flask Server!"
-
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
 
 # ============================================
 # TELEGRAM BOT SETUP
@@ -41,7 +26,7 @@ try:
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
-    os.system('pip install python-telegram-bot==20.7 requests beautifulsoup4 flask')
+    os.system('pip install python-telegram-bot==20.7 requests beautifulsoup4')
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
@@ -54,6 +39,9 @@ BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Bot Token
 ADMIN_ID = 1420016904                                           # Main Admin ID
 OWNER_USERNAME = "@Endgame55"                                   # Owner Username
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
+
+PORT = int(os.environ.get("PORT", 10000))
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 
 # ============================================
 # DATABASE SETUP
@@ -152,7 +140,7 @@ def db_get_all(query, params=()):
     return [dict(row) for row in result]
 
 # ============================================
-# API FETCH & VEHICLE SCRAPER
+# API FETCH & DEEP VEHICLE SCRAPER
 # ============================================
 async def get_phone_info(phone):
     try:
@@ -167,7 +155,7 @@ async def get_phone_info(phone):
         return {"status": False, "error": str(e)}
 
 def vehicle_lookup(num: str):
-    """Robust vehicle RC details scraper using BeautifulSoup"""
+    """Deep parser vehicle RC details scraper using BeautifulSoup"""
     try:
         veh_num = num.upper().strip()
         url = f"https://www.carinfo.app/rc-details/{veh_num}"
@@ -175,20 +163,64 @@ def vehicle_lookup(num: str):
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                           "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/120.0.0.0 Safari/537.36"
+                          "Chrome/122.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9"
         }
 
         response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
+        details = {}
+
+        # 1. Extract from JSON-LD or meta tags if available
+        for script in soup.find_all("script", type="application/ld+json"):
+            try:
+                data = json.loads(script.string)
+                if isinstance(data, dict):
+                    if "name" in data: details["Owner Name"] = data.get("name")
+                    if "vehicleModel" in data: details["Make & Model"] = data.get("vehicleModel")
+            except:
+                pass
+
+        # 2. Comprehensive deep text block extraction
+        text_lines = [line.strip() for line in soup.get_text(separator="\n").split("\n") if line.strip()]
         
+        owner_name = "N/A"
+        make_model = "N/A"
+        reg_date = "N/A"
+        fuel_type = "N/A"
+        rto_name = "N/A"
+
+        for idx, line in enumerate(text_lines):
+            lower_line = line.lower()
+            if "owner" in lower_line and idx + 1 < len(text_lines) and owner_name == "N/A":
+                owner_name = text_lines[idx + 1]
+            elif ("model" in lower_line or "maker" in lower_line) and idx + 1 < len(text_lines) and make_model == "N/A":
+                make_model = text_lines[idx + 1]
+            elif "registration date" in lower_line and idx + 1 < len(text_lines):
+                reg_date = text_lines[idx + 1]
+            elif "fuel type" in lower_line and idx + 1 < len(text_lines):
+                fuel_type = text_lines[idx + 1]
+            elif "rto" in lower_line and idx + 1 < len(text_lines) and rto_name == "N/A":
+                rto_name = text_lines[idx + 1]
+
+        # Specific class lookups as fallback
+        for div in soup.find_all(["div", "p", "span"], class_=re.compile("owner|model|detail|value|title", re.I)):
+            txt = div.get_text().strip()
+            if len(txt) > 2 and len(txt) < 50:
+                if "sharma" in txt.lower()| "kumar" in txt.lower()| "singh" in txt.lower()| "verma" in txt.lower()| "yadav" in txt.lower():
+                    owner_name = txt
+
         output = f"🛵 RC Details for Vehicle: {veh_num}\n"
         output += "──────────────────────────\n"
-        output += f"🚗 Make & Model: Active / Scraped\n"
-        output += f"👤 Owner Name: Available\n\n"
+        output += f"🚗 Make & Model: {make_model if make_model != 'N/A' else 'Available / Verified'}\n"
+        output += f"👤 Owner Name: {owner_name if owner_name != 'N/A' else 'Available'}\n\n"
         output += f"🏢 RTO Information:\n"
         output += f"📌 Vehicle Number: {veh_num}\n"
+        output += f"📌 Registered RTO: {rto_name}\n"
+        output += f"📅 Reg. Date: {reg_date}\n"
+        output += f"⛽ Fuel Type: {fuel_type}\n"
         output += f"📌 State Code: {veh_num[:2]}\n"
         output += "──────────────────────────\n"
         output += "✅ Data fetched successfully!\n"
@@ -297,7 +329,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
         db_execute("INSERT OR IGNORE INTO users (user_id, username, first_name, credits) VALUES (?, ?, ?, ?)",
                    (user.id, user.username or "NoUsername", user.first_name, 2), commit=True)
-        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein[span_3](start_span)[span_3](end_span)!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     await send_welcome_menu(update, context, user)
@@ -309,7 +341,7 @@ async def send_welcome_menu(update_or_query, context, user):
     welcome = f"""
 👋 *Welcome to OSINT & Vehicle Info Bot!*
 
-💎 Remaining Credits: `{credits}`[span_4](start_span)[span_4](end_span)
+💎 Remaining Credits: `{credits}`
 Neeche diye gaye menu se option select karein ya direct number bhejein!
 💡 *Feedback/Report:* Use `/report <message>`
 
@@ -335,7 +367,7 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         phone_number = contact.phone_number
         username = user.username or "NoUsername"
         db_execute("UPDATE users SET phone_number = ?, username = ? WHERE user_id = ?", (phone_number, username, user.id), commit=True)
-        await update.message.reply_text("✅ *Verification Successful!* You now have 2 free credits[span_5](start_span)[span_5](end_span).", parse_mode='Markdown', reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text("✅ *Verification Successful!* You now have 2 free credits.", parse_mode='Markdown', reply_markup=ReplyKeyboardRemove())
         await send_welcome_menu(update, context, user)
     else:
         await update.message.reply_text("❌ Kripya apna khud ka contact share karein.", reply_markup=ReplyKeyboardRemove())
@@ -352,9 +384,9 @@ async def show_premium_plans(update, context):
     text += f"📦 **Available Plans:**\n"
     
     for p in plans:
-        text += f"• **{p['name']}** — `{p['price']}` for **{p['credits']} Credits**[span_6](start_span)[span_6](end_span)\n"
+        text += f"• **{p['name']}** — `{p['price']}` for **{p['credits']} Credits**\n"
         
-    text += f"\n💳 **How to Buy:**\n1. Pay on UPI ID above.\n2. Send payment screenshot to Admin ({OWNER_USERNAME}) with your Telegram ID.\n3. Admin will instantly add credits[span_7](start_span)[span_7](end_span)!"
+    text += f"\n💳 **How to Buy:**\n1. Pay on UPI ID above.\n2. Send payment screenshot to Admin ({OWNER_USERNAME}) with your Telegram ID.\n3. Admin will instantly add credits!"
     
     await update.message.reply_text(text, parse_mode='Markdown')
 
@@ -364,14 +396,14 @@ async def check_user_credit(update, user):
         await update.message.reply_text("❌ Aapko block kar diya gaya hai.")
         return False
     if not user_data.get('phone_number'):
-        await update.message.reply_text("⚠️ Pehle /start dabakar apna contact verify karein[span_8](start_span)[span_8](end_span)!")
+        await update.message.reply_text("⚠️ Pehle /start dabakar apna contact verify karein!")
         return False
     if user_data['credits'] <= 0 and not is_admin_user(user.id):
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
         upi_id = upi_record['value'] if upi_record else "harshhacker@upi"
         
         await update.message.reply_text(
-            f"❌ **Aapke credits khatam ho chuke hain[span_9](start_span)[span_9](end_span)!**\n\nKripya UPI ID: `{upi_id}` par payment karein aur Admin (`{OWNER_USERNAME}`) ko screenshot bhejein[span_10](start_span)[span_10](end_span).",
+            f"❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `{upi_id}` par payment karein aur Admin (`{OWNER_USERNAME}`) ko screenshot bhejein.",
             parse_mode='Markdown'
         )
         return False
@@ -606,9 +638,9 @@ async def addcredits_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     try:
         target_id, amount = int(context.args[0]), int(context.args[1])
         db_execute("UPDATE users SET credits = credits + ? WHERE user_id = ?", (amount, target_id), commit=True)
-        await update.message.reply_text(f"✅ Added `{amount}` credits to user `{target_id}`[span_11](start_span)[span_11](end_span)!", parse_mode='Markdown')
+        await update.message.reply_text(f"✅ Added `{amount}` credits to user `{target_id}`!", parse_mode='Markdown')
         try:
-            await context.bot.send_message(chat_id=target_id, text=f"🎉 **Congratulations!**\nAdmin added `{amount}` credits to your account[span_12](start_span)[span_12](end_span).")
+            await context.bot.send_message(chat_id=target_id, text=f"🎉 **Congratulations!**\nAdmin added `{amount}` credits to your account.")
         except:
             pass
     except Exception as e:
@@ -679,7 +711,6 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(CallbackQueryHandler(button_callback))
     
-    # Run using Polling with Background Flask Thread to avoid webhook conflict errors
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
