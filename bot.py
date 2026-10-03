@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# Number & Vehicle Info Bot - Updated Scraper Edition
+# Number & Vehicle Info Bot - Complete Final Edition
 """
-Developer: HaRsH
-Description: Advanced OSINT & Vehicle Info Telegram Bot with Custom Vehicle Scraper, Threaded Flask & Fast UI
+Developer: HARSH
+Description: Advanced OSINT & Vehicle Info Telegram Bot with Custom Vehicle Scraper, Clean JSON Response, Threaded Flask & Fast UI
 """
 
 import os
@@ -184,22 +184,18 @@ def vehicle_lookup(num: str):
         soup = BeautifulSoup(response.text, "html.parser")
         details = {}
 
-        # Number Plate
         number_plate = soup.find("div", class_="input_vehical_layout_numberPlateContainer__Ug78g")
         if number_plate:
             details["Number Plate"] = number_plate.find("p").text.strip()
 
-        # Make & Model
         make_model = soup.find("div", class_="input_vehical_layout_vehicalDetails__MseIO")
         if make_model:
             details["Make & Model"] = make_model.find("p", class_="input_vehical_layout_vehicalModel__1ABTF").text.strip()
 
-        # Owner Name
         owner = soup.find("div", class_="input_vehical_layout_ownerDetails__6IzJb")
         if owner:
             details["Owner Name"] = owner.find("p", class_="input_vehical_layout_ownerName__NHkpi").text.strip()
 
-        # RTO Details
         rto_container = soup.find("div", class_="expand_component_detailListContainer__L1nXb")
         if rto_container:
             for item in rto_container.find_all("div", class_="expand_component_detailItem__V43eh"):
@@ -208,18 +204,15 @@ def vehicle_lookup(num: str):
                 if key_tag and value_tag:
                     details[key_tag.text.strip()] = value_tag.text.strip()
 
-        # Website
         if rto_container:
             website_tag = rto_container.find("a", href=True)
             if website_tag:
                 details["Website"] = website_tag['href']
 
-        # Format humanoid output
         output = f"🛵 RC Details for Vehicle: {details.get('Number Plate', veh_num)}\n"
         output += "──────────────────────────\n"
         output += f"🚗 Make & Model: {details.get('Make & Model', 'N/A')}\n"
         output += f"👤 Owner Name: {details.get('Owner Name', 'N/A')}\n\n"
-
         output += "🏢 RTO Information:\n"
         output += f"📌 Number: {details.get('Number', 'N/A')}\n"
         output += f"📌 Registered RTO: {details.get('Registered RTO', 'N/A')}\n"
@@ -262,11 +255,11 @@ async def show_hacking_animation(msg_obj, target_str, is_vehicle=False):
             pass
 
 # ============================================
-# FORMAT RESPONSE (NUMBER INFO)
+# FORMAT RESPONSE (EXACT REFERENCE JSON FORMAT)
 # ============================================
 def format_response(data, phone):
     if not data or (isinstance(data, dict) and data.get('status') == False):
-        error_msg = data.get('error', 'No data found in database') if isinstance(data, dict) else 'No data found'
+        error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
         return f"❌ Error: {error_msg}"
     
     actual_results = []
@@ -292,47 +285,46 @@ def format_response(data, phone):
     if not actual_results:
         actual_results = [data]
 
-    total_recs = len(actual_results)
-
-    out = []
-    out.append("📞 **NUMBER INFO**")
-    out.append("════════════════════════")
-    out.append("🔢 **NUMBER DATABASE** ✅")
-    out.append("")
-    out.append(f"🔭 **QUERY:** `{phone}`")
-    out.append(f"📂 **RECORDS:** `{total_recs} | Page 1/1`")
-    out.append("")
-    out.append("────────────────────────")
-    
+    results_list = []
     for i, rec in enumerate(actual_results, 1):
         if not isinstance(rec, dict):
             rec = {}
         
         name = rec.get('name') or rec.get('FullName') or rec.get('owner_name') or 'Unknown'
         fname = rec.get('fname') or rec.get('father_name') or rec.get('FatherName') or 'N/A'
-        alt = rec.get('alt') or rec.get('alt_number') or 'N/A'
-        circle = rec.get('circle') or rec.get('operator') or 'N/A'
         address = rec.get('address') or rec.get('Address') or 'N/A'
+        circle = rec.get('circle') or rec.get('operator') or 'N/A'
         
         aadhar_display = rec.get('aadhar') or rec.get('id') or 'N/A'
-        
 
-        out.append(f"🗂️ **RECORD {i}/{total_recs}**")
-        out.append("────────────────────────")
-        out.append(f"📱 **NUMBER :** `{rec.get('mobile', rec.get('phone', phone))}`")
-        out.append(f"👤 **NAME :** {name}")
-        out.append(f"👥 **FATHER :** {fname}")
-        out.append(f"🔄 **ALT NUM :** `{alt}`")
-        out.append(f"🔍 **CIRCLE :** {circle}")
-        out.append(f"🏠 **ADDRESS :** {address}")
-        out.append(f"🪪 **ID :** `{aadhar_display}`")
-        out.append("")
+        results_list.append({
+            "address": address,
+            "circle": circle,
+            "father_name": fname,
+            "id": aadhar_display,
+            "name": name,
+            "number": rec.get('mobile', rec.get('phone', phone)),
+            "result": f"Result {i}"
+        })
 
-    out.append("────────────────────────")
-    out.append("🚀 **RESPONSE TIME:** `0.45s`")
-    out.append("👨‍💻 **DEVELOPED BY HARSH**")
-    
-    return "\n".join(out)
+    json_output = {
+        "data": {
+            "country": "India",
+            "number": phone,
+            "result_count": len(results_list),
+            "results": results_list,
+            "total_records": len(results_list),
+            "total_results": len(results_list)
+        },
+        "query": phone,
+        "response_time": "0.89s",
+        "status": True,
+        "Dev": "@Endgame55",
+        "Channel": "https://t.me/+QUg-JvyJizkxMzAl",
+        "Bot": "@Reasercherinfobot"
+    }
+
+    return f"```json\n{json.dumps(json_output, indent=4, ensure_ascii=False)}\n```"
 
 # ============================================
 # TELEGRAM HANDLERS
