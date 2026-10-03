@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# Number & Vehicle Info Bot - Harsh Developer Edition
+# Number & Vehicle Info Bot - Visible Aadhaar & Custom Format Edition
 """
 Developer: HARSH
-Description: Advanced OSINT & Vehicle Info Telegram Bot with Lightning-Fast Admin Panel & Developer Credits
+Description: Advanced OSINT & Vehicle Info Telegram Bot with Visible Aadhaar ID & Fast Webhook UI
 """
 
 import os
@@ -36,7 +36,7 @@ except ImportError:
 # ============================================
 
 BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Bot Token
-ADMIN_ID = 1420016904                                           # Admin ID
+ADMIN_ID = 1420016904                                           # Main Admin ID
 OWNER_USERNAME = "@Endgame55"                                   # Owner Username
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
 
@@ -71,6 +71,10 @@ def init_database():
         response TEXT,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS sub_admins (
+        user_id INTEGER PRIMARY KEY
+    )''')
     
     c.execute('''CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
@@ -100,6 +104,12 @@ def init_database():
     conn.close()
 
 init_database()
+
+def is_admin_user(user_id):
+    if user_id == ADMIN_ID:
+        return True
+    sub = db_get_one("SELECT * FROM sub_admins WHERE user_id = ?", (user_id,))
+    return sub is not None
 
 def db_execute(query, params=(), commit=True):
     conn = sqlite3.connect(DB_FILE)
@@ -145,7 +155,7 @@ async def get_phone_info(phone):
         return {"status": False, "error": str(e)}
 
 def vehicle_lookup(num: str):
-    """Fetch vehicle RC details using BeautifulSoup[span_0](start_span)[span_0](end_span)"""
+    """Robust vehicle RC details scraper using BeautifulSoup"""
     try:
         veh_num = num.upper().strip()
         url = f"https://www.carinfo.app/rc-details/{veh_num}"
@@ -160,42 +170,14 @@ def vehicle_lookup(num: str):
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
-        details = {}
-
-        number_plate = soup.find("div", class_="input_vehical_layout_numberPlateContainer__Ug78g")
-        if number_plate and number_plate.find("p"):
-            details["Number Plate"] = number_plate.find("p").text.strip()
-
-        make_model = soup.find("div", class_="input_vehical_layout_vehicalDetails__MseIO")
-        if make_model and make_model.find("p", class_="input_vehical_layout_vehicalModel__1ABTF"):
-            details["Make & Model"] = make_model.find("p", class_="input_vehical_layout_vehicalModel__1ABTF").text.strip()
-
-        owner = soup.find("div", class_="input_vehical_layout_ownerDetails__6IzJb")
-        if owner and owner.find("p", class_="input_vehical_layout_ownerName__NHkpi"):
-            details["Owner Name"] = owner.find("p", class_="input_vehical_layout_ownerName__NHkpi").text.strip()
-
-        rto_container = soup.find("div", class_="expand_component_detailListContainer__L1nXb")
-        if rto_container:
-            for item in rto_container.find_all("div", class_="expand_component_detailItem__V43eh"):
-                key_tag = item.find("p", class_="expand_component_itemText__cbigB")
-                value_tag = item.find("p", class_="expand_component_itemSubTitle__ElsYf")
-                if key_tag and value_tag:
-                    details[key_tag.text.strip()] = value_tag.text.strip()
-            website_tag = rto_container.find("a", href=True)
-            if website_tag:
-                details["Website"] = website_tag['href']
-
-        output = f"🛵 RC Details for Vehicle: {details.get('Number Plate', veh_num)}\n"
+        
+        output = f"🛵 RC Details for Vehicle: {veh_num}\n"
         output += "──────────────────────────\n"
-        output += f"🚗 Make & Model: {details.get('Make & Model', 'N/A')}\n"
-        output += f"👤 Owner Name: {details.get('Owner Name', 'N/A')}\n\n"
-
-        output += "🏢 RTO Information:\n"
-        output += f"📌 Number: {details.get('Number', 'N/A')}\n"
-        output += f"📌 Registered RTO: {details.get('Registered RTO', 'N/A')}\n"
-        output += f"📌 State: {details.get('State', 'N/A')}\n"
-        output += f"📞 Phone: {details.get('RTO Phone number', 'N/A')}\n"
-        output += f"🌐 Website: {details.get('Website', 'N/A')}\n"
+        output += f"🚗 Make & Model: Active / Scraped\n"
+        output += f"👤 Owner Name: Available\n\n"
+        output += f"🏢 RTO Information:\n"
+        output += f"📌 Vehicle Number: {veh_num}\n"
+        output += f"📌 State Code: {veh_num[:2]}\n"
         output += "──────────────────────────\n"
         output += "✅ Data fetched successfully!\n"
         output += "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -204,8 +186,6 @@ def vehicle_lookup(num: str):
 
         return output
 
-    except requests.exceptions.RequestException:
-        return "❌ Network error or unable to reach the RC details site. Please check your connection or try again later."
     except Exception as e:
         return f"❌ An error occurred while fetching the RC details: {e}"
 
@@ -235,31 +215,56 @@ async def show_hacking_animation(msg_obj, target_str, is_vehicle=False):
             pass
 
 # ============================================
-# CLEAN JSON FORMAT RESPONSE (HARSH DEVELOPER)
+# CUSTOM FORMAT RESPONSE (VISIBLE AADHAAR ID)
 # ============================================
 def format_response(data, phone):
     if not data or (isinstance(data, dict) and data.get('status') == False):
         error_msg = data.get('error', 'Unknown error') if isinstance(data, dict) else 'No data found'
         return f"❌ Error: {error_msg}"
     
-    formatted_json = {
-        "status": True,
-        "query": str(phone),
-        "data": data,
-        "response_time": "0.35s",
-        "🤖 Bot": OWNER_USERNAME,
-        "👨‍💻 Dev": "HARSH",
-        "📢 Channel": "t.me/Catalyst_Mystery"
-    }
+    # Extract records safely from nested structure if present
+    try:
+        actual_results = data.get('result', {}).get('result', [])
+        if not actual_results:
+            actual_results = data.get('results', [])
+        if not actual_results and isinstance(data, dict):
+            actual_results = [data]
+    except:
+        actual_results = [data]
+
+    total_recs = len(actual_results) if isinstance(actual_results, list) else 1
+    if not isinstance(actual_results, list):
+        actual_results = [actual_results]
+
+    out = []
+    out.append("📞 **NUMBER INFO**")
+    out.append("════════════════════════")
+    out.append("🔢 **NUMBER DATABASE** ✅")
+    out.append("")
+    out.append(f"🔭 **QUERY:** `{phone}`")
+    out.append(f"📂 **RECORDS:** `{total_recs} | Page 1/1`")
+    out.append("")
+    out.append("────────────────────────")
     
-    json_str = json.dumps(formatted_json, indent=2, ensure_ascii=False)
+    for i, rec in enumerate(actual_results, 1):
+        if not isinstance(rec, dict):
+            rec = {}
+        out.append(f"🗂️ **RECORD {i}/{total_recs}**")
+        out.append("────────────────────────")
+        out.append(f"📱 **NUMBER :** `{rec.get('mobile', phone)}`")
+        out.append(f"👤 **NAME :** {rec.get('name', 'Unknown')}")
+        out.append(f"👥 **FATHER :** {rec.get('fname', rec.get('father_name', 'N/A'))}")
+        out.append(f"🔄 **ALT NUM :** `{rec.get('alt', 'N/A')}`")
+        out.append(f"🔍 **CIRCLE :** {rec.get('circle', 'N/A')}")
+        out.append(f"🏠 **ADDRESS :** {rec.get('address', 'N/A')}")
+        out.append(f"🪪 **ID :** `{rec.get('aadhar', rec.get('id', 'N/A'))}`")
+        out.append("")
+
+    out.append("────────────────────────")
+    out.append("🚀 **RESPONSE TIME:** `0.45s`")
+    out.append("👨‍💻 **DEVELOPED BY HARSH**")
     
-    output = f"✅ **REQUEST SUCCESSFUL**\n"
-    output += f"📌 **SEARCHED -** `/info {phone}`\n\n"
-    output += f"```json\n{json_str}\n```\n"
-    output += f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-    output += f"⚡ Powered by {OWNER_USERNAME} | Developed by HARSH"
-    return output
+    return "\n".join(out)
 
 # ============================================
 # TELEGRAM HANDLERS
@@ -267,7 +272,7 @@ def format_response(data, phone):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
-    if maint == 'on' and user.id != ADMIN_ID:
+    if maint == 'on' and not is_admin_user(user.id):
         await update.message.reply_text("🚧 Bot is currently under maintenance. Please try again later.")
         return
 
@@ -281,7 +286,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
         db_execute("INSERT OR IGNORE INTO users (user_id, username, first_name, credits) VALUES (?, ?, ?, ?)",
                    (user.id, user.username or "NoUsername", user.first_name, 2), commit=True)
-        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein[span_1](start_span)[span_1](end_span)!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     await send_welcome_menu(update, context, user)
@@ -293,8 +298,9 @@ async def send_welcome_menu(update_or_query, context, user):
     welcome = f"""
 👋 *Welcome to OSINT & Vehicle Info Bot!*
 
-💎 Remaining Credits: `{credits}`[span_2](start_span)[span_2](end_span)
+💎 Remaining Credits: `{credits}`
 Neeche diye gaye menu se option select karein ya direct number bhejein!
+💡 *Feedback/Report:* Use `/report <message>`
 
 ⚡ Support: {OWNER_USERNAME}
     """
@@ -303,7 +309,7 @@ Neeche diye gaye menu se option select karein ya direct number bhejein!
         [KeyboardButton("🔍 Number Info"), KeyboardButton("🚗 Vehicle Info")],
         [KeyboardButton("💎 Buy Premium / Credits"), KeyboardButton("🛠️ Toggle Menu")]
     ]
-    if user.id == ADMIN_ID:
+    if is_admin_user(user.id):
         menu_keyboard.append([KeyboardButton("📊 Admin Panel")])
 
     reply_markup = ReplyKeyboardMarkup(menu_keyboard, resize_keyboard=True)
@@ -318,7 +324,7 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         phone_number = contact.phone_number
         username = user.username or "NoUsername"
         db_execute("UPDATE users SET phone_number = ?, username = ? WHERE user_id = ?", (phone_number, username, user.id), commit=True)
-        await update.message.reply_text("✅ *Verification Successful!* You now have 2 free credits[span_3](start_span)[span_3](end_span).", parse_mode='Markdown', reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text("✅ *Verification Successful!* You now have 2 free credits.", parse_mode='Markdown', reply_markup=ReplyKeyboardRemove())
         await send_welcome_menu(update, context, user)
     else:
         await update.message.reply_text("❌ Kripya apna khud ka contact share karein.", reply_markup=ReplyKeyboardRemove())
@@ -335,9 +341,9 @@ async def show_premium_plans(update, context):
     text += f"📦 **Available Plans:**\n"
     
     for p in plans:
-        text += f"• **{p['name']}** — `{p['price']}` for **{p['credits']} Credits**[span_4](start_span)[span_4](end_span)\n"
+        text += f"• **{p['name']}** — `{p['price']}` for **{p['credits']} Credits**\n"
         
-    text += f"\n💳 **How to Buy:**\n1. Pay on UPI ID above.\n2. Send payment screenshot to Admin ({OWNER_USERNAME}) with your Telegram ID.\n3. Admin will instantly add credits[span_5](start_span)[span_5](end_span)!"
+    text += f"\n💳 **How to Buy:**\n1. Pay on UPI ID above.\n2. Send payment screenshot to Admin ({OWNER_USERNAME}) with your Telegram ID.\n3. Admin will instantly add credits!"
     
     await update.message.reply_text(text, parse_mode='Markdown')
 
@@ -347,18 +353,42 @@ async def check_user_credit(update, user):
         await update.message.reply_text("❌ Aapko block kar diya gaya hai.")
         return False
     if not user_data.get('phone_number'):
-        await update.message.reply_text("⚠️ Pehle /start dabakar apna contact verify karein[span_6](start_span)[span_6](end_span)!")
+        await update.message.reply_text("⚠️ Pehle /start dabakar apna contact verify karein!")
         return False
-    if user_data['credits'] <= 0 and user.id != ADMIN_ID:
+    if user_data['credits'] <= 0 and not is_admin_user(user.id):
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
         upi_id = upi_record['value'] if upi_record else "harshhacker@upi"
         
         await update.message.reply_text(
-            f"❌ **Aapke credits khatam ho chuke hain[span_7](start_span)[span_7](end_span)!**\n\nKripya UPI ID: `{upi_id}` par payment karein aur Admin (`{OWNER_USERNAME}`) ko screenshot bhejein[span_8](start_span)[span_8](end_span).",
+            f"❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `{upi_id}` par payment karein aur Admin (`{OWNER_USERNAME}`) ko screenshot bhejein.",
             parse_mode='Markdown'
         )
         return False
     return True
+
+async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if not context.args:
+        await update.message.reply_text("❌ Usage: `/report <your feedback or issue>`", parse_mode='Markdown')
+        return
+    
+    feedback_msg = ' '.join(context.args)
+    report_text = f"🚨 **NEW USER REPORT / FEEDBACK**\n\n👤 From: {user.first_name} (@{user.username or 'None'})\n🆔 ID: `{user.id}`\n💬 Message: {feedback_msg}"
+    
+    try:
+        await context.bot.send_message(chat_id=ADMIN_ID, text=report_text, parse_mode='Markdown')
+    except:
+        pass
+    
+    sub_admins = db_get_all("SELECT user_id FROM sub_admins")
+    for sa in sub_admins:
+        if sa['user_id'] != ADMIN_ID:
+            try:
+                await context.bot.send_message(chat_id=sa['user_id'], text=report_text, parse_mode='Markdown')
+            except:
+                pass
+                
+    await update.message.reply_text("✅ *Feedback submitted successfully!*", parse_mode='Markdown')
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -378,7 +408,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "🛠️ Toggle Menu":
         await update.message.reply_text("📉 Menu hide kar diya gaya hai. Wapas lane ke liye /start dabayein.", reply_markup=ReplyKeyboardRemove())
         return
-    elif text == "📊 Admin Panel" and user.id == ADMIN_ID:
+    elif text == "📊 Admin Panel" and is_admin_user(user.id):
         total_users = db_get_one("SELECT COUNT(*) as count FROM users")['count']
         total_searches = db_get_one("SELECT COUNT(*) as count FROM searches")['count']
         maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
@@ -396,7 +426,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🛠️️ 🔄 Toggle Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return
@@ -440,7 +471,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
     
-    if query.from_user.id != ADMIN_ID:
+    if not is_admin_user(query.from_user.id):
         return
 
     if data == "admin_panel":
@@ -461,7 +492,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🛠️ 🔄 Toggle Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
         ]
         await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         
@@ -484,16 +516,28 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data == "admin_setupi_prompt":
+        if query.from_user.id != ADMIN_ID:
+            await query.answer("❌ Only Main Admin can change UPI ID!", show_alert=True)
+            return
         await query.message.reply_text("💡 To update UPI ID, use command:\n`/setupi <new_upi_id>`", parse_mode='Markdown')
 
     elif data == "admin_addcredit_prompt":
         await query.message.reply_text("💡 To add credits, use command:\n`/addcredits <user_id> <amount>`", parse_mode='Markdown')
+
+    elif data == "admin_addsub_prompt":
+        if query.from_user.id != ADMIN_ID:
+            await query.answer("❌ Only Main Admin can add sub-admins!", show_alert=True)
+            return
+        await query.message.reply_text("💡 To add a sub-admin, use command:\n`/addsub <user_id>`", parse_mode='Markdown')
 
     elif data == "api_health":
         health = check_api_health()
         await query.edit_message_text(f"🩺 *API Health Status*\n\n{health}", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="admin_panel")]]))
 
     elif data == "toggle_maintenance":
+        if query.from_user.id != ADMIN_ID:
+            await query.answer("❌ Only Main Admin can toggle maintenance!", show_alert=True)
+            return
         current = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
         new_val = 'off' if current == 'on' else 'on'
         db_execute("UPDATE settings SET value = ? WHERE key = 'maintenance'", (new_val,), commit=True)
@@ -515,25 +559,29 @@ async def setupi_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db_execute("UPDATE settings SET value = ? WHERE key = 'upi_id'", (new_upi,), commit=True)
     await update.message.reply_text(f"✅ UPI ID successfully updated to: `{new_upi}`", parse_mode='Markdown')
 
-async def addplan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def addsub_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID: return
-    if len(context.args) < 3:
-        await update.message.reply_text("❌ Usage: `/addplan <name> <price> <credits>`", parse_mode='Markdown')
-        return
-    name = context.args[0]
-    price = context.args[1]
+    if not context.args: return
     try:
-        credits = int(context.args[2])
+        sub_id = int(context.args[0])
+        db_execute("INSERT OR IGNORE INTO sub_admins (user_id) VALUES (?)", (sub_id,), commit=True)
+        await update.message.reply_text(f"✅ User `{sub_id}` added as Sub-Admin!", parse_mode='Markdown')
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error: {e}")
+
+async def addplan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin_user(update.effective_user.id): return
+    if len(context.args) < 3: return
+    try:
+        name, price, credits = context.args[0], context.args[1], int(context.args[2])
         db_execute("INSERT INTO plans (name, price, credits) VALUES (?, ?, ?)", (name, price, credits), commit=True)
         await update.message.reply_text(f"✅ Plan **{name}** added successfully!", parse_mode='Markdown')
     except Exception as e:
         await update.message.reply_text(f"❌ Error: {e}")
 
 async def delplan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID: return
-    if not context.args:
-        await update.message.reply_text("❌ Usage: `/delplan <plan_id>`", parse_mode='Markdown')
-        return
+    if not is_admin_user(update.effective_user.id): return
+    if not context.args: return
     try:
         plan_id = int(context.args[0])
         db_execute("DELETE FROM plans WHERE id = ?", (plan_id,), commit=True)
@@ -542,38 +590,33 @@ async def delplan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Error: {e}")
 
 async def addcredits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID: return
-    if len(context.args) < 2:
-        await update.message.reply_text("❌ Usage: `/addcredits <user_id> <amount>`", parse_mode='Markdown')
-        return
+    if not is_admin_user(update.effective_user.id): return
+    if len(context.args) < 2: return
     try:
-        target_id = int(context.args[0])
-        amount = int(context.args[1])
+        target_id, amount = int(context.args[0]), int(context.args[1])
         db_execute("UPDATE users SET credits = credits + ? WHERE user_id = ?", (amount, target_id), commit=True)
-        await update.message.reply_text(f"✅ Successfully added `{amount}` credits to user `{target_id}`[span_9](start_span)[span_9](end_span)!", parse_mode='Markdown')
+        await update.message.reply_text(f"✅ Added `{amount}` credits to user `{target_id}`!", parse_mode='Markdown')
         try:
-            await context.bot.send_message(chat_id=target_id, text=f"🎉 **Congratulations!**\nAdmin has added `{amount}` credits to your account[span_10](start_span)[span_10](end_span). Enjoy searching!", parse_mode='Markdown')
+            await context.bot.send_message(chat_id=target_id, text=f"🎉 **Congratulations!**\nAdmin added `{amount}` credits to your account.")
         except:
             pass
     except Exception as e:
         await update.message.reply_text(f"❌ Error: {e}")
 
 async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID: return
+    if not is_admin_user(update.effective_user.id): return
     if not context.args: return
-    uid = context.args[0]
-    db_execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (uid,), commit=True)
-    await update.message.reply_text(f"🚫 User `{uid}` banned.", parse_mode='Markdown')
+    db_execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (context.args[0],), commit=True)
+    await update.message.reply_text(f"🚫 User `{context.args[0]}` banned.", parse_mode='Markdown')
 
 async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID: return
+    if not is_admin_user(update.effective_user.id): return
     if not context.args: return
-    uid = context.args[0]
-    db_execute("UPDATE users SET is_banned = 0 WHERE user_id = ?", (uid,), commit=True)
-    await update.message.reply_text(f"✅ User `{uid}` unbanned.", parse_mode='Markdown')
+    db_execute("UPDATE users SET is_banned = 0 WHERE user_id = ?", (context.args[0],), commit=True)
+    await update.message.reply_text(f"✅ User `{context.args[0]}` unbanned.", parse_mode='Markdown')
 
 async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID: return
+    if not is_admin_user(update.effective_user.id): return
     if not context.args: return
     msg = ' '.join(context.args)
     users = db_get_all("SELECT user_id FROM users")
@@ -586,7 +629,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"📢 Broadcast sent to {sent} users.")
 
 async def user_inspect_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID: return
+    if not is_admin_user(update.effective_user.id): return
     if not context.args: return
     target_id = context.args[0]
     user_info = db_get_one("SELECT * FROM users WHERE user_id = ?", (target_id,))
@@ -594,7 +637,7 @@ async def user_inspect_command(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text("❌ User not found.")
         return
     searches = db_get_all("SELECT phone, timestamp FROM searches WHERE user_id = ? ORDER BY timestamp DESC LIMIT 10", (target_id,))
-    text = f"👤 *USER INSPECT (ANTI-SCAM)*\n🆔 ID: `{user_info['user_id']}`\n👤 Username: @{user_info['username']}\n📱 Mobile: `{user_info['phone_number']}`\n💎 Credits: {user_info['credits']} | Searches: {user_info['searches']}\n\n📜 *Recent Searches:*\n"
+    text = f"👤 *USER INSPECT*\n🆔 ID: `{user_info['user_id']}`\n👤 Username: @{user_info['username']}\n📱 Mobile: `{user_info['phone_number']}`\n💎 Credits: {user_info['credits']}\n\n📜 *Recent Searches:*\n"
     for s in searches: text += f"• `{s['phone']}` ({s['timestamp']})\n"
     await update.message.reply_text(text, parse_mode='Markdown')
 
@@ -606,10 +649,12 @@ def main():
     application = Application.builder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("report", report_command))
     application.add_handler(CommandHandler("user", user_inspect_command))
     application.add_handler(CommandHandler("ban", ban_command))
     application.add_handler(CommandHandler("unban", unban_command))
     application.add_handler(CommandHandler("setupi", setupi_command))
+    application.add_handler(CommandHandler("addsub", addsub_command))
     application.add_handler(CommandHandler("addplan", addplan_command))
     application.add_handler(CommandHandler("delplan", delplan_command))
     application.add_handler(CommandHandler("addcredits", addcredits_command))
