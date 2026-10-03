@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# Number & Vehicle Info Bot - Threaded Flask & Polling Edition
+# Number & Vehicle Info Bot - Bulletproof JSON Parser Edition
 """
 Developer: HARSH
-Description: Advanced OSINT & Vehicle Info Telegram Bot with Threaded Flask Server, Visible ID & Fast UI
+Description: Advanced OSINT & Vehicle Info Telegram Bot with Multi-Level JSON Fallback Parser & Threaded Flask
 """
 
 import os
@@ -227,40 +227,37 @@ async def show_hacking_animation(msg_obj, target_str, is_vehicle=False):
             pass
 
 # ============================================
-# FORMAT RESPONSE (VISIBLE ID)
+# BULLETPROOF FORMAT RESPONSE PARSER
 # ============================================
 def format_response(data, phone):
     if not data or (isinstance(data, dict) and data.get('status') == False):
-        error_msg = data.get('error', 'Unknown error') if isinstance(data, dict) else 'No data found'
+        error_msg = data.get('error', 'No data found in database') if isinstance(data, dict) else 'No data found'
         return f"❌ Error: {error_msg}"
     
     actual_results = []
-    try:
-        inner_data = data.get('data', {})
-        if isinstance(inner_data, dict):
-            res1 = inner_data.get('result', {})
-            if isinstance(res1, dict):
-                res2 = res1.get('result', [])
-                if isinstance(res2, list):
-                    actual_results = res2
-                elif isinstance(res2, dict):
-                    actual_results = [res2]
-            if not actual_results:
-                results_list = inner_data.get('results', [])
-                if results_list:
-                    actual_results = results_list
+    if isinstance(data, dict):
+        for key in ['result', 'results', 'data', 'payload', 'response']:
+            val = data.get(key)
+            if isinstance(val, list):
+                actual_results.extend(val)
+            elif isinstance(val, dict):
+                for sub_key in ['result', 'results', 'data', 'records']:
+                    sub_val = val.get(sub_key)
+                    if isinstance(sub_val, list):
+                        actual_results.extend(sub_val)
+                    elif isinstance(sub_val, dict):
+                        actual_results.append(sub_val)
+                if not actual_results:
+                    actual_results.append(val)
         if not actual_results:
-            if isinstance(data, dict):
-                actual_results = data.get('results', [data])
-    except:
-        actual_results = [data]
+            actual_results = [data]
+    elif isinstance(data, list):
+        actual_results = data
 
     if not actual_results:
         actual_results = [data]
 
-    total_recs = len(actual_results) if isinstance(actual_results, list) else 1
-    if not isinstance(actual_results, list):
-        actual_results = [actual_results]
+    total_recs = len(actual_results)
 
     out = []
     out.append("📞 **NUMBER INFO**")
@@ -276,18 +273,23 @@ def format_response(data, phone):
         if not isinstance(rec, dict):
             rec = {}
         
-        # Direct ID/Aadhaar show without omission
-        aadhar_val = rec.get('aadhar', rec.get('id', 'N/A'))
-        aadhar_display = aadhar_val if aadhar_val else "N/A"
+        name = rec.get('name') or rec.get('FullName') or rec.get('owner_name') or 'Unknown'
+        fname = rec.get('fname') or rec.get('father_name') or rec.get('FatherName') or 'N/A'
+        alt = rec.get('alt') or rec.get('alt_number') or 'N/A'
+        circle = rec.get('circle') or rec.get('operator') or 'N/A'
+        address = rec.get('address') or rec.get('Address') or 'N/A'
+        
+        aadhar_display = rec.get('aadhar') or rec.get('id') or 'N/A'
+        
 
         out.append(f"🗂️ **RECORD {i}/{total_recs}**")
         out.append("────────────────────────")
-        out.append(f"📱 **NUMBER :** `{rec.get('mobile', phone)}`")
-        out.append(f"👤 **NAME :** {rec.get('name', 'Unknown')}")
-        out.append(f"👥 **FATHER :** {rec.get('fname', rec.get('father_name', 'N/A'))}")
-        out.append(f"🔄 **ALT NUM :** `{rec.get('alt', 'N/A')}`")
-        out.append(f"🔍 **CIRCLE :** {rec.get('circle', 'N/A')}")
-        out.append(f"🏠 **ADDRESS :** {rec.get('address', 'N/A')}")
+        out.append(f"📱 **NUMBER :** `{rec.get('mobile', rec.get('phone', phone))}`")
+        out.append(f"👤 **NAME :** {name}")
+        out.append(f"👥 **FATHER :** {fname}")
+        out.append(f"🔄 **ALT NUM :** `{alt}`")
+        out.append(f"🔍 **CIRCLE :** {circle}")
+        out.append(f"🏠 **ADDRESS :** {address}")
         out.append(f"🪪 **ID :** `{aadhar_display}`")
         out.append("")
 
