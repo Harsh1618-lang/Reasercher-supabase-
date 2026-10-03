@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# Number Info Bot - Hacking Style Animation Edition
+# Number Info Bot - Render Web Service 24/7 Deployment Edition
 """
 Developer: HARSH HACKER
-Description: Advanced OSINT Telegram Bot with Hacking Progress Bar, Flask Web Server & Admin Panel
+Description: Advanced OSINT Telegram Bot with Flask Web Server, Admin Panel & Contact Verification
 """
 
 import os
@@ -49,9 +49,9 @@ except ImportError:
 # ========== CONFIGURATION - YOUR DETAILS ==========
 # ============================================
 
-BOT_TOKEN = "8408656202:AAF_0bplZdBBsr2C5fQWV3PH8KVHVyH-YbY"  # Your Bot Token
-ADMIN_ID = 1420016904                                           # Your Admin ID
-OWNER_USERNAME = "@Endgame55"                                   # Your Owner Username
+BOT_TOKEN = "8408656202:AAF_0bplZdBBsr2C5fQWV3PH8KVHVyH-YbY"  
+ADMIN_ID = 1420016904                                           
+OWNER_USERNAME = "@Endgame55"                                   
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
 
 # ============================================
@@ -277,7 +277,7 @@ async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
     if not user_data or user_data.get('is_banned') == 1: return
     if not user_data.get('phone_number'):
-        await update.message.reply_text("⚠️️ Pehle /start dabakar apna contact verify karein!")
+        await update.message.reply_text("⚠️ Pehle /start dabakar apna contact verify karein!")
         return
     if user_data['credits'] <= 0 and user.id != ADMIN_ID:
         await update.message.reply_text("❌ Aapke credits khatam ho chuke hain!")
@@ -288,13 +288,10 @@ async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     phone = context.args[0]
-    
-    # Send initial animation message
     msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
     await show_hacking_animation(msg, phone)
     
     data = await get_phone_info(phone)
-    
     db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, phone, json.dumps(data)), commit=True)
     db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
     
@@ -315,12 +312,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     cleaned = re.sub(r'\D', '', text)
     if 10 <= len(cleaned) <= 15:
-        # Send initial animation message
         msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
         await show_hacking_animation(msg, cleaned)
         
         data = await get_phone_info(cleaned)
-        
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, cleaned, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         
@@ -459,7 +454,7 @@ def main():
     print("🚀 HARSH HACKER OSINT TELEGRAM BOT STARTING...")
     print("=" * 50)
     
-    application = Application.builder().token(BOT_TOKEN).build()
+    application = Application.builder().token(BOT_TOKEN).http_version("1.1").get_updates_http_version("1.1").build()
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("info", info_command))
