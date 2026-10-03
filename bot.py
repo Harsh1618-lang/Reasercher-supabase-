@@ -2,7 +2,7 @@
 # Number & Vehicle Info Bot - Render Final Edition
 """
 Developer: HARSH HACKER
-Description: Advanced OSINT & Vehicle Info Telegram Bot with Flask Web Server & Threading
+Description: Advanced OSINT & Vehicle Info Telegram Bot with Dynamic Response Parser, Flask Web Server & Threading
 """
 
 import os
@@ -41,7 +41,7 @@ try:
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
-    os.system('pip install python-telegram-bot requests beautifulsoup4 flask')
+    os.system('pip install python-telegram-bot==20.7 requests beautifulsoup4 flask')
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
@@ -142,7 +142,7 @@ async def get_phone_info(phone):
         return {"status": False, "error": str(e)}
 
 def vehicle_lookup(num: str):
-    """Fetch vehicle RC details using BeautifulSoup"""
+    """Fetch vehicle RC details using BeautifulSoup[span_0](start_span)[span_0](end_span)"""
     try:
         veh_num = num.upper().strip()
         url = f"https://www.carinfo.app/rc-details/{veh_num}"
@@ -232,7 +232,7 @@ async def show_hacking_animation(msg_obj, target_str, is_vehicle=False):
             pass
 
 # ============================================
-# FORMAT RESPONSE
+# DYNAMIC FORMAT RESPONSE (Fixes N/A Issue)
 # ============================================
 def format_response(data, phone):
     if not data or (isinstance(data, dict) and data.get('status') == False):
@@ -242,6 +242,8 @@ def format_response(data, phone):
     records = data.get('results', data) if isinstance(data, dict) else data
     if isinstance(records, dict):
         records = [records]
+    elif not isinstance(records, list):
+        records = [data]
         
     if not records:
         return f"📱 No records found for `{phone}`"
@@ -250,30 +252,21 @@ def format_response(data, phone):
     lines.append("🔍 *PHONE NUMBER REPORT* 🔍")
     lines.append("═══════════════════════")
     lines.append(f"📞 **Searched Number:** `{phone}`")
-    lines.append(f"📊 **Total Records:** {len(records) if isinstance(records, list) else 1}")
+    lines.append(f"📊 **Total Records:** {len(records)}")
     lines.append("")
     
-    for i, rec in enumerate(records if isinstance(records, list) else [records], 1):
+    for i, rec in enumerate(records, 1):
         lines.append(f"**Record #{i}**")
-        name = rec.get('name') or rec.get('Name') or 'N/A'
-        fname = rec.get('fname') or rec.get('father_name') or rec.get('FatherName') or 'N/A'
-        mobile = rec.get('mobile') or rec.get('number') or phone
-        alt = rec.get('alt') or rec.get('alternative_number') or 'N/A'
-        aadhar = "[Aadhaar Omitted]"
-        circle = rec.get('circle') or 'N/A'
-        state = rec.get('state') or 'N/A'
-        email = rec.get('email') or 'N/A'
-        address = rec.get('address') or 'N/A'
-        
-        lines.append(f"👤 **Name:** {name}")
-        lines.append(f"👨 **Father Name:** {fname}")
-        lines.append(f"📱 **Mobile Number:** `{mobile}`")
-        lines.append(f"🔄 **Alternative Number:** `{alt}`")
-        lines.append(f"🆔 **Aadhaar ID:** `{aadhar}`")
-        lines.append(f"📡 **Circle:** {circle}")
-        lines.append(f"🗺️ **State:** {state}")
-        lines.append(f"📧 **Email:** `{email}`")
-        lines.append(f"🏠 **Address:** {address}")
+        if isinstance(rec, dict):
+            for k, v in rec.items():
+                key_lower = str(k).lower()
+                if 'aadhaar' in key_lower or 'adhar' in key_lower:
+                    val_str = "[Aadhaar Omitted]"
+                else:
+                    val_str = str(v) if v is not None and v != "" else "N/A"
+                lines.append(f"• **{str(k).title()}:** {val_str}")
+        else:
+            lines.append(f"• **Data:** {rec}")
         lines.append("---")
         
     lines.append(f"\n⚡ Powered by {OWNER_USERNAME} | Developed by HARSH HACKER")
@@ -455,7 +448,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("🔴 🚫 Ban/Unban", callback_data="admin_ban_menu")],
             [InlineKeyboardButton("📢 📣 Broadcast", callback_data="admin_broadcast_prompt"), InlineKeyboardButton("📁 📊 Export CSV", callback_data="export_csv")],
-            [InlineKeyboardButton("🛠️ 🔄 Toggle Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
+            [InlineKeyboardButton("🛠️️ 🔄 Toggle Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
         ]
         await query.message.edit_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         
@@ -548,7 +541,6 @@ async def user_inspect_command(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.message.reply_text(text, parse_mode='Markdown')
 
 def main():
-    # Start Flask Web Server in background thread for Render Port Binding
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.daemon = True
     flask_thread.start()
