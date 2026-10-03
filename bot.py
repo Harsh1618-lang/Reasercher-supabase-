@@ -314,11 +314,8 @@ def format_response(data, phone):
         circle = rec.get('circle') or rec.get('operator') or 'N/A'
         address = rec.get('address') or rec.get('Address') or 'N/A'
         
-        aadhar_val = rec.get('aadhar', rec.get('id', 'N/A'))
-        if aadhar_val and aadhar_val != 'N/A':
-            aadhar_display = "[Aadhaar Omitted]"
-        else:
-            aadhar_display = "N/A"
+        aadhar_display = rec.get('aadhar') or rec.get('id') or 'N/A'
+        
 
         out.append(f"🗂️ **RECORD {i}/{total_recs}**")
         out.append("────────────────────────")
