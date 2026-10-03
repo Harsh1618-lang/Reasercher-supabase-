@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# Number & Vehicle Info Bot - Render Web Service 24/7 Deployment Edition
+# Number & Vehicle Info Bot - Render Webhook 24/7 Edition
 """
 Developer: HARSH HACKER
-Description: Advanced OSINT & Vehicle Info Telegram Bot with Flask Web Server, Admin Panel & Contact Verification
+Description: Advanced OSINT & Vehicle Info Telegram Bot with Webhook Deployment & Admin Panel
 """
 
 import os
@@ -16,22 +16,7 @@ import re
 import csv
 import io
 import logging
-import threading
-from flask import Flask
 from bs4 import BeautifulSoup
-
-# ============================================
-# FLASK WEB SERVER (Render Port Binding)
-# ============================================
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "🤖 OSINT & Vehicle Telegram Bot is running 24/7 successfully!"
-
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
 
 # ============================================
 # TELEGRAM BOT SETUP
@@ -41,7 +26,7 @@ try:
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
-    os.system('pip install python-telegram-bot==20.7 requests flask beautifulsoup4')
+    os.system('pip install python-telegram-bot==20.7 requests beautifulsoup4')
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
@@ -50,10 +35,14 @@ except ImportError:
 # ========== CONFIGURATION - YOUR DETAILS ==========
 # ============================================
 
-BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  
-ADMIN_ID = 1420016904                                           
-OWNER_USERNAME = "@Endgame55"                                   
+BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Bot Token
+ADMIN_ID = 1420016904                                           # Admin ID
+OWNER_USERNAME = "@Endgame55"                                   # Owner Username
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
+
+# Render Environment Variables for Webhook
+PORT = int(os.environ.get("PORT", 10000))
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME") # Render automatically sets this
 
 # ============================================
 # DATABASE SETUP
@@ -142,7 +131,7 @@ async def get_phone_info(phone):
         return {"status": False, "error": str(e)}
 
 def vehicle_lookup(num: str):
-    """Fetch vehicle RC details using BeautifulSoup[span_2](start_span)[span_2](end_span)"""
+    """Fetch vehicle RC details using BeautifulSoup[span_1](start_span)[span_1](end_span)"""
     try:
         veh_num = num.upper().strip()
         url = f"https://www.carinfo.app/rc-details/{veh_num}"
@@ -299,7 +288,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
         db_execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)",
                    (user.id, user.username, user.first_name), commit=True)
-        await update.message.reply_text("⚠️ *Verification Required*\nPehle apna contact share karke verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️️ *Verification Required*\nPehle apna contact share karke verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     await send_welcome_menu(update, context, user)
@@ -344,7 +333,7 @@ async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
     if not user_data or user_data.get('is_banned') == 1: return
     if not user_data.get('phone_number'):
-        await update.message.reply_text("⚠️️ Pehle /start dabakar apna contact verify karein!")
+        await update.message.reply_text("⚠️ Pehle /start dabakar apna contact verify karein!")
         return
     if user_data['credits'] <= 0 and user.id != ADMIN_ID:
         await update.message.reply_text("❌ Aapke credits khatam ho chuke hain!")
@@ -548,15 +537,11 @@ async def user_inspect_command(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.message.reply_text(text, parse_mode='Markdown')
 
 def main():
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.daemon = True
-    flask_thread.start()
-    
     print("=" * 50)
-    print("🚀 HARSH HACKER OSINT & VEHICLE BOT STARTING...")
+    print("🚀 HARSH HACKER OSINT & VEHICLE BOT STARTING (WEBHOOK MODE)...")
     print("=" * 50)
     
-    application = Application.builder().token(BOT_TOKEN).http_version("1.1").get_updates_http_version("1.1").build()
+    application = Application.builder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("info", info_command))
@@ -568,8 +553,19 @@ def main():
     application.add_handler(MessageHandler(filters.CONTACT, handle_contact))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(CallbackQueryHandler(button_callback))
-    
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+    # Run using Webhook for Render Web Service
+    if RENDER_EXTERNAL_HOSTNAME:
+        webhook_url = f"https://{RENDER_EXTERNAL_HOSTNAME}/{BOT_TOKEN}"
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=BOT_TOKEN,
+            webhook_url=webhook_url
+        )
+    else:
+        # Fallback for local testing
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     main()
