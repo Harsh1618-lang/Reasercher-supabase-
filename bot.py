@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Number & Vehicle Info Bot - Updated Scraper Edition
 """
-Developer: HARSH
+Developer: HaRsH
 Description: Advanced OSINT & Vehicle Info Telegram Bot with Custom Vehicle Scraper, Threaded Flask & Fast UI
 """
 
