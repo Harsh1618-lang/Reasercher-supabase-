@@ -2,7 +2,7 @@
 # Number & Vehicle Info Bot - Threaded Flask & Polling Edition
 """
 Developer: HARSH
-Description: Advanced OSINT & Vehicle Info Telegram Bot with Threaded Flask Server, Fixed Imports & Fast UI
+Description: Advanced OSINT & Vehicle Info Telegram Bot with Threaded Flask Server, Visible ID & Fast UI
 """
 
 import os
@@ -227,20 +227,35 @@ async def show_hacking_animation(msg_obj, target_str, is_vehicle=False):
             pass
 
 # ============================================
-# CUSTOM FORMAT RESPONSE
+# FORMAT RESPONSE (VISIBLE ID)
 # ============================================
 def format_response(data, phone):
     if not data or (isinstance(data, dict) and data.get('status') == False):
         error_msg = data.get('error', 'Unknown error') if isinstance(data, dict) else 'No data found'
         return f"❌ Error: {error_msg}"
     
+    actual_results = []
     try:
-        actual_results = data.get('result', {}).get('result', [])
+        inner_data = data.get('data', {})
+        if isinstance(inner_data, dict):
+            res1 = inner_data.get('result', {})
+            if isinstance(res1, dict):
+                res2 = res1.get('result', [])
+                if isinstance(res2, list):
+                    actual_results = res2
+                elif isinstance(res2, dict):
+                    actual_results = [res2]
+            if not actual_results:
+                results_list = inner_data.get('results', [])
+                if results_list:
+                    actual_results = results_list
         if not actual_results:
-            actual_results = data.get('results', [])
-        if not actual_results and isinstance(data, dict):
-            actual_results = [data]
+            if isinstance(data, dict):
+                actual_results = data.get('results', [data])
     except:
+        actual_results = [data]
+
+    if not actual_results:
         actual_results = [data]
 
     total_recs = len(actual_results) if isinstance(actual_results, list) else 1
@@ -261,12 +276,9 @@ def format_response(data, phone):
         if not isinstance(rec, dict):
             rec = {}
         
-        # Secure placeholder for sensitive government identification
+        # Direct ID/Aadhaar show without omission
         aadhar_val = rec.get('aadhar', rec.get('id', 'N/A'))
-        if aadhar_val and aadhar_val != 'N/A':
-            aadhar_display = "[Aadhaar Omitted]"
-        else:
-            aadhar_display = "N/A"
+        aadhar_display = aadhar_val if aadhar_val else "N/A"
 
         out.append(f"🗂️ **RECORD {i}/{total_recs}**")
         out.append("────────────────────────")
@@ -305,7 +317,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
         db_execute("INSERT OR IGNORE INTO users (user_id, username, first_name, credits) VALUES (?, ?, ?, ?)",
                    (user.id, user.username or "NoUsername", user.first_name, 2), commit=True)
-        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein[span_2](start_span)[span_2](end_span)!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     await send_welcome_menu(update, context, user)
@@ -317,7 +329,7 @@ async def send_welcome_menu(update_or_query, context, user):
     welcome = f"""
 👋 *Welcome to OSINT & Vehicle Info Bot!*
 
-💎 Remaining Credits: `{credits}`[span_3](start_span)[span_3](end_span)
+💎 Remaining Credits: `{credits}`
 Neeche diye gaye menu se option select karein ya direct number bhejein!
 💡 *Feedback/Report:* Use `/report <message>`
 
@@ -343,7 +355,7 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         phone_number = contact.phone_number
         username = user.username or "NoUsername"
         db_execute("UPDATE users SET phone_number = ?, username = ? WHERE user_id = ?", (phone_number, username, user.id), commit=True)
-        await update.message.reply_text("✅ *Verification Successful!* You now have 2 free credits[span_4](start_span)[span_4](end_span).", parse_mode='Markdown', reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text("✅ *Verification Successful!* You now have 2 free credits.", parse_mode='Markdown', reply_markup=ReplyKeyboardRemove())
         await send_welcome_menu(update, context, user)
     else:
         await update.message.reply_text("❌ Kripya apna khud ka contact share karein.", reply_markup=ReplyKeyboardRemove())
@@ -360,9 +372,9 @@ async def show_premium_plans(update, context):
     text += f"📦 **Available Plans:**\n"
     
     for p in plans:
-        text += f"• **{p['name']}** — `{p['price']}` for **{p['credits']} Credits**[span_5](start_span)[span_5](end_span)\n"
+        text += f"• **{p['name']}** — `{p['price']}` for **{p['credits']} Credits**\n"
         
-    text += f"\n💳 **How to Buy:**\n1. Pay on UPI ID above.\n2. Send payment screenshot to Admin ({OWNER_USERNAME}) with your Telegram ID.\n3. Admin will instantly add credits[span_6](start_span)[span_6](end_span)!"
+    text += f"\n💳 **How to Buy:**\n1. Pay on UPI ID above.\n2. Send payment screenshot to Admin ({OWNER_USERNAME}) with your Telegram ID.\n3. Admin will instantly add credits!"
     
     await update.message.reply_text(text, parse_mode='Markdown')
 
@@ -372,14 +384,14 @@ async def check_user_credit(update, user):
         await update.message.reply_text("❌ Aapko block kar diya gaya hai.")
         return False
     if not user_data.get('phone_number'):
-        await update.message.reply_text("⚠️️ Pehle /start dabakar apna contact verify karein[span_7](start_span)[span_7](end_span)!")
+        await update.message.reply_text("⚠️ Pehle /start dabakar apna contact verify karein!")
         return False
     if user_data['credits'] <= 0 and not is_admin_user(user.id):
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
         upi_id = upi_record['value'] if upi_record else "harshhacker@upi"
         
         await update.message.reply_text(
-            f"❌ **Aapke credits khatam ho chuke hain[span_8](start_span)[span_8](end_span)!**\n\nKripya UPI ID: `{upi_id}` par payment karein aur Admin (`{OWNER_USERNAME}`) ko screenshot bhejein[span_9](start_span)[span_9](end_span).",
+            f"❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `{upi_id}` par payment karein aur Admin (`{OWNER_USERNAME}`) ko screenshot bhejein.",
             parse_mode='Markdown'
         )
         return False
@@ -614,9 +626,9 @@ async def addcredits_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     try:
         target_id, amount = int(context.args[0]), int(context.args[1])
         db_execute("UPDATE users SET credits = credits + ? WHERE user_id = ?", (amount, target_id), commit=True)
-        await update.message.reply_text(f"✅ Added `{amount}` credits to user `{target_id}`[span_10](start_span)[span_10](end_span)!", parse_mode='Markdown')
+        await update.message.reply_text(f"✅ Added `{amount}` credits to user `{target_id}`!", parse_mode='Markdown')
         try:
-            await context.bot.send_message(chat_id=target_id, text=f"🎉 **Congratulations!**\nAdmin added `{amount}` credits to your account[span_11](start_span)[span_11](end_span).")
+            await context.bot.send_message(chat_id=target_id, text=f"🎉 **Congratulations!**\nAdmin added `{amount}` credits to your account.")
         except:
             pass
     except Exception as e:
@@ -661,7 +673,6 @@ async def user_inspect_command(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.message.reply_text(text, parse_mode='Markdown')
 
 def main():
-    # Start Flask Web Server in background thread for Render Port Binding
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.daemon = True
     flask_thread.start()
