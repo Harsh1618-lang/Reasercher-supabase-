@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# Number & Vehicle Info Bot - Render Webhook 24/7 Edition
+# Number & Vehicle Info Bot - Render Final Edition
 """
 Developer: HARSH HACKER
-Description: Advanced OSINT & Vehicle Info Telegram Bot with Webhook Deployment & Admin Panel
+Description: Advanced OSINT & Vehicle Info Telegram Bot with Flask Web Server & Threading
 """
 
 import os
@@ -16,7 +16,22 @@ import re
 import csv
 import io
 import logging
+import threading
+from flask import Flask
 from bs4 import BeautifulSoup
+
+# ============================================
+# FLASK WEB SERVER (Render Port Binding)
+# ============================================
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "🤖 OSINT & Vehicle Telegram Bot is running 24/7 successfully!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
 # ============================================
 # TELEGRAM BOT SETUP
@@ -39,9 +54,6 @@ BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Bot Token
 ADMIN_ID = 1420016904                                           # Admin ID
 OWNER_USERNAME = "@Endgame55"                                   # Owner Username
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
-
-PORT = int(os.environ.get("PORT", 10000))
-RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 
 # ============================================
 # DATABASE SETUP
@@ -536,12 +548,16 @@ async def user_inspect_command(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.message.reply_text(text, parse_mode='Markdown')
 
 def main():
+    # Start Flask Web Server in background thread for Render Port Binding
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
+    
     print("=" * 50)
     print("🚀 HARSH HACKER OSINT & VEHICLE BOT STARTING...")
     print("=" * 50)
     
-    # Fully explicit application initialization for python-telegram-bot v21+ / Python 3.14 compatibility
-    application = Application.builder().token(BOT_TOKEN).updater(None).build()
+    application = Application.builder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("info", info_command))
@@ -554,17 +570,7 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(CallbackQueryHandler(button_callback))
     
-    # Run using Webhook to match Render Web Service requirements cleanly
-    if RENDER_EXTERNAL_HOSTNAME:
-        webhook_url = f"https://{RENDER_EXTERNAL_HOSTNAME}/{BOT_TOKEN}"
-        application.run_webhook(
-            listen="0.0.0.0",
-            port=PORT,
-            url_path=BOT_TOKEN,
-            webhook_url=webhook_url
-        )
-    else:
-        application.run_polling(allowed_updates=Update.ALL_TYPES)
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     main()
