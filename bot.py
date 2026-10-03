@@ -26,7 +26,7 @@ try:
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
-    os.system('pip install python-telegram-bot==20.7 requests beautifulsoup4')
+    os.system('pip install python-telegram-bot==20.7 requests beautifulsoup4 flask')
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
@@ -40,9 +40,8 @@ ADMIN_ID = 1420016904                                           # Admin ID
 OWNER_USERNAME = "@Endgame55"                                   # Owner Username
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
 
-# Render Environment Variables for Webhook
 PORT = int(os.environ.get("PORT", 10000))
-RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME") # Render automatically sets this
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 
 # ============================================
 # DATABASE SETUP
@@ -288,7 +287,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
         db_execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)",
                    (user.id, user.username, user.first_name), commit=True)
-        await update.message.reply_text("⚠️️ *Verification Required*\nPehle apna contact share karke verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️ *Verification Required*\nPehle apna contact share karke verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     await send_welcome_menu(update, context, user)
@@ -538,10 +537,10 @@ async def user_inspect_command(update: Update, context: ContextTypes.DEFAULT_TYP
 
 def main():
     print("=" * 50)
-    print("🚀 HARSH HACKER OSINT & VEHICLE BOT STARTING (WEBHOOK MODE)...")
+    print("🚀 HARSH HACKER OSINT & VEHICLE BOT STARTING...")
     print("=" * 50)
     
-    application = Application.builder().token(BOT_TOKEN).build()
+    application = Application.builder().token(BOT_TOKEN).http_version("1.1").get_updates_http_version("1.1").build()
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("info", info_command))
@@ -553,19 +552,8 @@ def main():
     application.add_handler(MessageHandler(filters.CONTACT, handle_contact))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(CallbackQueryHandler(button_callback))
+    
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-    # Run using Webhook for Render Web Service
-    if RENDER_EXTERNAL_HOSTNAME:
-        webhook_url = f"https://{RENDER_EXTERNAL_HOSTNAME}/{BOT_TOKEN}"
-        application.run_webhook(
-            listen="0.0.0.0",
-            port=PORT,
-            url_path=BOT_TOKEN,
-            webhook_url=webhook_url
-        )
-    else:
-        # Fallback for local testing
-        application.run_polling(allowed_updates=Update.ALL_TYPES)
-
-if __name__ == '__main__':
+if __name__ == 'main' or __name__ == '__main__':
     main()
