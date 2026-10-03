@@ -1,8 +1,8 @@
-#!/usr/init/env python3
-# Number Info Bot - Render Web Service 24/7 Deployment Edition
+#!/usr/bin/env python3
+# Number & Vehicle Info Bot - Render Web Service 24/7 Deployment Edition
 """
 Developer: HARSH HACKER
-Description: Advanced OSINT Telegram Bot with Flask Web Server, Admin Panel & Contact Verification
+Description: Advanced OSINT & Vehicle Info Telegram Bot with Flask Web Server, Admin Panel & Contact Verification
 """
 
 import os
@@ -18,6 +18,7 @@ import io
 import logging
 import threading
 from flask import Flask
+from bs4 import BeautifulSoup
 
 # ============================================
 # FLASK WEB SERVER (Render Port Binding)
@@ -26,7 +27,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "🤖 OSINT Telegram Bot is running 24/7 successfully!"
+    return "🤖 OSINT & Vehicle Telegram Bot is running 24/7 successfully!"
 
 def run_flask():
     port = int(os.environ.get("PORT", 10000))
@@ -40,7 +41,7 @@ try:
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
-    os.system('pip install python-telegram-bot==20.7 requests flask')
+    os.system('pip install python-telegram-bot==20.7 requests flask beautifulsoup4')
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
@@ -49,9 +50,9 @@ except ImportError:
 # ========== CONFIGURATION - YOUR DETAILS ==========
 # ============================================
 
-BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Updated Bot Token
-ADMIN_ID = 1420016904                                           # Admin ID
-OWNER_USERNAME = "@Endgame55"                                   # Owner Username
+BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  
+ADMIN_ID = 1420016904                                           
+OWNER_USERNAME = "@Endgame55"                                   
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
 
 # ============================================
@@ -126,7 +127,7 @@ def db_get_all(query, params=()):
     return [dict(row) for row in result]
 
 # ============================================
-# API FETCH & HEALTH CHECK
+# API FETCH & VEHICLE SCRAPER
 # ============================================
 async def get_phone_info(phone):
     try:
@@ -140,6 +141,71 @@ async def get_phone_info(phone):
     except Exception as e:
         return {"status": False, "error": str(e)}
 
+def vehicle_lookup(num: str):
+    """Fetch vehicle RC details using BeautifulSoup[span_2](start_span)[span_2](end_span)"""
+    try:
+        veh_num = num.upper().strip()
+        url = f"https://www.carinfo.app/rc-details/{veh_num}"
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/120.0.0.0 Safari/537.36"
+        }
+
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        details = {}
+
+        number_plate = soup.find("div", class_="input_vehical_layout_numberPlateContainer__Ug78g")
+        if number_plate and number_plate.find("p"):
+            details["Number Plate"] = number_plate.find("p").text.strip()
+
+        make_model = soup.find("div", class_="input_vehical_layout_vehicalDetails__MseIO")
+        if make_model and make_model.find("p", class_="input_vehical_layout_vehicalModel__1ABTF"):
+            details["Make & Model"] = make_model.find("p", class_="input_vehical_layout_vehicalModel__1ABTF").text.strip()
+
+        owner = soup.find("div", class_="input_vehical_layout_ownerDetails__6IzJb")
+        if owner and owner.find("p", class_="input_vehical_layout_ownerName__NHkpi"):
+            details["Owner Name"] = owner.find("p", class_="input_vehical_layout_ownerName__NHkpi").text.strip()
+
+        rto_container = soup.find("div", class_="expand_component_detailListContainer__L1nXb")
+        if rto_container:
+            for item in rto_container.find_all("div", class_="expand_component_detailItem__V43eh"):
+                key_tag = item.find("p", class_="expand_component_itemText__cbigB")
+                value_tag = item.find("p", class_="expand_component_itemSubTitle__ElsYf")
+                if key_tag and value_tag:
+                    details[key_tag.text.strip()] = value_tag.text.strip()
+            website_tag = rto_container.find("a", href=True)
+            if website_tag:
+                details["Website"] = website_tag['href']
+
+        output = f"🛵 RC Details for Vehicle: {details.get('Number Plate', veh_num)}\n"
+        output += "──────────────────────────\n"
+        output += f"🚗 Make & Model: {details.get('Make & Model', 'N/A')}\n"
+        output += f"👤 Owner Name: {details.get('Owner Name', 'N/A')}\n\n"
+
+        output += "🏢 RTO Information:\n"
+        output += f"📌 Number: {details.get('Number', 'N/A')}\n"
+        output += f"📌 Registered RTO: {details.get('Registered RTO', 'N/A')}\n"
+        output += f"📌 State: {details.get('State', 'N/A')}\n"
+        output += f"📞 Phone: {details.get('RTO Phone number', 'N/A')}\n"
+        output += f"🌐 Website: {details.get('Website', 'N/A')}\n"
+        output += "──────────────────────────\n"
+        output += "✅ Data fetched successfully!\n"
+        output += "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        output += f"⚡ Powered by {OWNER_USERNAME} | Developed by HARSH HACKER\n"
+        output += "━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+        return output
+
+    except requests.exceptions.RequestException:
+        return "❌ Network error or unable to reach the RC details site. Please check your connection or try again later."
+    except Exception as e:
+        return f"❌ An error occurred while fetching the RC details: {e}"
+
 def check_api_health():
     try:
         response = requests.get(API_URL.format(number="0000000000"), timeout=5)
@@ -150,7 +216,8 @@ def check_api_health():
 # ============================================
 # HACKING STYLE ANIMATED PROGRESS BAR
 # ============================================
-async def show_hacking_animation(msg_obj, phone):
+async def show_hacking_animation(msg_obj, target_str, is_vehicle=False):
+    title = "🚗 VEHICLE RC BREACH" if is_vehicle else "💻 SYSTEM BREACH IN PROGRESS"
     steps = [
         ("🔓 Bypassing target firewall...", "▒▒▒▒▒▒▒▒▒▒ 0%"),
         ("🔌 Establishing secure proxy tunnel...", "███▒▒▒▒▒▒▒ 30%"),
@@ -159,7 +226,7 @@ async def show_hacking_animation(msg_obj, phone):
     ]
     for text, bar in steps:
         try:
-            await msg_obj.edit_text(f"💻 *SYSTEM BREACH IN PROGRESS*\nTarget: `{phone}`\n\n{text}\n`{bar}`", parse_mode='Markdown')
+            await msg_obj.edit_text(f"{title}\nTarget: `{target_str}`\n\n{text}\n`{bar}`", parse_mode='Markdown')
             await asyncio.sleep(0.5)
         except:
             pass
@@ -204,7 +271,7 @@ def format_response(data, phone):
         lines.append(f"🔄 **Alternative Number:** `{alt}`")
         lines.append(f"🆔 **Aadhaar ID:** `{aadhar}`")
         lines.append(f"📡 **Circle:** {circle}")
-        lines.append(f"🗺️️ **State:** {state}")
+        lines.append(f"🗺️ **State:** {state}")
         lines.append(f"📧 **Email:** `{email}`")
         lines.append(f"🏠 **Address:** {address}")
         lines.append("---")
@@ -242,11 +309,11 @@ async def send_welcome_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     credits = user_info['credits'] if user_info else 0
     
     welcome = f"""
-👋 *Welcome to Phone Info OSINT Bot!*
+👋 *Welcome to OSINT & Vehicle Info Bot!*
 
 💎 Remaining Credits: `{credits}`
-Send me any mobile number to fetch details.
-📌 *Example:* `9876543210`
+Send me any mobile number for Phone Info, or use `/vehicle <veh_no>` for Vehicle RC Details!
+📌 *Example:* `/info 9876543210` or `/vehicle UP32AB1234`
 
 ⚡ Support: {OWNER_USERNAME}
     """
@@ -277,7 +344,7 @@ async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
     if not user_data or user_data.get('is_banned') == 1: return
     if not user_data.get('phone_number'):
-        await update.message.reply_text("⚠️ Pehle /start dabakar apna contact verify karein!")
+        await update.message.reply_text("⚠️️ Pehle /start dabakar apna contact verify karein!")
         return
     if user_data['credits'] <= 0 and user.id != ADMIN_ID:
         await update.message.reply_text("❌ Aapke credits khatam ho chuke hain!")
@@ -289,7 +356,7 @@ async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     phone = context.args[0]
     msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
-    await show_hacking_animation(msg, phone)
+    await show_hacking_animation(msg, phone, is_vehicle=False)
     
     data = await get_phone_info(phone)
     db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, phone, json.dumps(data)), commit=True)
@@ -297,6 +364,31 @@ async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     formatted = format_response(data, phone)
     await msg.edit_text(formatted, parse_mode='Markdown')
+
+async def vehicle_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    user_data = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
+    if not user_data or user_data.get('is_banned') == 1: return
+    if not user_data.get('phone_number'):
+        await update.message.reply_text("⚠️ Pehle /start dabakar apna contact verify karein!")
+        return
+    if user_data['credits'] <= 0 and user.id != ADMIN_ID:
+        await update.message.reply_text("❌ Aapke credits khatam ho chuke hain!")
+        return
+
+    if not context.args:
+        await update.message.reply_text("❌ Please provide a vehicle number!\nExample: `/vehicle UP32AB1234`", parse_mode='Markdown')
+        return
+    
+    veh_num = context.args[0]
+    msg = await update.message.reply_text("🚗 *VEHICLE RC BREACH*\nInitializing...", parse_mode='Markdown')
+    await show_hacking_animation(msg, veh_num, is_vehicle=True)
+    
+    result = vehicle_lookup(veh_num)
+    db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"VEH:{veh_num}", json.dumps({"result": result})), commit=True)
+    db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+    
+    await msg.edit_text(result, parse_mode='Markdown')
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -313,7 +405,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cleaned = re.sub(r'\D', '', text)
     if 10 <= len(cleaned) <= 15:
         msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
-        await show_hacking_animation(msg, cleaned)
+        await show_hacking_animation(msg, cleaned, is_vehicle=False)
         
         data = await get_phone_info(cleaned)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, cleaned, json.dumps(data)), commit=True)
@@ -323,7 +415,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("🔵 🔄 Search Again", callback_data=f"check_{cleaned}")]]
         await msg.edit_text(formatted, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
     else:
-        await update.message.reply_text("❌ Please send a valid mobile number.", parse_mode='Markdown')
+        if len(text) >= 4 and any(c.isdigit() for c in text) and any(c.isalpha() for c in text):
+            msg = await update.message.reply_text("🚗 *VEHICLE RC BREACH*\nInitializing...", parse_mode='Markdown')
+            await show_hacking_animation(msg, text, is_vehicle=True)
+            
+            result = vehicle_lookup(text)
+            db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"VEH:{text}", json.dumps({"result": result})), commit=True)
+            db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+            
+            await msg.edit_text(result, parse_mode='Markdown')
+        else:
+            await update.message.reply_text("❌ Please send a valid mobile number or vehicle number.", parse_mode='Markdown')
 
 # ============================================
 # ADMIN PANEL & CALLBACKS
@@ -401,7 +503,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith('check_'):
         phone = data[6:]
         msg = await query.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
-        await show_hacking_animation(msg, phone)
+        await show_hacking_animation(msg, phone, is_vehicle=False)
         info = await get_phone_info(phone)
         await msg.edit_text(format_response(info, phone), parse_mode='Markdown')
 
@@ -451,13 +553,14 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH HACKER OSINT TELEGRAM BOT STARTING...")
+    print("🚀 HARSH HACKER OSINT & VEHICLE BOT STARTING...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).http_version("1.1").get_updates_http_version("1.1").build()
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("info", info_command))
+    application.add_handler(CommandHandler("vehicle", vehicle_command))
     application.add_handler(CommandHandler("user", user_inspect_command))
     application.add_handler(CommandHandler("ban", ban_command))
     application.add_handler(CommandHandler("unban", unban_command))
