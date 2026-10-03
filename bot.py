@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
-# Number & Vehicle Info Bot - Final Nested JSON Edition
+#!/usr/init/env python3
+# Number Info Bot - Multi-Record JSON Edition
 """
 Developer: HARSH
-Description: Advanced OSINT & Vehicle Info Telegram Bot with Custom Vehicle Scraper, Clean JSON Response, Threaded Flask & Fast UI
+Description: Advanced OSINT Phone Lookup Telegram Bot with Multi-Record JSON Response, Threaded Flask & Fast UI
 """
 
 import os
@@ -18,7 +18,6 @@ import io
 import logging
 import threading
 from flask import Flask
-from bs4 import BeautifulSoup
 
 # ============================================
 # FLASK WEB SERVER (Render Port Binding)
@@ -27,7 +26,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "🤖 OSINT & Vehicle Telegram Bot is running 24/7 successfully via Threaded Flask Server!"
+    return "🤖 OSINT Telegram Bot is running 24/7 successfully via Threaded Flask Server!"
 
 def run_flask():
     port = int(os.environ.get("PORT", 10000))
@@ -41,7 +40,7 @@ try:
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
-    os.system('pip install python-telegram-bot==20.7 requests beautifulsoup4 flask')
+    os.system('pip install python-telegram-bot==20.7 requests flask')
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
@@ -152,7 +151,7 @@ def db_get_all(query, params=()):
     return [dict(row) for row in result]
 
 # ============================================
-# API FETCH & VEHICLE SCRAPER
+# API FETCH FUNCTION
 # ============================================
 async def get_phone_info(phone):
     try:
@@ -166,73 +165,6 @@ async def get_phone_info(phone):
     except Exception as e:
         return {"status": False, "error": str(e)}
 
-def vehicle_lookup(num: str):
-    """Advanced vehicle RC details scraper using user-provided BeautifulSoup selectors"""
-    try:
-        veh_num = num.upper().strip()
-        url = f"https://www.carinfo.app/rc-details/{veh_num}"
-
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/120.0.0.0 Safari/537.36"
-        }
-
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
-
-        soup = BeautifulSoup(response.text, "html.parser")
-        details = {}
-
-        number_plate = soup.find("div", class_="input_vehical_layout_numberPlateContainer__Ug78g")
-        if number_plate:
-            details["Number Plate"] = number_plate.find("p").text.strip()
-
-        make_model = soup.find("div", class_="input_vehical_layout_vehicalDetails__MseIO")
-        if make_model:
-            details["Make & Model"] = make_model.find("p", class_="input_vehical_layout_vehicalModel__1ABTF").text.strip()
-
-        owner = soup.find("div", class_="input_vehical_layout_ownerDetails__6IzJb")
-        if owner:
-            details["Owner Name"] = owner.find("p", class_="input_vehical_layout_ownerName__NHkpi").text.strip()
-
-        rto_container = soup.find("div", class_="expand_component_detailListContainer__L1nXb")
-        if rto_container:
-            for item in rto_container.find_all("div", class_="expand_component_detailItem__V43eh"):
-                key_tag = item.find("p", class_="expand_component_itemText__cbigB")
-                value_tag = item.find("p", class_="expand_component_itemSubTitle__ElsYf")
-                if key_tag and value_tag:
-                    details[key_tag.text.strip()] = value_tag.text.strip()
-
-        if rto_container:
-            website_tag = rto_container.find("a", href=True)
-            if website_tag:
-                details["Website"] = website_tag['href']
-
-        output = f"🛵 RC Details for Vehicle: {details.get('Number Plate', veh_num)}\n"
-        output += "──────────────────────────\n"
-        output += f"🚗 Make & Model: {details.get('Make & Model', 'N/A')}\n"
-        output += f"👤 Owner Name: {details.get('Owner Name', 'N/A')}\n\n"
-        output += "🏢 RTO Information:\n"
-        output += f"📌 Number: {details.get('Number', 'N/A')}\n"
-        output += f"📌 Registered RTO: {details.get('Registered RTO', 'N/A')}\n"
-        output += f"📌 State: {details.get('State', 'N/A')}\n"
-        output += f"📞 Phone: {details.get('RTO Phone number', 'N/A')}\n"
-        output += f"🌐 Website: {details.get('Website', 'N/A')}\n"
-        output += "──────────────────────────\n"
-        output += "✅ Data fetched successfully!\n"
-        output += "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        output += "👨‍💻 Developer : @dev2dex\n"
-        output += "📢 Channel   : t.me/Catalyst_Mystery\n"
-        output += "━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-        return output
-
-    except requests.exceptions.RequestException:
-        return "❌ Network error or unable to reach the RC details site. Please check your connection or try again later."
-    except Exception as e:
-        return f"❌ An error occurred while fetching the RC details: {e}"
-
 def check_api_health():
     try:
         response = requests.get(API_URL.format(number="0000000000"), timeout=5)
@@ -243,8 +175,7 @@ def check_api_health():
 # ============================================
 # HACKING STYLE ANIMATED PROGRESS BAR
 # ============================================
-async def show_hacking_animation(msg_obj, target_str, is_vehicle=False):
-    title = "🚗 VEHICLE RC BREACH" if is_vehicle else "💻 SYSTEM BREACH IN PROGRESS"
+async def show_hacking_animation(msg_obj, target_str):
     steps = [
         ("🔓 Bypassing target firewall...", "▒▒▒▒▒▒▒▒▒▒ 0%"),
         ("🔌 Establishing secure proxy tunnel...", "███▒▒▒▒▒▒▒ 30%"),
@@ -253,13 +184,13 @@ async def show_hacking_animation(msg_obj, target_str, is_vehicle=False):
     ]
     for text, bar in steps:
         try:
-            await msg_obj.edit_text(f"{title}\nTarget: `{target_str}`\n\n{text}\n`{bar}`", parse_mode='Markdown')
+            await msg_obj.edit_text(f"💻 *SYSTEM BREACH IN PROGRESS*\nTarget: `{target_str}`\n\n{text}\n`{bar}`", parse_mode='Markdown')
             await asyncio.sleep(0.2)
         except:
             pass
 
 # ============================================
-# FORMAT RESPONSE (NESTED JSON TRAVERSAL FIX)
+# FORMAT RESPONSE (MULTI-RECORD TRAVERSAL)
 # ============================================
 def format_response(data, phone):
     if not data or (isinstance(data, dict) and data.get('status') == False):
@@ -270,6 +201,7 @@ def format_response(data, phone):
     
     try:
         if isinstance(data, dict):
+            # Deep nested extraction to find all records list
             res_layer1 = data.get('result', data)
             if isinstance(res_layer1, dict):
                 res_layer2 = res_layer1.get('result', res_layer1)
@@ -318,12 +250,13 @@ def format_response(data, phone):
         fname = rec.get('fname') or rec.get('father_name') or rec.get('FatherName') or 'N/A'
         address = rec.get('address') or rec.get('Address') or 'N/A'
         circle = rec.get('circle') or rec.get('operator') or 'N/A'
-        
+        email = rec.get('email') or 'N/A'
         aadhar_val = rec.get('aadhar') or rec.get('id') or 'N/A'
 
         results_list.append({
             "address": address,
             "circle": circle,
+            "email": email,
             "father_name": fname,
             "id": aadhar_val,
             "name": name,
@@ -380,17 +313,17 @@ async def send_welcome_menu(update_or_query, context, user):
     credits = user_info['credits'] if user_info else 0
     
     welcome = f"""
-👋 *Welcome to OSINT & Vehicle Info Bot!*
+👋 *Welcome to OSINT Number Info Bot!*
 
 💎 Remaining Credits: `{credits}`
-Neeche diye gaye menu se option select karein ya direct number bhejein!
+Kripya koi bhi 10-digit mobile number bhejein ya menu se select karein!
 💡 *Feedback/Report:* Use `/report <message>`
 
 ⚡ Support: {OWNER_USERNAME}
     """
     
     menu_keyboard = [
-        [KeyboardButton("🔍 Number Info"), KeyboardButton("🚗 Vehicle Info")],
+        [KeyboardButton("🔍 Number Info")],
         [KeyboardButton("💎 Buy Premium / Credits"), KeyboardButton("🛠️ Toggle Menu")]
     ]
     if is_admin_user(user.id):
@@ -482,10 +415,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = 'phone'
         await update.message.reply_text("📱 *Number Info Mode Active*\nKripya ab koi bhi 10-digit mobile number bhejein:", parse_mode='Markdown')
         return
-    elif text == "🚗 Vehicle Info":
-        context.user_data['mode'] = 'vehicle'
-        await update.message.reply_text("🚗 *Vehicle Info Mode Active*\nKripya ab koi bhi vehicle number bhejein (jaise `UP32AB1234`):", parse_mode='Markdown')
-        return
     elif text == "💎 Buy Premium / Credits":
         await show_premium_plans(update, context)
         return
@@ -518,13 +447,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not await check_user_credit(update, user): return
 
-    mode = context.user_data.get('mode', None)
     cleaned = re.sub(r'\D', '', text)
 
-    if mode == 'phone' or (10 <= len(cleaned) <= 15 and mode != 'vehicle'):
-        phone = cleaned if 10 <= len(cleaned) <= 15 else text
+    if 10 <= len(cleaned) <= 15:
+        phone = cleaned
         msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
-        await show_hacking_animation(msg, phone, is_vehicle=False)
+        await show_hacking_animation(msg, phone)
         
         data = await get_phone_info(phone)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, phone, json.dumps(data)), commit=True)
@@ -532,20 +460,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         formatted = format_response(data, phone)
         await msg.edit_text(formatted, parse_mode='Markdown')
-        context.user_data['mode'] = None
-    elif mode == 'vehicle' or (len(text) >= 4 and any(c.isdigit() for c in text) and any(c.isalpha() for c in text)):
-        veh_num = text
-        msg = await update.message.reply_text("🚗 *VEHICLE RC BREACH*\nInitializing...", parse_mode='Markdown')
-        await show_hacking_animation(msg, veh_num, is_vehicle=True)
-        
-        result = vehicle_lookup(veh_num)
-        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"VEH:{veh_num}", json.dumps({"result": result})), commit=True)
-        db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
-        
-        await msg.edit_text(result, parse_mode='Markdown')
-        context.user_data['mode'] = None
     else:
-        await update.message.reply_text("❌ Kripya menu se option select karein ya valid number/vehicle bhejein.", parse_mode='Markdown')
+        await update.message.reply_text("❌ Kripya valid 10-digit mobile number bhejein.", parse_mode='Markdown')
 
 # ============================================
 # LIGHTNING FAST ADMIN CALLBACK HANDLER
@@ -731,7 +647,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT & VEHICLE BOT STARTING (THREADED POLLING MODE)...")
+    print("🚀 HARSH OSINT BOT STARTING (MULTI-RECORD EDITION)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
