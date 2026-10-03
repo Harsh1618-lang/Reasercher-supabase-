@@ -1,8 +1,8 @@
-#!/usr/init/env python3
-# Number & Vehicle Info Bot - Premium Plans & Dynamic UPI Edition
+#!/usr/bin/env python3
+# Number & Vehicle Info Bot - Lightning Fast Webhook Edition
 """
 Developer: HARSH HACKER
-Description: Advanced OSINT & Vehicle Info Telegram Bot with Dynamic UPI, Premium Plans Management & Fast UI
+Description: Advanced OSINT & Vehicle Info Telegram Bot with Instant Webhook UI Response & Premium Plans
 """
 
 import os
@@ -16,7 +16,6 @@ import re
 import csv
 import io
 import logging
-import threading
 from flask import Flask
 from bs4 import BeautifulSoup
 
@@ -27,11 +26,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "🤖 OSINT & Vehicle Telegram Bot is running 24/7 successfully!"
-
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    return "🤖 OSINT & Vehicle Telegram Bot is running 24/7 successfully via Webhook!"
 
 # ============================================
 # TELEGRAM BOT SETUP
@@ -54,6 +49,9 @@ BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Bot Token
 ADMIN_ID = 1420016904                                           # Admin ID
 OWNER_USERNAME = "@Endgame55"                                   # Owner Username
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
+
+PORT = int(os.environ.get("PORT", 10000))
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 
 # ============================================
 # DATABASE SETUP
@@ -99,7 +97,6 @@ def init_database():
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('maintenance', 'off')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('upi_id', 'harshhacker@upi')")
     
-    # Insert default plans if table is empty
     c.execute("SELECT COUNT(*) FROM plans")
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO plans (name, price, credits) VALUES (?, ?, ?)", ("Starter Pack", "₹49", 10))
@@ -291,7 +288,7 @@ def format_response(data, phone):
     return output
 
 # ============================================
-# TELEGRAM HANDLERS & PREMIUM PLANS FLOW
+# TELEGRAM HANDLERS & LIGHTNING FAST UI
 # ============================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -340,7 +337,10 @@ Send me any mobile number for Phone Info, or use `/vehicle <veh_no>` for Vehicle
     if hasattr(update_or_query, 'message') and update_or_query.message:
         await update_or_query.message.reply_text(welcome, parse_mode='Markdown', reply_markup=markup)
     elif hasattr(update_or_query, 'edit_message_text'):
-        await update_or_query.edit_message_text(welcome, parse_mode='Markdown', reply_markup=markup)
+        try:
+            await update_or_query.edit_message_text(welcome, parse_mode='Markdown', reply_markup=markup)
+        except:
+            await update_or_query.message.reply_text(welcome, parse_mode='Markdown', reply_markup=markup)
 
 async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -368,7 +368,7 @@ async def show_premium_plans(update_or_query, context):
     for p in plans:
         text += f"• **{p['name']}** — `{p['price']}` for **{p['credits']} Credits**\n"
         
-    text += f"\n💳 **How to Buy:**\n1. Scan or pay on UPI ID above.\n2. Send payment screenshot to Admin ({OWNER_USERNAME}) along with your Telegram ID.\n3. Admin will instantly add credits to your account!"
+    text += f"\n💳 **How to Buy:**\n1. Pay on UPI ID above.\n2. Send payment screenshot to Admin ({OWNER_USERNAME}) with your Telegram ID.\n3. Admin will instantly add credits!"
     
     keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu")]]
     markup = InlineKeyboardMarkup(keyboard)
@@ -376,7 +376,10 @@ async def show_premium_plans(update_or_query, context):
     if hasattr(update_or_query, 'message') and update_or_query.message:
         await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=markup)
     elif hasattr(update_or_query, 'edit_message_text'):
-        await update_or_query.edit_message_text(text, parse_mode='Markdown', reply_markup=markup)
+        try:
+            await update_or_query.edit_message_text(text, parse_mode='Markdown', reply_markup=markup)
+        except:
+            await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=markup)
 
 async def check_user_credit(update, user):
     user_data = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
@@ -392,7 +395,7 @@ async def check_user_credit(update, user):
         
         keyboard = [[InlineKeyboardButton("💳 Buy Premium Now", callback_data="buy_premium")]]
         await update.message.reply_text(
-            f"❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `{upi_id}` par payment karein aur Admin (`{OWNER_USERNAME}`) ko screenshot bhejein credit add karwane ke liye.",
+            f"❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `{upi_id}` par payment karein aur Admin (`{OWNER_USERNAME}`) ko screenshot bhejein.",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -467,11 +470,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Please send a valid mobile number or vehicle number.", parse_mode='Markdown')
 
 # ============================================
-# FAST ADMIN PANEL & CALLBACKS
+# LIGHTNING FAST CALLBACK HANDLER
 # ============================================
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    await query.answer()  # Instant acknowledge to remove loading spinner immediately
     data = query.data
     
     if data == "buy_premium":
@@ -504,7 +507,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Toggle Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
         ]
-        await query.message.edit_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         
     elif data == "admin_users":
         users = db_get_all("SELECT user_id, username, first_name, phone_number, searches, credits, is_banned FROM users ORDER BY joined_date DESC LIMIT 15")
@@ -513,7 +516,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             status = "🔴 Banned" if u['is_banned'] else "🟢 Active"
             text += f"🆔 ID: `{u['user_id']}` | @{u['username']} | {status}\n👤 Name: {u['first_name']}\n📱 Mobile: `{u['phone_number']}`\n🔍 Searches: {u['searches']} | 💎 Credits: {u['credits']}\n--------------------\n"
         keyboard = [[InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")]]
-        await query.message.edit_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data == "admin_plans":
         plans = db_get_all("SELECT * FROM plans")
@@ -522,7 +525,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text += f"🆔 ID: `{p['id']}` | **{p['name']}**\n💰 Price: `{p['price']}` | 💎 Credits: `{p['credits']}`\n--------------------\n"
         text += "\n💡 To add a plan, use command:\n`/addplan <name> <price> <credits>`\nExample: `/addplan MegaPack ₹149 40`\n\n💡 To delete a plan, use:\n`/delplan <plan_id>`"
         keyboard = [[InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")]]
-        await query.message.edit_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data == "admin_setupi_prompt":
         await query.message.reply_text("💡 To update UPI ID, use command:\n`/setupi <new_upi_id>`\n\nExample: `/setupi mymerchant@paytm`", parse_mode='Markdown')
@@ -532,7 +535,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "api_health":
         health = check_api_health()
-        await query.message.edit_text(f"🩺 *API Health Status*\n\n{health}", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="admin_panel")]]))
+        await query.edit_message_text(f"🩺 *API Health Status*\n\n{health}", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="admin_panel")]]))
 
     elif data == "toggle_maintenance":
         current = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
@@ -644,12 +647,8 @@ async def user_inspect_command(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.message.reply_text(text, parse_mode='Markdown')
 
 def main():
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.daemon = True
-    flask_thread.start()
-    
     print("=" * 50)
-    print("🚀 HARSH HACKER OSINT & VEHICLE BOT STARTING...")
+    print("🚀 HARSH HACKER OSINT & VEHICLE BOT STARTING (WEBHOOK MODE)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
@@ -669,7 +668,17 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(CallbackQueryHandler(button_callback))
     
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Run using Webhook for instant lightning-fast button response
+    if RENDER_EXTERNAL_HOSTNAME:
+        webhook_url = f"https://{RENDER_EXTERNAL_HOSTNAME}/{BOT_TOKEN}"
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=BOT_TOKEN,
+            webhook_url=webhook_url
+        )
+    else:
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     main()
