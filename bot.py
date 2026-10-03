@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/init/env python3
 # Number Info Bot - Render Web Service 24/7 Deployment Edition
 """
 Developer: HARSH HACKER
@@ -49,9 +49,9 @@ except ImportError:
 # ========== CONFIGURATION - YOUR DETAILS ==========
 # ============================================
 
-BOT_TOKEN = "8408656202:AAF_0bplZdBBsr2C5fQWV3PH8KVHVyH-YbY"  
-ADMIN_ID = 1420016904                                           
-OWNER_USERNAME = "@Endgame55"                                   
+BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Updated Bot Token
+ADMIN_ID = 1420016904                                           # Admin ID
+OWNER_USERNAME = "@Endgame55"                                   # Owner Username
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
 
 # ============================================
@@ -204,7 +204,7 @@ def format_response(data, phone):
         lines.append(f"🔄 **Alternative Number:** `{alt}`")
         lines.append(f"🆔 **Aadhaar ID:** `{aadhar}`")
         lines.append(f"📡 **Circle:** {circle}")
-        lines.append(f"🗺️ **State:** {state}")
+        lines.append(f"🗺️️ **State:** {state}")
         lines.append(f"📧 **Email:** `{email}`")
         lines.append(f"🏠 **Address:** {address}")
         lines.append("---")
