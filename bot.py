@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Restored & Paginated Edition
+# OSINT & Pincode Bot - Final Syntax Fixed Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Restored Auto-Delete, TXT Reports, Pagination & All Features Intact
+Description: Advanced Telegram OSINT Bot with Fixed Brackets, Paginated Number Info & All Features Intact
 """
 
 import os
@@ -387,7 +387,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
     if page > 0:
         nav_row.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"phone_page_{page - 1}"))
     if page < total_pages - 1:
-        nav_row.append(InlineKeyboardButton("Next ➡️️", callback_data=f"phone_page_{page + 1}"))
+        nav_row.append(InlineKeyboardButton("Next ➡️", callback_data=f"phone_page_{page + 1}"))
     if nav_row:
         buttons.append(nav_row)
 
@@ -402,7 +402,6 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
         reply_msg = await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
         msg_obj = reply_msg
 
-    # Send Downloadable TXT Report on first page load & trigger auto-delete
     if page == 0:
         sent_message_ids = [msg_obj.message_id]
         doc_msg_id = None
@@ -569,7 +568,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
     else:
-        if user_db.get('is_banned'] == 1:
+        if user_db.get('is_banned') == 1:
             await update.message.reply_text("❌ Aapko bot use karne se block kar diya gaya hai.")
             return
 
@@ -1101,15 +1100,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
             [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
-            [InlineKeyboardButton("🎁 ⚙️️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt")],
-            [InlineKeyboardButton("🖼️️ ⚙️ Set Banner", callback_data="admin_banner_prompt"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
+            [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt")],
+            [InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
     user_data = db_get_one("SELECT phone_number, is_banned FROM users WHERE user_id = ?", (user.id,))
-    if not user_data or user_data.get('is_banned'] == 1:
+    if not user_data or user_data['is_banned'] == 1:
         await update.message.reply_text("❌ Aapko bot use karne se block kar diya gaya hai.")
         return
     if not user_data.get('phone_number') or not user_data['phone_number']:
@@ -1565,7 +1564,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (ALL ORIGINAL FEATURES RESTORED & PAGINATED)...")
+    print("🚀 HARSH OSINT BOT STARTING (SYNTAX FULLY FIXED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
