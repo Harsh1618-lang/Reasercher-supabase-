@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Multi-Tool Edition
+# OSINT & Pincode Bot - Instant Response Edition
 """
-Developer: HARSH
-Description: Advanced Telegram OSINT Bot with Headers Fix for Render APIs, Phone, Pincode, TG Lookups & Admin Panel
+Developer: @Harsx1618
+Description: Advanced Telegram OSINT Bot with Instant 100% Progress Response, Fast Phone Lookup, Email, Pincode, TG Lookups & Admin Panel
 """
 
 import os
@@ -54,7 +54,6 @@ PINCODE_API_URL = "https://rack-pincodeapi.vercel.app/api?search={pincode}"
 TG_USERNAME_API_URL = "https://felix-info-x-bot.onrender.com/key=felix67&tg={username}"
 TG_USERID_API_URL = "https://felix-info-x-bot.onrender.com/key=felix67&tg={userid}"
 
-# Browser headers to bypass Render/Cloudflare bot protection
 HTTP_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 }
@@ -114,7 +113,7 @@ def init_database():
         c.execute("INSERT INTO plans (name, price, credits) VALUES (?, ?, ?)", ("Unlimited Master", "₹199", 60))
 
     c.execute("INSERT OR IGNORE INTO users (user_id, username, first_name, phone_number, credits, is_admin) VALUES (?, ?, ?, ?, ?, ?)",
-              (ADMIN_ID, 'Endgame55', 'Harsh Admin', 'Admin Verified', 99999, 1))
+              (ADMIN_ID, 'Harsx1618', 'Harsh Admin', 'Admin Verified', 99999, 1))
     
     conn.commit()
     conn.close()
@@ -156,13 +155,13 @@ def db_get_all(query, params=()):
     return [dict(row) for row in result]
 
 # ============================================
-# API FETCH FUNCTIONS (WITH HEADERS)
+# API FETCH FUNCTIONS
 # ============================================
 async def get_phone_info(phone):
     try:
         clean_phone = re.sub(r'\D', '', phone)
         url = API_URL.format(number=clean_phone)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=8)
         if response.status_code == 200:
             return response.json()
         else:
@@ -174,7 +173,7 @@ async def get_pincode_info(pincode):
     try:
         clean_pin = re.sub(r'\D', '', pincode)
         url = PINCODE_API_URL.format(pincode=clean_pin)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=8)
         if response.status_code == 200:
             return response.json()
         else:
@@ -187,7 +186,7 @@ async def get_tg_username_info(username):
         if not username.startswith('@'):
             username = '@' + username
         url = TG_USERNAME_API_URL.format(username=username)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=8)
         if response.status_code == 200:
             return response.json()
         else:
@@ -198,7 +197,7 @@ async def get_tg_username_info(username):
 async def get_tg_userid_info(userid):
     try:
         url = TG_USERID_API_URL.format(userid=userid)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=8)
         if response.status_code == 200:
             return response.json()
         else:
@@ -208,37 +207,29 @@ async def get_tg_userid_info(userid):
 
 def check_api_health():
     try:
-        response = requests.get(API_URL.format(number="0000000000"), headers=HTTP_HEADERS, timeout=3)
+        response = requests.get(API_URL.format(number="0000000000"), headers=HTTP_HEADERS, timeout=2)
         return "🟢 Online" if response.status_code < 500 else "🟡 Degraded"
     except:
         return "🔴 Offline"
 
 # ============================================
-# HACKING STYLE ANIMATED PROGRESS BAR
+# INSTANT 100% PROGRESS ANIMATION
 # ============================================
 async def show_hacking_animation(msg_obj, target_str, title_type="PHONE"):
     if title_type == "PINCODE":
         title = "📍 PINCODE INTELLIGENCE BREACH"
     elif title_type == "TG":
-        title = "🕵️‍♂️ TELEGRAM INTEL BREACH"
+        title = "🕵️️‍♂️ TELEGRAM INTEL BREACH"
     else:
         title = "💻 SYSTEM BREACH IN PROGRESS"
         
-    steps = [
-        ("🔓 Bypassing target firewall...", "▒▒▒▒▒▒▒▒▒▒ 0%"),
-        ("🔌 Establishing secure proxy tunnel...", "███▒▒▒▒▒▒▒ 30%"),
-        ("⚡ Extracting intelligence records...", "██████▓▓▒▒ 70%"),
-        ("✅ Decryption successful!", "██████████ 100%")
-    ]
-    for text, bar in steps:
-        try:
-            await msg_obj.edit_text(f"{title}\nTarget: `{target_str}`\n\n{text}\n`{bar}`", parse_mode='Markdown')
-            await asyncio.sleep(0.05)
-        except:
-            pass
+    try:
+        await msg_obj.edit_text(f"{title}\nTarget: `{target_str}`\n\n✅ Decryption successful!\n`██████████ 100%`", parse_mode='Markdown')
+    except:
+        pass
 
 # ============================================
-# PARSE PHONE RECORDS
+# PARSE PHONE RECORDS (WITH EMAIL FIELD)
 # ============================================
 def parse_phone_records(data, phone):
     try:
@@ -283,6 +274,7 @@ def parse_phone_records(data, phone):
                 "mobile": str(rec.get('mobile', rec.get('phone', phone))),
                 "alt_num": str(rec.get('alt') or rec.get('alt_num') or 'N/A'),
                 "circle": str(rec.get('circle') or rec.get('operator') or 'N/A'),
+                "email": str(rec.get('email') or rec.get('Email') or 'N/A'),
                 "caf_id": str(rec.get('aadhar') or rec.get('id') or 'N/A'),
                 "address": str(rec.get('address') or rec.get('Address') or 'N/A')
             })
@@ -291,7 +283,7 @@ def parse_phone_records(data, phone):
         return [], f"❌ Parsing Error: {str(e)}"
 
 # ============================================
-# CHUNKED STYLISH PHONE SENDER
+# INSTANT STYLISH CHUNKED PHONE SENDER
 # ============================================
 async def send_stylish_chunked_response(msg_obj, records, phone):
     total = len(records)
@@ -317,17 +309,18 @@ async def send_stylish_chunked_response(msg_obj, records, phone):
             text += f"📱 **MOBILE:** {rec['mobile']}\n"
             text += f"📞 **ALT NUM:** {rec['alt_num']}\n"
             text += f"🌐 **CIRCLE:** {rec['circle']}\n"
+            text += f"📧 **EMAIL:** {rec['email']}\n"
             text += f"🆔 **CAF / ID:** {rec['caf_id']}\n"
             text += f"🏠 **ADDRESS:**\n{rec['address']}\n"
             text += f"└──────────────────────────────┘\n\n"
 
-        text += f"⚡ Dev: @RAJFFLIVE | Bot: @RAJFFLIVEBOT"
+        text += f"⚡ Dev: {@Harsx1618} | Bot: @Reasercherinfobot"
 
         if first_chunk:
             await msg_obj.edit_text(text, parse_mode='Markdown')
             first_chunk = False
         else:
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.05)
             await msg_obj.reply_text(text, parse_mode='Markdown')
 
 # ============================================
@@ -361,8 +354,8 @@ def format_pincode_response(data, pincode):
             "pincode": str(pincode),
             "total_records_shown": len(formatted_records),
             "records": formatted_records,
-            "Dev": "@Harsx1618",
-            "Bot": "@Reasercherinfobot"
+            "Dev": OWNER_USERNAME,
+            "Bot": "@RAJFFLIVEBOT"
         }
 
         json_str = json.dumps(json_output, indent=2, ensure_ascii=False)
@@ -551,7 +544,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
         
         panel_text = f"""
-📊 *LIGHTNING FAST ADMIN PANEL* (HARSH)
+📊 *LIGHTNING FAST ADMIN PANEL* ({OWNER_USERNAME})
 ━━━━━━━━━━━━━━━━━━
 👥 Total Users: `{total_users}`
 🔍 Total Lookups: `{total_searches}`
@@ -576,9 +569,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if mode == 'tg_username':
         query_str = text if text.startswith('@') else '@' + text
         msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERNAME INTEL BREACH*\nInitializing...", parse_mode='Markdown')
-        await show_hacking_animation(msg, query_str, title_type="TG")
         
         data = await get_tg_username_info(query_str)
+        await show_hacking_animation(msg, query_str, title_type="TG")
+        
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"TG_USER:{query_str}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         
@@ -591,9 +585,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif mode == 'tg_userid':
         userid_str = cleaned
         msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERID INTEL BREACH*\nInitializing...", parse_mode='Markdown')
-        await show_hacking_animation(msg, userid_str, title_type="TG")
         
         data = await get_tg_userid_info(userid_str)
+        await show_hacking_animation(msg, userid_str, title_type="TG")
+        
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"TG_ID:{userid_str}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         
@@ -606,9 +601,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif mode == 'pincode' or (len(cleaned) == 6 and len(text) == 6 and not mode):
         pincode = cleaned
         msg = await update.message.reply_text("📍 *PINCODE INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
-        await show_hacking_animation(msg, pincode, title_type="PINCODE")
         
         data = await get_pincode_info(pincode)
+        await show_hacking_animation(msg, pincode, title_type="PINCODE")
+        
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"PIN:{pincode}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         
@@ -621,9 +617,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif mode == 'phone' or (10 <= len(cleaned) <= 15):
         phone = cleaned
         msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
-        await show_hacking_animation(msg, phone, title_type="PHONE")
         
         data = await get_phone_info(phone)
+        await show_hacking_animation(msg, phone, title_type="PHONE")
+        
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, phone, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         
@@ -654,7 +651,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
         
         panel_text = f"""
-📊 *LIGHTNING FAST ADMIN PANEL* (HARSH)
+📊 *LIGHTNING FAST ADMIN PANEL* ({OWNER_USERNAME})
 ━━━━━━━━━━━━━━━━━━
 👥 Total Users: `{total_users}`
 🔍 Total Lookups: `{total_searches}`
@@ -801,7 +798,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sent = 0
     for u in users:
         try:
-            await context.bot.send_message(chat_id=u['user_id'], text=f"📢 *ANNOUNCEMENT (HARSH)*\n\n{msg}", parse_mode='Markdown')
+            await context.bot.send_message(chat_id=u['user_id'], text=f"📢 *ANNOUNCEMENT ({OWNER_USERNAME})*\n\n{msg}", parse_mode='Markdown')
             sent += 1
         except: pass
     await update.message.reply_text(f"📢 Broadcast sent to {sent} users.")
@@ -825,7 +822,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (HEADERS & TG APIS FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (USERNAME UPDATED)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
