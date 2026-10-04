@@ -1,5 +1,5 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate User Panel Edition with Status, DM & Balance
+# OSINT & Pincode Bot - Stable Version with Working Features
 """
 Developer: @Harsx1618
 Description: Advanced Telegram OSINT Bot with My Status, DM Owner, Balance, Auto-Deleting Reports, TXT Download, Banner & Fast Lookups
@@ -34,7 +34,7 @@ def run_flask():
 # TELEGRAM BOT SETUP
 # ============================================
 try:
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile, LinkedAdmin
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
@@ -242,7 +242,7 @@ async def show_hacking_animation(msg_obj, target_str, title_type="PHONE"):
     if title_type == "PINCODE":
         title = "📍 PINCODE INTELLIGENCE BREACH"
     elif title_type == "TG":
-        title = "🕵️‍♂️️ TELEGRAM INTEL BREACH"
+        title = "🕵️‍♂️ TELEGRAM INTEL BREACH"
     else:
         title = "💻 SYSTEM BREACH IN PROGRESS"
         
@@ -321,22 +321,22 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update, context
     for i in range(0, total, chunk_size):
         chunk = records[i:i+chunk_size]
         
-        text = "┌─── 📱 **꧁ NUMBER INFO DATABASE ꧂** ───┐\n"
+        text = "┌─── 📱 **NUMBER INTELLIGENCE** ───┐\n"
         text += "🎯 **Query:** `" + str(phone) + "`\n"
         text += "📊 **Records Found:** " + str(total) + "\n"
         text += "└──────────────────────────────┘\n\n"
 
         for idx, rec in enumerate(chunk, start=i+1):
             text += "┌─── **RECORD #" + str(idx) + "** ───┐\n"
-            text += "🧍 **NAME:** " + rec['name'] + "\n"
-            text += "👨🏻‍🍼 **FATHER:** " + rec['father'] + "\n"
-            text += "🤳 **MOBILE:** " + rec['mobile'] + "\n"
-            text += "📲 **ALT NUM:** " + rec['alt_num'] + "\n"
-            text += "📶 **CIRCLE:** " + rec['circle'] + "\n"
+            text += "👤 **NAME:** " + rec['name'] + "\n"
+            text += "👨‍👧 **FATHER:** " + rec['father'] + "\n"
+            text += "📱 **MOBILE:** " + rec['mobile'] + "\n"
+            text += "📞 **ALT NUM:** " + rec['alt_num'] + "\n"
+            text += "🌐 **CIRCLE:** " + rec['circle'] + "\n"
             text += "📧 **EMAIL:** " + rec['email'] + "\n"
-            text += "🎫 **CAF / ID:** " + rec['caf_id'] + "\n"
-            text += "🏡 **ADDRESS:**\n" + rec['address'] + "\n"
-            text += "∘₊✧____________________________________✧₊∘\n\n"
+            text += "🆔 **CAF / ID:** " + rec['caf_id'] + "\n"
+            text += "🏠 **ADDRESS:**\n" + rec['address'] + "\n"
+            text += "└──────────────────────────────┘\n\n"
 
         text += "⚡ Developed by " + OWNER_USERNAME + " | Bot: " + BOT_USERNAME
 
@@ -728,7 +728,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🖼️ ⚙️️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
+            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
             [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -806,7 +806,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `🟢 Online`\n        "
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
             [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
@@ -987,7 +987,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (USER PANEL FULLY LOADED)...")
+    print("🚀 HARSH OSINT BOT STARTING (STABLE 20.7 POLLING)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
@@ -1012,7 +1012,8 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT | filters.ANIMATION | filters.PHOTO | filters.VIDEO & ~filters.COMMAND, handle_message))
     application.add_handler(CallbackQueryHandler(button_callback))
     
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Force stable polling without version conflict
+    application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
