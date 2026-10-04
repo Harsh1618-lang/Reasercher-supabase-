@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# Number & Pincode Info Bot - Lightning Fast Edition
+# Number & Pincode Info Bot - Ultimate Fixed Edition
 """
 Developer: HARSH
-Description: Advanced OSINT Phone & Pincode Lookup Telegram Bot with Instant Zero-Lag Admin Panel & Multi-Record JSON
+Description: Advanced OSINT Phone & Pincode Lookup Telegram Bot with Instant Zero-Lag Admin Panel & Safe Pincode JSON Parsing
 """
 
 import os
@@ -297,7 +297,7 @@ def format_response(data, phone):
     return f"```json\n{json.dumps(json_output, indent=4, ensure_ascii=False)}\n```"
 
 # ============================================
-# FORMAT PINCODE RESPONSE (CRASH-PROOF & FAST)
+# FORMAT PINCODE RESPONSE (TELEGRAM LIMIT SAFE)
 # ============================================
 def format_pincode_response(data, pincode):
     try:
@@ -312,24 +312,23 @@ def format_pincode_response(data, pincode):
             formatted_records.append({
                 "record_id": str(idx),
                 "office_name": str(rec.get('office_name', 'N/A')),
-                "description": str(rec.get('description', 'N/A')),
                 "branch_type": str(rec.get('branch_type', 'N/A')),
                 "delivery_status": str(rec.get('delivery_status', 'N/A')),
                 "circle": str(rec.get('circle', 'N/A')),
                 "district": str(rec.get('district', 'N/A')),
-                "division": str(rec.get('division', 'N/A')),
-                "region": str(rec.get('region', 'N/A')),
-                "block": str(rec.get('block', 'N/A')),
                 "state": str(rec.get('state', 'N/A')),
-                "country": str(rec.get('country', 'India')),
                 "pincode": str(rec.get('pincode', pincode))
             })
 
+        # Limit records to 12 if too many to prevent Telegram 4096 character limit crash
+        if len(formatted_records) > 12:
+            formatted_records = formatted_records[:12]
+
         json_output = {
-            "api_info": data.get('api_info', {"pincode_mega_info_v1": True}),
+            "api_info": {"pincode_mega_info_v1": True},
             "status": "success",
             "pincode": str(pincode),
-            "total_records_found": len(formatted_records),
+            "total_records_shown": len(formatted_records),
             "records": formatted_records,
             "Dev": "@RAJFFLIVE",
             "Channel": "https://t.me/+QUg-JvyJizkxMzAl",
@@ -337,10 +336,6 @@ def format_pincode_response(data, pincode):
         }
 
         json_str = json.dumps(json_output, indent=4, ensure_ascii=False)
-        
-        if len(json_str) > 4000:
-            json_str = json.dumps({"status": "success", "pincode": str(pincode), "total_records": len(formatted_records), "note": "Response too long, showing summary", "records": formatted_records[:10]}, indent=4, ensure_ascii=False)
-
         return f"```json\n{json_str}\n```"
     except Exception as e:
         return f"❌ Error formatting pincode data: {str(e)}"
@@ -732,7 +727,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (FINAL FIXED EDITION)...")
+    print("🚀 HARSH OSINT BOT STARTING (PINCODE LIMIT FIX EDITION)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
