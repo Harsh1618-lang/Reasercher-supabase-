@@ -311,21 +311,21 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update):
     for i in range(0, total, chunk_size):
         chunk = records[i:i+chunk_size]
         
-        text = f"┌─── 📱 **NUMBER INTELLIGENCE** ───┐\n"
-        text += f"🎯 **Query:** `{phone}`\n"
-        text += f"📊 **Records Found:** {total}\n"
+        text = f"┌─── 📱 **NUMBER Info Database** ───┐\n"
+        text += f"🔍 **Query:** `{phone}`\n"
+        text += f"🧾 **Records Found:** {total}\n"
         text += f"└──────────────────────────────┘\n\n"
 
         for idx, rec in enumerate(chunk, start=i+1):
             text += f"┌─── **RECORD #{idx}** ───┐\n"
-            text += f"👤 **NAME:** {rec['name']}\n"
-            text += f"👨‍👧 **FATHER:** {rec['father']}\n"
-            text += f"📱 **MOBILE:** {rec['mobile']}\n"
-            text += f"📞 **ALT NUM:** {rec['alt_num']}\n"
-            text += f"🌐 **CIRCLE:** {rec['circle']}\n"
+            text += f"🧍 **NAME:** {rec['name']}\n"
+            text += f"👨🏻‍🍼 **FATHER:** {rec['father']}\n"
+            text += f"🤳   **MOBILE:** {rec['mobile']}\n"
+            text += f"☎️ **ALT NUM:** {rec['alt_num']}\n"
+            text += f"📶   **CIRCLE:** {rec['circle']}\n"
             text += f"📧 **EMAIL:** {rec['email']}\n"
-            text += f"🆔 **CAF / ID:** {rec['caf_id']}\n"
-            text += f"🏠 **ADDRESS:**\n{rec['address']}\n"
+            text += f"🪪 **CAF / ID:** {rec['caf_id']}\n"
+            text += f"🏡 **ADDRESS:**\n{rec['address']}\n"
             text += f"└──────────────────────────────┘\n\n"
 
         text += f"⚡ Developed by {@Harsx1618} | Bot: {@Reasercherinfobot}"
