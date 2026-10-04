@@ -1,5 +1,5 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Stable Version with Working Features
+# OSINT & Pincode Bot - 100% Working Stable Edition
 """
 Developer: @Harsx1618
 Description: Advanced Telegram OSINT Bot with My Status, DM Owner, Balance, Auto-Deleting Reports, TXT Download, Banner & Fast Lookups
@@ -665,7 +665,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     current_time = time.time()
     if user.id in user_cooldowns and not is_admin_user(user.id):
         if current_time - user_cooldowns[user.id] < 3:
-            await update.message.reply_text("⚠️ Thoda dheere type karein! Spam protection active hai.")
+            await update.message.reply_text("⚠️️ Thoda dheere type karein! Spam protection active hai.")
             return
     user_cooldowns[user.id] = current_time
 
@@ -808,7 +808,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
+            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
             [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -982,13 +982,8 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📢 Broadcast successfully sent to " + str(sent) + " users.")
 
 def main():
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.daemon = True
-    flask_thread.start()
-    
-    print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (STABLE 20.7 POLLING)...")
-    print("=" * 50)
+    threading.Thread(target=run_flask, daemon=True).start()
+    print("🚀 HARSH OSINT BOT STARTING (ALL FEATURES SECURED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
@@ -1009,10 +1004,9 @@ def main():
     application.add_handler(CommandHandler("addcredits", addcredits_command))
     application.add_handler(CommandHandler("broadcast", broadcast_command))
     application.add_handler(MessageHandler(filters.CONTACT, handle_contact))
-    application.add_handler(MessageHandler(filters.TEXT | filters.ANIMATION | filters.PHOTO | filters.VIDEO & ~filters.COMMAND, handle_message))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(CallbackQueryHandler(button_callback))
     
-    # Force stable polling without version conflict
     application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 if __name__ == '__main__':
