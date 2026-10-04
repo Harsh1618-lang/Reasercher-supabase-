@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Privacy Edition with Auto-Delete
+# OSINT & Pincode Bot - Ultimate User Panel Edition with Status, DM & Balance
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Auto-Deleting Reports, TXT Download, Maintenance, Banner & Fast Lookups
+Description: Advanced Telegram OSINT Bot with My Status, DM Owner, Balance, Auto-Deleting Reports, TXT Download, Banner & Fast Lookups
 """
 
 import os
@@ -34,7 +34,7 @@ def run_flask():
 # TELEGRAM BOT SETUP
 # ============================================
 try:
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile, LinkedAdmin
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
@@ -321,22 +321,22 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update, context
     for i in range(0, total, chunk_size):
         chunk = records[i:i+chunk_size]
         
-        text = "┌─── 📱 **NUMBER INTELLIGENCE** ───┐\n"
+        text = "┌─── 📱 **꧁ NUMBER INFO DATABASE ꧂** ───┐\n"
         text += "🎯 **Query:** `" + str(phone) + "`\n"
         text += "📊 **Records Found:** " + str(total) + "\n"
         text += "└──────────────────────────────┘\n\n"
 
         for idx, rec in enumerate(chunk, start=i+1):
             text += "┌─── **RECORD #" + str(idx) + "** ───┐\n"
-            text += "👤 **NAME:** " + rec['name'] + "\n"
-            text += "👨‍👧 **FATHER:** " + rec['father'] + "\n"
-            text += "📱 **MOBILE:** " + rec['mobile'] + "\n"
-            text += "📞 **ALT NUM:** " + rec['alt_num'] + "\n"
-            text += "🌐 **CIRCLE:** " + rec['circle'] + "\n"
+            text += "🧍 **NAME:** " + rec['name'] + "\n"
+            text += "👨🏻‍🍼 **FATHER:** " + rec['father'] + "\n"
+            text += "🤳 **MOBILE:** " + rec['mobile'] + "\n"
+            text += "📲 **ALT NUM:** " + rec['alt_num'] + "\n"
+            text += "📶 **CIRCLE:** " + rec['circle'] + "\n"
             text += "📧 **EMAIL:** " + rec['email'] + "\n"
-            text += "🆔 **CAF / ID:** " + rec['caf_id'] + "\n"
-            text += "🏠 **ADDRESS:**\n" + rec['address'] + "\n"
-            text += "└──────────────────────────────┘\n\n"
+            text += "🎫 **CAF / ID:** " + rec['caf_id'] + "\n"
+            text += "🏡 **ADDRESS:**\n" + rec['address'] + "\n"
+            text += "∘₊✧____________________________________✧₊∘\n\n"
 
         text += "⚡ Developed by " + OWNER_USERNAME + " | Bot: " + BOT_USERNAME
 
@@ -383,7 +383,6 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update, context
     except Exception as e:
         print("Error sending file: " + str(e))
 
-    # Trigger background auto-delete task after 30 seconds
     asyncio.create_task(schedule_message_deletion(context, update.effective_chat.id, sent_message_ids, doc_msg_id))
 
 # ============================================
@@ -428,7 +427,7 @@ def format_pincode_response(data, pincode):
 
 def format_tg_response(data, query_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status') == False and 'error' in data):
+        if not data or (isinstance(data, dict) and data.get('status'] == False and 'error' in data):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return "❌ Error: " + error_msg
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
@@ -488,8 +487,9 @@ async def send_welcome_menu(update_or_query, context, user):
     
     menu_keyboard = [
         [KeyboardButton("🔍 Number Info"), KeyboardButton("📍 Pincode Info")],
-        [KeyboardButton("🔤 TG To Number"), KeyboardButton("💎 Buy Premium / Credits")],
-        [KeyboardButton("🛠️ Toggle Menu")]
+        [KeyboardButton("🔤 TG To Number"), KeyboardButton("💎 My Premium Status")],
+        [KeyboardButton("💰 My Balance"), KeyboardButton("💬 DM Owner")],
+        [KeyboardButton("💎 Buy Premium / Credits"), KeyboardButton("🛠️ Toggle Menu")]
     ]
     if is_admin_user(user.id):
         menu_keyboard.append([KeyboardButton("📊 Admin Panel")])
@@ -692,6 +692,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = 'tg_userid'
         await update.message.reply_text("🆔 *Telegram to UserID Mode Active*\nKripya ab Telegram numeric UserID bhejein (jaise `1420016904`):", parse_mode='Markdown')
         return
+    elif text == "💎 My Premium Status":
+        user_info = db_get_one("SELECT credits, is_admin FROM users WHERE user_id = ?", (user.id,))
+        credits = user_info['credits'] if user_info else 0
+        status = "👑 Admin / Unlimited" if (is_admin_user(user.id) or credits > 5000) else ("💎 Premium User" if credits > 10 else "🆓 Free User")
+        status_text = "👤 *Aapki Account Details:*\n━━━━━━━━━━━━━━━━━━━━\n📌 Status: `" + status + "`\n💎 Remaining Credits: `" + str(credits) + "`\n🚀 Developer: " + OWNER_USERNAME
+        await update.message.reply_text(status_text, parse_mode='Markdown')
+        return
+    elif text == "💰 My Balance":
+        user_info = db_get_one("SELECT credits FROM users WHERE user_id = ?", (user.id,))
+        credits = user_info['credits'] if user_info else 0
+        await update.message.reply_text("💰 *Aapka Current Balance:*\n\n💎 Remaining Credits: `" + str(credits) + " Credits`", parse_mode='Markdown')
+        return
+    elif text == "💬 DM Owner":
+        dm_keyboard = [[InlineKeyboardButton("💬 Chat with Owner", url="https://t.me/Harsx1618")]]
+        await update.message.reply_text("💬 **Direct Message Owner**\n\nKisi bhi query ya premium purchase ke liye seedhe owner se chat karein:", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(dm_keyboard))
+        return
     elif text == "🔙 Back to Main Menu":
         context.user_data['mode'] = None
         await send_welcome_menu(update, context, user)
@@ -712,7 +728,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
+            [InlineKeyboardButton("🖼️ ⚙️️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
             [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -790,7 +806,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `🟢 Online`\n        "
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
             [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
@@ -971,7 +987,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (AUTO-DELETE & WORKING LOOKUPS)...")
+    print("🚀 HARSH OSINT BOT STARTING (USER PANEL FULLY LOADED)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
