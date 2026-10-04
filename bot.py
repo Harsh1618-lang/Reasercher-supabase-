@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Clean Single API Edition
+# OSINT & Pincode Bot - Ultimate Restored & Paginated Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Clean Single Dynamic API, Maintenance & All Original Features Intact
+Description: Advanced Telegram OSINT Bot with Restored Auto-Delete, TXT Reports, Pagination & All Features Intact
 """
 
 import os
@@ -349,9 +349,9 @@ def parse_phone_records(data, phone):
         return [], "❌ Parsing Error: " + str(e)
 
 # ============================================
-# PAGINATED PHONE RESPONSE (5 RECORDS PER PAGE)
+# PAGINATED PHONE RESPONSE (5 RECORDS PER PAGE + AUTO DELETE + TXT FILE)
 # ============================================
-async def send_paginated_phone_response(msg_obj, records, phone, page=0, is_edit=True):
+async def send_paginated_phone_response(msg_obj, records, phone, update, context, page=0, is_edit=True):
     total = len(records)
     if total == 0:
         await msg_obj.edit_text("❌ Koi record nahi mila.")
@@ -385,9 +385,9 @@ async def send_paginated_phone_response(msg_obj, records, phone, page=0, is_edit
     buttons = []
     nav_row = []
     if page > 0:
-        nav_row.append(InlineKeyboardButton("⬅️️ Previous", callback_data=f"phone_page_{page - 1}"))
+        nav_row.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"phone_page_{page - 1}"))
     if page < total_pages - 1:
-        nav_row.append(InlineKeyboardButton("Next ➡️", callback_data=f"phone_page_{page + 1}"))
+        nav_row.append(InlineKeyboardButton("Next ➡️️", callback_data=f"phone_page_{page + 1}"))
     if nav_row:
         buttons.append(nav_row)
 
@@ -399,7 +399,48 @@ async def send_paginated_phone_response(msg_obj, records, phone, page=0, is_edit
         except:
             pass
     else:
-        await msg_obj.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        reply_msg = await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        msg_obj = reply_msg
+
+    # Send Downloadable TXT Report on first page load & trigger auto-delete
+    if page == 0:
+        sent_message_ids = [msg_obj.message_id]
+        doc_msg_id = None
+        try:
+            file_content = "=========================================\n"
+            file_content += "      OSINT NUMBER INTELLIGENCE REPORT\n"
+            file_content += "      Query Number: " + str(phone) + "\n"
+            file_content += "      Total Records: " + str(total) + "\n"
+            file_content += "      Developer: " + OWNER_USERNAME + "\n"
+            file_content += "=========================================\n\n"
+
+            for idx, rec in enumerate(records, start=1):
+                file_content += f"--- RECORD #{idx} ---\n"
+                file_content += f"NAME: {rec['name']}\n"
+                file_content += f"FATHER: {rec['father']}\n"
+                file_content += f"MOBILE: {rec['mobile']}\n"
+                file_content += f"ALT NUM: {rec['alt_num']}\n"
+                file_content += f"CIRCLE: {rec['circle']}\n"
+                file_content += f"EMAIL: {rec['email']}\n"
+                file_content += f"CAF / ID: {rec['caf_id']}\n"
+                file_content += f"ADDRESS: {rec['address']}\n\n"
+
+            file_name = "report_" + str(phone) + ".txt"
+            with open(file_name, "w", encoding="utf-8") as f:
+                f.write(file_content)
+
+            with open(file_name, "rb") as f:
+                doc_msg = await update.message.reply_document(
+                    document=InputFile(f, filename=file_name),
+                    caption="📁 **Downloadable Report File (Auto-deletes in 30s)**\nTarget: `" + str(phone) + "`",
+                    parse_mode='Markdown'
+                )
+                doc_msg_id = doc_msg.message_id
+            os.remove(file_name)
+        except Exception as e:
+            print("Error sending file: " + str(e))
+
+        asyncio.create_task(schedule_message_deletion(context, update.effective_chat.id, sent_message_ids, doc_msg_id))
 
 def format_pincode_response(data, pincode):
     try:
@@ -528,7 +569,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
     else:
-        if user_db.get('is_banned') == 1:
+        if user_db.get('is_banned'] == 1:
             await update.message.reply_text("❌ Aapko bot use karne se block kar diya gaya hai.")
             return
 
@@ -566,17 +607,17 @@ async def send_welcome_menu(update_or_query, context, user):
     api_button_names = []
     for ap in apis:
         name = ap['api_name']
-        if name == 'Number Info': api_button_names.append("🔍 Number Info")
-        elif name == 'Pincode Info': api_button_names.append("📍 Pincode Info")
-        elif name == 'IP Info': api_button_names.append("🌐 IP Info")
-        elif name == 'Aadhaar Info': api_button_names.append("🆔 Aadhaar Info")
+        if name == 'Number Info': api_button_names.append("🔍 NUMBER INFO")
+        elif name == 'Pincode Info': api_button_names.append("📍 PINCODE INFO")
+        elif name == 'IP Info': api_button_names.append("🌐 IP INFO")
+        elif name == 'Aadhaar Info': api_button_names.append("🆔 AADHAAR INFO")
         elif name == 'TG Username' or name == 'TG UserID': 
-            if "🔤 TG To Number" not in api_button_names:
-                api_button_names.append("🔤 TG To Number")
+            if "🔤 TG TO NUMBER" not in api_button_names:
+                api_button_names.append("🔤 TG TO NUMBER")
         else:
-            api_button_names.append(name)
+            api_button_names.append(f"🔮 {name.upper()}")
 
-    all_menu_items = api_button_names + ["💎 My Premium Status", "💰 My Balance"] + static_buttons
+    all_menu_items = api_button_names + ["💎 MY PREMIUM STATUS", "💰 MY BALANCE"] + static_buttons
     
     for item in all_menu_items:
         row.append(KeyboardButton(item))
@@ -945,9 +986,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🚧 " + maint_msg, parse_mode='Markdown')
         return
 
-    # Check Dynamic Text matching any API/Feature Name from Database
-    clean_input_text = text.replace("🔍 ", "").replace("📍 ", "").replace("🌐 ", "").replace("🆔 ", "").replace("🔤 ", "")
-    matched_api = db_get_one("SELECT * FROM dynamic_apis WHERE api_name = ? OR api_key = ?", (clean_input_text, text.lower()))
+    # Check Dynamic Text matching any API/Feature Name from Database (ignoring emojis)
+    clean_input_text = text
+    for prefix in ["🔍 ", "📍 ", "🌐 ", "🆔 ", "🔤 ", "🔮 "]:
+        clean_input_text = clean_input_text.replace(prefix, "")
+    
+    matched_api = db_get_one("SELECT * FROM dynamic_apis WHERE UPPER(api_name) = ? OR api_key = ?", (clean_input_text.upper(), text.lower()))
     if matched_api:
         api_k = matched_api['api_key']
         if api_k == 'phone':
@@ -970,7 +1014,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db_execute("UPDATE analytics SET count = count + 1 WHERE feature_name = 'Aadhaar Info'", commit=True)
             await update.message.reply_text("🆔 *Aadhaar Info Mode Active*\nKripya ab number bhejein:", parse_mode='Markdown')
             return
-        elif api_k in ['tg_username', 'tg_userid'] or text == "🔤 TG To Number":
+        elif api_k in ['tg_username', 'tg_userid'] or "TG TO NUMBER" in text.upper():
             db_execute("UPDATE analytics SET count = count + 1 WHERE feature_name = 'TG To Number'", commit=True)
             tg_keyboard = [
                 [KeyboardButton("👤 Telegram to Username"), KeyboardButton("🆔 Telegram to UserID")],
@@ -991,14 +1035,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = 'tg_userid'
         await update.message.reply_text("🆔 *Telegram to UserID Mode Active*\nKripya ab Telegram numeric UserID bhejein (jaise `1420016904`):", parse_mode='Markdown')
         return
-    elif text == "💎 My Premium Status":
+    elif text == "💎 MY PREMIUM STATUS":
         user_info = db_get_one("SELECT credits, is_admin FROM users WHERE user_id = ?", (user.id,))
         credits = user_info['credits'] if user_info else 0
         status = "👑 Admin / Unlimited" if (is_admin_user(user.id) or credits > 5000) else ("💎 Premium User" if credits > 10 else "🆓 Free User")
         status_text = "👤 *Aapki Account Details:*\n━━━━━━━━━━━━━━━━━━━━\n📌 Status: `" + status + "`\n💎 Remaining Credits: `" + str(credits) + "`\n🚀 Developer: " + OWNER_USERNAME
         await update.message.reply_text(status_text, parse_mode='Markdown')
         return
-    elif text == "💰 My Balance":
+    elif text == "💰 MY BALANCE":
         await balance_command(update, context)
         return
     elif text == "💬 Owner | Support":
@@ -1057,15 +1101,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
             [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
-            [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt")],
-            [InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
+            [InlineKeyboardButton("🎁 ⚙️️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt")],
+            [InlineKeyboardButton("🖼️️ ⚙️ Set Banner", callback_data="admin_banner_prompt"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
     user_data = db_get_one("SELECT phone_number, is_banned FROM users WHERE user_id = ?", (user.id,))
-    if not user_data or user_data.get('is_banned') == 1:
+    if not user_data or user_data.get('is_banned'] == 1:
         await update.message.reply_text("❌ Aapko bot use karne se block kar diya gaya hai.")
         return
     if not user_data.get('phone_number') or not user_data['phone_number']:
@@ -1164,7 +1208,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else: 
             context.user_data['last_phone_records'] = records
             context.user_data['last_phone_target'] = phone
-            await send_paginated_phone_response(msg, records, phone, page=0, is_edit=True)
+            await send_paginated_phone_response(msg, records, phone, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
     else:
         await update.message.reply_text("❌ Kripya valid input enter karein (Mobile Number, Pincode, IP, ya TG query).", parse_mode='Markdown')
@@ -1181,7 +1225,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         page_num = int(data.split("_")[-1])
         records = context.user_data.get('last_phone_records', [])
         phone = context.user_data.get('last_phone_target', 'Unknown')
-        await send_paginated_phone_response(query.message, records, phone, page=page_num, is_edit=True)
+        await send_paginated_phone_response(query.message, records, phone, update, context, page=page_num, is_edit=True)
         return
 
     if data == "buy_credits_btn":
@@ -1220,7 +1264,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
             [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
             [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt")],
-            [InlineKeyboardButton("🖼️ ⚙️️ Set Banner", callback_data="admin_banner_prompt"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
+            [InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         try:
@@ -1268,7 +1312,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         api_k = data.replace("edit_api_wm_", "")
         context.user_data['waiting_for_api_old'] = True
         context.user_data['target_api_key'] = api_k
-        await context.bot.send_message(chat_id=query.from_user.id, text=f"✍️️ Enter **old text / watermark** to replace for `{api_k}`:", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"✍️ Enter **old text / watermark** to replace for `{api_k}`:", parse_mode='Markdown')
         return
 
     elif data == "admin_toggle_clone_ref":
@@ -1521,7 +1565,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (SYNTAX FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (ALL ORIGINAL FEATURES RESTORED & PAGINATED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
