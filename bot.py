@@ -238,7 +238,7 @@ async def show_hacking_animation(msg_obj, target_str, title_type="PHONE"):
         title = "💻 SYSTEM BREACH IN PROGRESS"
         
     try:
-        await msg_obj.edit_text(f"{title}\nTarget: `{target_str}`\n\n✅ Decryption successful!\n`██████████ 100%`", parse_mode='Markdown')
+        await msg_obj.edit_text(title + "\nTarget: `" + target_str + "`\n\n✅ Decryption successful!\n`██████████ 100%`", parse_mode='Markdown')
     except:
         pass
 
@@ -249,7 +249,7 @@ def parse_phone_records(data, phone):
     try:
         if not data or (isinstance(data, dict) and data.get('status') == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
-            return [], f"❌ Error: {error_msg}"
+            return [], "❌ Error: " + error_msg
         
         actual_results = []
         if isinstance(data, dict):
@@ -294,7 +294,7 @@ def parse_phone_records(data, phone):
             })
         return parsed_list, None
     except Exception as e:
-        return [], f"❌ Parsing Error: {str(e)}"
+        return [], "❌ Parsing Error: " + str(e)
 
 # ============================================
 # STYLISH CHUNKED PHONE SENDER & TXT FILE GENERATOR
@@ -311,24 +311,24 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update):
     for i in range(0, total, chunk_size):
         chunk = records[i:i+chunk_size]
         
-        text = f"┌─── 📱 **NUMBER Info Database** ───┐\n"
-        text += f"🔍 **Query:** `{phone}`\n"
-        text += f"🧾 **Records Found:** {total}\n"
-        text += f"└──────────────────────────────┘\n\n"
+        text = "┌─── 📱 **NUMBER INTELLIGENCE** ───┐\n"
+        text += "🎯 **Query:** `" + str(phone) + "`\n"
+        text += "📊 **Records Found:** " + str(total) + "\n"
+        text += "└──────────────────────────────┘\n\n"
 
         for idx, rec in enumerate(chunk, start=i+1):
-            text += f"┌─── **RECORD #{idx}** ───┐\n"
-            text += f"🧍 **NAME:** {rec['name']}\n"
-            text += f"👨🏻‍🍼 **FATHER:** {rec['father']}\n"
-            text += f"🤳   **MOBILE:** {rec['mobile']}\n"
-            text += f"☎️ **ALT NUM:** {rec['alt_num']}\n"
-            text += f"📶   **CIRCLE:** {rec['circle']}\n"
-            text += f"📧 **EMAIL:** {rec['email']}\n"
-            text += f"🪪 **CAF / ID:** {rec['caf_id']}\n"
-            text += f"🏡 **ADDRESS:**\n{rec['address']}\n"
-            text += f"└──────────────────────────────┘\n\n"
+            text += "┌─── **RECORD #" + str(idx) + "** ───┐\n"
+            text += "👤 **NAME:** " + rec['name'] + "\n"
+            text += "👨‍👧 **FATHER:** " + rec['father'] + "\n"
+            text += "📱 **MOBILE:** " + rec['mobile'] + "\n"
+            text += "📞 **ALT NUM:** " + rec['alt_num'] + "\n"
+            text += "🌐 **CIRCLE:** " + rec['circle'] + "\n"
+            text += "📧 **EMAIL:** " + rec['email'] + "\n"
+            text += "🆔 **CAF / ID:** " + rec['caf_id'] + "\n"
+            text += "🏠 **ADDRESS:**\n" + rec['address'] + "\n"
+            text += "└──────────────────────────────┘\n\n"
 
-        text += f"⚡ Developed by {} | Bot: {}"
+        text += "⚡ Developed by " + OWNER_USERNAME + " | Bot: " + BOT_USERNAME
 
         if first_chunk:
             await msg_obj.edit_text(text, parse_mode='Markdown')
@@ -338,37 +338,37 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update):
             await msg_obj.reply_text(text, parse_mode='Markdown')
 
     try:
-        file_content = f"=========================================\n"
-        file_content += f"      OSINT NUMBER INTELLIGENCE REPORT\n"
-        file_content += f"      Query Number: {phone}\n"
-        file_content += f"      Total Records: {total}\n"
-        file_content += f"      Developer: {OWNER_USERNAME}\n"
-        file_content += f"=========================================\n\n"
+        file_content = "=========================================\n"
+        file_content += "      OSINT NUMBER INTELLIGENCE REPORT\n"
+        file_content += "      Query Number: " + str(phone) + "\n"
+        file_content += "      Total Records: " + str(total) + "\n"
+        file_content += "      Developer: " + OWNER_USERNAME + "\n"
+        file_content += "=========================================\n\n"
 
         for idx, rec in enumerate(records, start=1):
-            file_content += f"--- RECORD #{idx} ---\n"
-            file_content += f"NAME: {rec['name']}\n"
-            file_content += f"FATHER: {rec['father']}\n"
-            file_content += f"MOBILE: {rec['mobile']}\n"
-            file_content += f"ALT NUM: {rec['alt_num']}\n"
-            file_content += f"CIRCLE: {rec['circle']}\n"
-            file_content += f"EMAIL: {rec['email']}\n"
-            file_content += f"CAF / ID: {rec['caf_id']}\n"
-            file_content += f"ADDRESS: {rec['address']}\n\n"
+            file_content += "--- RECORD #" + str(idx) + " ---\n"
+            file_content += "NAME: " + rec['name'] + "\n"
+            file_content += "FATHER: " + rec['father'] + "\n"
+            file_content += "MOBILE: " + rec['mobile'] + "\n"
+            file_content += "ALT NUM: " + rec['alt_num'] + "\n"
+            file_content += "CIRCLE: " + rec['circle'] + "\n"
+            file_content += "EMAIL: " + rec['email'] + "\n"
+            file_content += "CAF / ID: " + rec['caf_id'] + "\n"
+            file_content += "ADDRESS: " + rec['address'] + "\n\n"
 
-        file_name = f"report_{phone}.txt"
+        file_name = "report_" + str(phone) + ".txt"
         with open(file_name, "w", encoding="utf-8") as f:
             f.write(file_content)
 
         with open(file_name, "rb") as f:
             await update.message.reply_document(
                 document=InputFile(f, filename=file_name),
-                caption=f"📁 **Downloadable Report File**\nTarget: `{phone}`",
+                caption="📁 **Downloadable Report File**\nTarget: `" + str(phone) + "`",
                 parse_mode='Markdown'
             )
         os.remove(file_name)
     except Exception as e:
-        print(f"Error sending file: {e}")
+        print("Error sending file: " + str(e))
 
 # ============================================
 # PINCODE & TG RESPONSE FORMATTERS
@@ -406,21 +406,21 @@ def format_pincode_response(data, pincode):
         }
 
         json_str = json.dumps(json_output, indent=2, ensure_ascii=False)
-        return f"```json\n{json_str}\n```"
+        return "```json\n" + json_str + "\n```"
     except Exception as e:
-        return f"❌ Error formatting pincode data: {str(e)}"
+        return "❌ Error formatting pincode data: " + str(e)
 
 def format_tg_response(data, query_str):
     try:
         if not data or (isinstance(data, dict) and data.get('status') == False and 'error' in data):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
-            return f"❌ Error: {error_msg}"
+            return "❌ Error: " + error_msg
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
         if len(json_str) > 4000:
             json_str = json_str[:4000] + "\n... (Truncated)"
-        return f"```json\n{json_str}\n```"
+        return "```json\n" + json_str + "\n```"
     except Exception as e:
-        return f"❌ Error formatting TG data: {str(e)}"
+        return "❌ Error formatting TG data: " + str(e)
 
 # ============================================
 # TELEGRAM HANDLERS
@@ -430,7 +430,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
     if maint == 'on' and not is_admin_user(user.id):
         maint_msg = db_get_one("SELECT value FROM settings WHERE key='maint_msg'")['value']
-        await update.message.reply_text(f"🚧 {maint_msg}")
+        await update.message.reply_text("🚧 " + maint_msg)
         return
 
     args = context.args
@@ -468,17 +468,7 @@ async def send_welcome_menu(update_or_query, context, user):
     user_info = db_get_one("SELECT credits FROM users WHERE user_id = ?", (user.id,))
     credits = user_info['credits'] if user_info else 0
     
-    welcome = f"""
-👋 *Welcome to OSINT & Pincode Lookup Bot!*
-
-💎 Remaining Credits: `{credits}`
-Neeche diye gaye menu se option select karein!
-🎁 *Daily Bonus:* `/daily`
-🔗 *Referral Link:* `/ref`
-📜 *Search History:* `/history`
-
-🚀 *Developed by {OWNER_USERNAME}*
-    """
+    welcome = "\n👋 *Welcome to OSINT & Pincode Lookup Bot!*\n\n💎 Remaining Credits: `" + str(credits) + "`\nNeeche diye gaye menu se option select karein!\n🎁 *Daily Bonus:* `/daily`\n🔗 *Referral Link:* `/ref`\n📜 *Search History:* `/history`\n\n🚀 *Developed by " + OWNER_USERNAME + "*\n    "
     
     menu_keyboard = [
         [KeyboardButton("🔍 Number Info"), KeyboardButton("📍 Pincode Info")],
@@ -529,15 +519,15 @@ async def show_premium_plans(update, context):
     
     plans = db_get_all("SELECT * FROM plans")
     
-    text = f"💎 **BUY PREMIUM & ADD CREDITS**\n"
-    text += f"━━━━━━━━━━━━━━━━━━━━━━\n"
-    text += f"📲 **Admin UPI ID:** `{upi_id}`\n\n"
-    text += f"📦 **Available Plans:**\n"
+    text = "💎 **BUY PREMIUM & ADD CREDITS**\n"
+    text += "━━━━━━━━━━━━━━━━━━━━━━\n"
+    text += "📲 **Admin UPI ID:** `" + upi_id + "`\n\n"
+    text += "📦 **Available Plans:**\n"
     
     for p in plans:
-        text += f"• **{p['name']}** — `{p['price']}` for **{p['credits']} Credits**\n"
+        text += "• **" + p['name'] + "** — `" + str(p['price']) + "` for **" + str(p['credits']) + " Credits**\n"
         
-    text += f"\n💳 **How to Buy:**\n1. Pay on UPI ID above.\n2. Send payment screenshot to Admin ({OWNER_USERNAME}) with your Telegram ID.\n3. Admin will instantly add credits!"
+    text += "\n💳 **How to Buy:**\n1. Pay on UPI ID above.\n2. Send payment screenshot to Admin (" + OWNER_USERNAME + ") with your Telegram ID.\n3. Admin will instantly add credits!"
     
     await update.message.reply_text(text, parse_mode='Markdown')
 
@@ -554,7 +544,7 @@ async def check_user_credit(update, user):
         upi_id = upi_record['value'] if upi_record else "harshhacker@upi"
         
         await update.message.reply_text(
-            f"❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `{upi_id}` par payment karein aur Admin (`{OWNER_USERNAME}`) ko screenshot bhejein.",
+            "❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `" + upi_id + "` par payment karein aur Admin (`" + OWNER_USERNAME + "`) ko screenshot bhejein.",
             parse_mode='Markdown'
         )
         return False
@@ -578,14 +568,14 @@ async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     bot_username = context.bot.username
-    ref_link = f"https://t.me/{bot_username}?start={user.id}"
+    ref_link = "https://t.me/" + str(bot_username) + "?start=" + str(user.id)
     
-    text = f"🔗 **Aapka Referral Link:**\n`{ref_link}`\n\nIs link ko apne doston ke sath share karein. Jab koi isse join karega, toh aapko `2` free credits milenge!"
+    text = "🔗 **Aapka Referral Link:**\n`" + ref_link + "`\n\nIs link ko apne doston ke sath share karein. Jab koi isse join karega, toh aapko `2` free credits milenge!"
     await update.message.reply_text(text, parse_mode='Markdown')
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     health = check_api_health()
-    text = f"🟢 **LIVE API HEALTH STATUS**\n━━━━━━━━━━━━━━━━━━━━\n• Supabase Lookup API: `{health}`\n• Pincode API: `🟢 Online`\n• Telegram Lookup API: `🟢 Online`"
+    text = "🟢 **LIVE API HEALTH STATUS**\n━━━━━━━━━━━━━━━━━━━━\n• Supabase Lookup API: `" + health + "`\n• Pincode API: `🟢 Online`\n• Telegram Lookup API: `🟢 Online`"
     await update.message.reply_text(text, parse_mode='Markdown')
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -594,7 +584,7 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Usage: `/report <your feedback>`", parse_mode='Markdown')
         return
     feedback_msg = ' '.join(context.args)
-    report_text = f"🚨 **NEW REPORT**\n👤 From: {user.first_name} (@{user.username or 'None'})\n🆔 ID: `{user.id}`\n💬 Message: {feedback_msg}"
+    report_text = "🚨 **NEW REPORT**\n👤 From: " + user.first_name + " (@" + str(user.username or 'None') + ")\n🆔 ID: `" + str(user.id) + "`\n💬 Message: " + feedback_msg
     try:
         await context.bot.send_message(chat_id=ADMIN_ID, text=report_text, parse_mode='Markdown')
     except:
@@ -614,7 +604,7 @@ async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credits_to_add = coupon['credits']
     db_execute("UPDATE users SET credits = credits + ? WHERE user_id = ?", (credits_to_add, user.id), commit=True)
     db_execute("DELETE FROM coupons WHERE code = ?", (code,), commit=True)
-    await update.message.reply_text(f"🎉 *Success!* `{credits_to_add}` credits added.", parse_mode='Markdown')
+    await update.message.reply_text("🎉 *Success!* `" + str(credits_to_add) + "` credits added.", parse_mode='Markdown')
 
 async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -622,9 +612,9 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not searches:
         await update.message.reply_text("📜 Aapne abhi tak koi search nahi ki hai.", parse_mode='Markdown')
         return
-    text = f"📜 *Aapki Pichli 10 Searches:* \n━━━━━━━━━━━━━━━━━━━━\n"
+    text = "📜 *Aapki Pichli 10 Searches:* \n━━━━━━━━━━━━━━━━━━━━\n"
     for s in searches:
-        text += f"• `{s['phone']}` — _{s['timestamp']}_\n"
+        text += "• `" + str(s['phone']) + "` — _" + str(s['timestamp']) + "_\n"
     await update.message.reply_text(text, parse_mode='Markdown')
 
 # ============================================
@@ -651,7 +641,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db_execute("UPDATE settings SET value = ? WHERE key = 'banner_media'", (media_id,), commit=True)
             db_execute("UPDATE settings SET value = ? WHERE key = 'banner_type'", (media_type,), commit=True)
             context.user_data['waiting_for_banner'] = False
-            await update.message.reply_text(f"✅ Success! Naya banner media (`{media_type}`) set ho chuka hai.", parse_mode='Markdown')
+            await update.message.reply_text("✅ Success! Naya banner media (`" + media_type + "`) set ho chuka hai.", parse_mode='Markdown')
             return
         else:
             await update.message.reply_text("❌ Kripya gallery se koi valid GIF, Video ya Photo bhejein.")
@@ -703,15 +693,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
         
-        panel_text = f"""
-📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})
-━━━━━━━━━━━━━━━━━━
-👥 Total Users: `{total_users}`
-🔍 Total Lookups: `{total_searches}`
-💳 Current UPI: `{upi_record['value'] if upi_record else 'Not Set'}`
-🚧 Maintenance Mode: `{maint.upper()}`
-⚡ API Status: `{check_api_health()}`
-        """
+        panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `" + check_api_health() + "`\n        "
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
@@ -732,7 +714,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERNAME INTEL BREACH*\nInitializing...", parse_mode='Markdown')
         data = await get_tg_username_info(query_str)
         await show_hacking_animation(msg, query_str, title_type="TG")
-        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"TG_USER:{query_str}", json.dumps(data)), commit=True)
+        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_USER:" + query_str, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         formatted = format_tg_response(data, query_str)
         try: await msg.edit_text(formatted, parse_mode='Markdown')
@@ -743,7 +725,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERID INTEL BREACH*\nInitializing...", parse_mode='Markdown')
         data = await get_tg_userid_info(userid_str)
         await show_hacking_animation(msg, userid_str, title_type="TG")
-        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"TG_ID:{userid_str}", json.dumps(data)), commit=True)
+        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_ID:" + userid_str, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         formatted = format_tg_response(data, userid_str)
         try: await msg.edit_text(formatted, parse_mode='Markdown')
@@ -754,7 +736,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = await update.message.reply_text("📍 *PINCODE INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
         data = await get_pincode_info(pincode)
         await show_hacking_animation(msg, pincode, title_type="PINCODE")
-        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"PIN:{pincode}", json.dumps(data)), commit=True)
+        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "PIN:" + pincode, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         formatted = format_pincode_response(data, pincode)
         try: await msg.edit_text(formatted, parse_mode='Markdown')
@@ -791,19 +773,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
         
-        panel_text = f"""
-📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})
-━━━━━━━━━━━━━━━━━━
-👥 Total Users: `{total_users}`
-🔍 Total Lookups: `{total_searches}`
-💳 Current UPI: `{upi_record['value'] if upi_record else 'Not Set'}`
-🚧 Maintenance Mode: `{maint.upper()}`
-⚡ API Status: `{check_api_health()}`
-        """
+        panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `" + check_api_health() + "`\n        "
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
+            [InlineKeyboardButton("🖼️ ⚙️️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
             [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -814,14 +788,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total_users = db_get_one("SELECT COUNT(*) as count FROM users")['count']
         total_searches = db_get_one("SELECT COUNT(*) as count FROM searches")['count']
         banned_users = db_get_one("SELECT COUNT(*) as count FROM users WHERE is_banned = 1")['count']
-        stats_text = f"""
-📈 **BOT DETAILED STATISTICS**
-━━━━━━━━━━━━━━━━━━━━
-👥 Total Registered Users: `{total_users}`
-🔴 Banned Users: `{banned_users}`
-🔍 Total Searches Made: `{total_searches}`
-⚡ Current Server Status: `{check_api_health()}`
-        """
+        stats_text = "\n📈 **BOT DETAILED STATISTICS**\n━━━━━━━━━━━━━━━━━━━━\n👥 Total Registered Users: `" + str(total_users) + "`\n🔴 Banned Users: `" + str(banned_users) + "`\n🔍 Total Searches Made: `" + str(total_searches) + "`\n⚡ Current Server Status: `" + check_api_health() + "`\n        "
         keyboard = [[InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")]]
         try: await query.edit_message_text(stats_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: pass
@@ -831,7 +798,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = "👥 *Verified Users List*\n━━━━━━━━━━━━━━━━━━━━\n"
         for u in users:
             status = "🔴 Banned" if u['is_banned'] else "🟢 Active"
-            text += f"🆔 ID: `{u['user_id']}` | @{u['username']} | {status}\n👤 Name: {u['first_name']}\n📱 Mobile: `{u['phone_number']}`\n🔍 Searches: {u['searches']} | 💎 Credits: {u['credits']}\n--------------------\n"
+            text += "🆔 ID: `" + str(u['user_id']) + "` | @" + str(u['username']) + " | " + status + "\n👤 Name: " + u['first_name'] + "\n📱 Mobile: `" + str(u['phone_number']) + "`\n🔍 Searches: " + str(u['searches']) + " | 💎 Credits: " + str(u['credits']) + "\n--------------------\n"
         keyboard = [[InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")]]
         try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: pass
@@ -840,7 +807,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         plans = db_get_all("SELECT * FROM plans")
         text = "📦 *Manage Subscription Plans*\n━━━━━━━━━━━━━━━━━━━━\n"
         for p in plans:
-            text += f"🆔 ID: `{p['id']}` | **{p['name']}**\n💰 Price: `{p['price']}` | 💎 Credits: `{p['credits']}`\n--------------------\n"
+            text += "🆔 ID: `" + str(p['id']) + "` | **" + p['name'] + "**\n💰 Price: `" + str(p['price']) + "` | 💎 Credits: `" + str(p['credits']) + "`\n--------------------\n"
         keyboard = [[InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")]]
         try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: pass
@@ -885,7 +852,7 @@ async def setupi_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     new_upi = context.args[0]
     db_execute("UPDATE settings SET value = ? WHERE key = 'upi_id'", (new_upi,), commit=True)
-    await update.message.reply_text(f"✅ UPI ID successfully updated to: `{new_upi}`", parse_mode='Markdown')
+    await update.message.reply_text("✅ UPI ID successfully updated to: `" + new_upi + "`", parse_mode='Markdown')
 
 async def maint_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin_user(update.effective_user.id): return
@@ -897,9 +864,9 @@ async def maint_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if status == 'on' and len(context.args) > 1:
         reason = ' '.join(context.args[1:])
         db_execute("UPDATE settings SET value = ? WHERE key = 'maint_msg'", (reason,), commit=True)
-        await update.message.reply_text(f"🚧 Maintenance Mode **ON**\nReason: `{reason}`", parse_mode='Markdown')
+        await update.message.reply_text("🚧 Maintenance Mode **ON**\nReason: `" + reason + "`", parse_mode='Markdown')
     else:
-        await update.message.reply_text(f"🚧 Maintenance Mode set to `{status.upper()}`", parse_mode='Markdown')
+        await update.message.reply_text("🚧 Maintenance Mode set to `" + status.upper() + "`", parse_mode='Markdown')
 
 async def userhistory_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin_user(update.effective_user.id): return
@@ -909,11 +876,11 @@ async def userhistory_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     target_id = int(context.args[0])
     searches = db_get_all("SELECT phone, timestamp FROM searches WHERE user_id = ? ORDER BY timestamp DESC LIMIT 15", (target_id,))
     if not searches:
-        await update.message.reply_text(f"❌ User ID `{target_id}` ki koi search history nahi mili.", parse_mode='Markdown')
+        await update.message.reply_text("❌ User ID `" + str(target_id) + "` ki koi search history nahi mili.", parse_mode='Markdown')
         return
-    text = f"📜 *Search History for User ID `{target_id}`:*\n━━━━━━━━━━━━━━━━━━━━\n"
+    text = "📜 *Search History for User ID `" + str(target_id) + "`:*\n━━━━━━━━━━━━━━━━━━━━\n"
     for s in searches:
-        text += f"• `{s['phone']}` — _{s['timestamp']}_\n"
+        text += "• `" + str(s['phone']) + "` — _" + str(s['timestamp']) + "_\n"
     await update.message.reply_text(text, parse_mode='Markdown')
 
 async def createcoupon_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -924,9 +891,9 @@ async def createcoupon_command(update: Update, context: ContextTypes.DEFAULT_TYP
     try:
         code, credits = context.args[0].strip(), int(context.args[1])
         db_execute("INSERT OR REPLACE INTO coupons (code, credits) VALUES (?, ?)", (code, credits), commit=True)
-        await update.message.reply_text(f"✅ Coupon `{code}` created successfully with `{credits}` credits!", parse_mode='Markdown')
+        await update.message.reply_text("✅ Coupon `" + code + "` created successfully with `" + str(credits) + "` credits!", parse_mode='Markdown')
     except Exception as e:
-        await update.message.reply_text(f"❌ Error: {e}")
+        await update.message.reply_text("❌ Error: " + str(e))
 
 async def addsub_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID: return
@@ -934,9 +901,9 @@ async def addsub_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         sub_id = int(context.args[0])
         db_execute("INSERT OR IGNORE INTO sub_admins (user_id) VALUES (?)", (sub_id,), commit=True)
-        await update.message.reply_text(f"✅ User `{sub_id}` added as Sub-Admin!", parse_mode='Markdown')
+        await update.message.reply_text("✅ User `" + str(sub_id) + "` added as Sub-Admin!", parse_mode='Markdown')
     except Exception as e:
-        await update.message.reply_text(f"❌ Error: {e}")
+        await update.message.reply_text("❌ Error: " + str(e))
 
 async def addcredits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin_user(update.effective_user.id): return
@@ -944,23 +911,23 @@ async def addcredits_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     try:
         target_id, amount = int(context.args[0]), int(context.args[1])
         db_execute("UPDATE users SET credits = credits + ? WHERE user_id = ?", (amount, target_id), commit=True)
-        await update.message.reply_text(f"✅ Added `{amount}` credits to user `{target_id}`!", parse_mode='Markdown')
-        try: await context.bot.send_message(chat_id=target_id, text=f"🎉 **Congratulations!**\nAdmin added `{amount}` credits to your account.")
+        await update.message.reply_text("✅ Added `" + str(amount) + "` credits to user `" + str(target_id) + "`!", parse_mode='Markdown')
+        try: await context.bot.send_message(chat_id=target_id, text="🎉 **Congratulations!**\nAdmin added `" + str(amount) + "` credits to your account.")
         except: pass
     except Exception as e:
-        await update.message.reply_text(f"❌ Error: {e}")
+        await update.message.reply_text("❌ Error: " + str(e))
 
 async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin_user(update.effective_user.id): return
     if not context.args: return
     db_execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (context.args[0],), commit=True)
-    await update.message.reply_text(f"🚫 User `{context.args[0]}` banned.", parse_mode='Markdown')
+    await update.message.reply_text("🚫 User `" + str(context.args[0]) + "` banned.", parse_mode='Markdown')
 
 async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin_user(update.effective_user.id): return
     if not context.args: return
     db_execute("UPDATE users SET is_banned = 0 WHERE user_id = ?", (context.args[0],), commit=True)
-    await update.message.reply_text(f"✅ User `{context.args[0]}` unbanned.", parse_mode='Markdown')
+    await update.message.reply_text("✅ User `" + str(context.args[0]) + "` unbanned.", parse_mode='Markdown')
 
 async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin_user(update.effective_user.id): return
@@ -975,13 +942,13 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.copy_message(chat_id=u['user_id'], from_chat_id=message.chat_id, message_id=reply_to.message_id)
             elif context.args:
                 msg_text = ' '.join(context.args)
-                await context.bot.send_message(chat_id=u['user_id'], text=f"📢 *ANNOUNCEMENT ({OWNER_USERNAME})*\n\n{msg_text}", parse_mode='Markdown')
+                await context.bot.send_message(chat_id=u['user_id'], text="📢 *ANNOUNCEMENT (" + OWNER_USERNAME + ")*\n\n" + msg_text, parse_mode='Markdown')
             else:
                 await update.message.reply_text("❌ Kripya broadcast ke liye text likhein ya kisi message ko reply/quote karke `/broadcast` bhejein.")
                 return
             sent += 1
         except: pass
-    await update.message.reply_text(f"📢 Broadcast successfully sent to {sent} users.")
+    await update.message.reply_text("📢 Broadcast successfully sent to " + str(sent) + " users.")
 
 def main():
     flask_thread = threading.Thread(target=run_flask)
@@ -989,7 +956,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (BRANDED EDITION)...")
+    print("🚀 HARSH OSINT BOT STARTING (SYNTAX FIXED)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
