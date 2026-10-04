@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Copy-Friendly & Feature Edition
+# OSINT & Pincode Bot - Ultimate Restored & Fixed Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Copy-Friendly Formats, Clean Aadhaar JSON, Feature-Wise Maintenance, IP Info, Multi-Channel Force Join, Anti-Flood & All Working Features
+Description: Advanced Telegram OSINT Bot with Working Verification, Credits, Maintenance & All Original Features
 """
 
 import os
@@ -215,7 +215,7 @@ async def check_multi_force_subscription(bot, user_id):
     return len(unjoined) == 0, unjoined
 
 # ============================================
-# API FETCH FUNCTIONS (WORKING & INTACT)
+# API FETCH FUNCTIONS
 # ============================================
 async def get_phone_info(phone):
     try:
@@ -304,9 +304,6 @@ async def schedule_message_deletion(context, chat_id, message_ids, doc_message_i
         except:
             pass
 
-# ============================================
-# INSTANT PROGRESS ANIMATION
-# ============================================
 async def show_hacking_animation(msg_obj, target_str, title_type="PHONE"):
     if title_type == "PINCODE":
         title = "📍 PINCODE INTELLIGENCE BREACH"
@@ -324,12 +321,9 @@ async def show_hacking_animation(msg_obj, target_str, title_type="PHONE"):
     except:
         pass
 
-# ============================================
-# PARSE PHONE RECORDS
-# ============================================
 def parse_phone_records(data, phone):
     try:
-        if not data or (isinstance(data, dict) and data.get('status') == False):
+        if not data or (isinstance(data, dict) and data.get('status'] == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return [], "❌ Error: " + error_msg
         
@@ -378,16 +372,13 @@ def parse_phone_records(data, phone):
     except Exception as e:
         return [], "❌ Parsing Error: " + str(e)
 
-# ============================================
-# STYLISH CHUNKED PHONE SENDER & AUTO-DELETE TXT (COPY FRIENDLY FORMAT)
-# ============================================
 async def send_stylish_chunked_response(msg_obj, records, phone, update, context):
     total = len(records)
     if total == 0:
         await msg_obj.edit_text("❌ Koi record nahi mila.")
         return
 
-    chunk_size = 2  # Clean copy-friendly chunks
+    chunk_size = 2
     first_chunk = True
     sent_message_ids = [msg_obj.message_id]
 
@@ -456,9 +447,6 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update, context
 
     asyncio.create_task(schedule_message_deletion(context, update.effective_chat.id, sent_message_ids, doc_msg_id))
 
-# ============================================
-# RESPONSE FORMATTERS (COPY FRIENDLY & CLEAN)
-# ============================================
 def format_pincode_response(data, pincode):
     try:
         if not data or not isinstance(data, dict):
@@ -524,7 +512,6 @@ def format_aadhaar_response(data, query_str):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return "❌ Error: " + error_msg
         
-        # Hide developer, owner, and channel details cleanly
         if isinstance(data, dict):
             data.pop('developer', None)
             data.pop('owner', None)
@@ -587,7 +574,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
     user_db_check = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
-    if not user_db_check.get('phone_number'):
+    if not user_db_check.get('phone_number') or not user_db_check['phone_number']:
         contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
         await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
@@ -693,7 +680,7 @@ async def check_user_credit(update, user):
     if not user_data or user_data.get('is_banned') == 1:
         await update.message.reply_text("❌ Aapko block kar diya gaya hai.")
         return False
-    if not user_data.get('phone_number'):
+    if not user_data.get('phone_number') or not user_data['phone_number']:
         await update.message.reply_text("⚠️ Pehle /start dabakar apna contact verify karein!")
         return False
     if user_data['credits'] <= 0 and not is_admin_user(user.id):
@@ -1026,6 +1013,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    # Check verification & credits before search
+    user_data = db_get_one("SELECT phone_number, is_banned FROM users WHERE user_id = ?", (user.id,))
+    if not user_data or user_data.get('is_banned') == 1:
+        await update.message.reply_text("❌ Aapko bot use karne se block kar diya gaya hai.")
+        return
+    if not user_data.get('phone_number') or not user_data['phone_number']:
+        contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
+        reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     if not await check_user_credit(update, user): return
@@ -1432,7 +1430,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (COPY-FRIENDLY & ALL FEATURES ACTIVE)...")
+    print("🚀 HARSH OSINT BOT STARTING (ALL ORIGINAL SAFEGUARDS RESTORED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
