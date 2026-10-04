@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# Number Info Bot - Lightning Fast Admin Edition
+# Number & Pincode Info Bot - Lightning Fast Admin Edition
 """
 Developer: HARSH
-Description: Advanced OSINT Phone Lookup Telegram Bot with Instant Zero-Lag Admin Panel & Multi-Record JSON
+Description: Advanced OSINT Phone & Pincode Lookup Telegram Bot with Instant Zero-Lag Admin Panel & Multi-Record JSON
 """
 
 import os
@@ -53,6 +53,7 @@ BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Bot Token
 ADMIN_ID = 1420016904                                           # Main Admin ID
 OWNER_USERNAME = "@Endgame55"                                   # Owner Username
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
+PINCODE_API_URL = "https://rack-pincodeapi.vercel.app/api?search={pincode}"
 
 # ============================================
 # DATABASE SETUP
@@ -71,7 +72,7 @@ def init_database():
         joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         searches INTEGER DEFAULT 0,
         credits INTEGER DEFAULT 2,
-        is_banned INTEGER DEFAULT 0,
+        is_banned INTEGER INTEGER DEFAULT 0,
         is_admin INTEGER DEFAULT 0
     )''')
     
@@ -151,7 +152,7 @@ def db_get_all(query, params=()):
     return [dict(row) for row in result]
 
 # ============================================
-# API FETCH FUNCTION
+# API FETCH FUNCTIONS
 # ============================================
 async def get_phone_info(phone):
     try:
@@ -165,6 +166,18 @@ async def get_phone_info(phone):
     except Exception as e:
         return {"status": False, "error": str(e)}
 
+async def get_pincode_info(pincode):
+    try:
+        clean_pin = re.sub(r'\D', '', pincode)
+        url = PINCODE_API_URL.format(pincode=clean_pin)
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"status": "error", "error": f"API returned status {response.status_code}"}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
 def check_api_health():
     try:
         response = requests.get(API_URL.format(number="0000000000"), timeout=3)
@@ -175,7 +188,8 @@ def check_api_health():
 # ============================================
 # HACKING STYLE ANIMATED PROGRESS BAR
 # ============================================
-async def show_hacking_animation(msg_obj, target_str):
+async def show_hacking_animation(msg_obj, target_str, is_pincode=False):
+    title = "📍 PINCODE INTELLIGENCE BREACH" if is_pincode else "💻 SYSTEM BREACH IN PROGRESS"
     steps = [
         ("🔓 Bypassing target firewall...", "▒▒▒▒▒▒▒▒▒▒ 0%"),
         ("🔌 Establishing secure proxy tunnel...", "███▒▒▒▒▒▒▒ 30%"),
@@ -184,13 +198,13 @@ async def show_hacking_animation(msg_obj, target_str):
     ]
     for text, bar in steps:
         try:
-            await msg_obj.edit_text(f"💻 *SYSTEM BREACH IN PROGRESS*\nTarget: `{target_str}`\n\n{text}\n`{bar}`", parse_mode='Markdown')
+            await msg_obj.edit_text(f"{title}\nTarget: `{target_str}`\n\n{text}\n`{bar}`", parse_mode='Markdown')
             await asyncio.sleep(0.15)
         except:
             pass
 
 # ============================================
-# FORMAT RESPONSE (MULTI-RECORD TRAVERSAL)
+# FORMAT RESPONSE (PHONE LOOKUP)
 # ============================================
 def format_response(data, phone):
     if not data or (isinstance(data, dict) and data.get('status') == False):
@@ -275,12 +289,21 @@ def format_response(data, phone):
         "query": phone,
         "response_time": "0.45s",
         "status": True,
-        "Dev": "@Endgame55",
-        "Channel": "https://t.me/Modedbyharsh",
-        "Bot": "@Reasercherinfobot"
+        "Dev": "@RAJFFLIVE",
+        "Channel": "https://t.me/+QUg-JvyJizkxMzAl",
+        "Bot": "@RAJFFLIVEBOT"
     }
 
     return f"```json\n{json.dumps(json_output, indent=4, ensure_ascii=False)}\n```"
+
+# ============================================
+# FORMAT PINCODE RESPONSE
+# ============================================
+def format_pincode_response(data, pincode):
+    if not data or (isinstance(data, dict) and data.get('status') != 'success'):
+        return f"❌ Error: Pincode data not found or invalid pincode."
+    
+    return f"```json\n{json.dumps(data, indent=4, ensure_ascii=False)}\n```"
 
 # ============================================
 # TELEGRAM HANDLERS
@@ -312,18 +335,18 @@ async def send_welcome_menu(update_or_query, context, user):
     credits = user_info['credits'] if user_info else 0
     
     welcome = f"""
-👋 *Welcome to OSINT Number Info Bot!*
+👋 *Welcome to OSINT & Pincode Lookup Bot!*
 
 💎 Remaining Credits: `{credits}`
-Kripya koi bhi 10-digit mobile number bhejein ya menu se select karein!
+Neeche diye gaye menu se option select karein ya direct number/pincode bhejein!
 💡 *Feedback/Report:* Use `/report <message>`
 
-⚡ Support: {@Endgame55}
+⚡ Support: {OWNER_USERNAME}
     """
     
     menu_keyboard = [
-        [KeyboardButton("🔍 Number Info")],
-        [KeyboardButton("💎 Buy Premium / Credits"), KeyboardButton("🛠️ Toggle Menu")]
+        [KeyboardButton("🔍 Number Info"), KeyboardButton("📍 Pincode Info")],
+        [KeyboardButton("💎 Buy Premium / Credits"), KeyboardButton("🛠️️ Toggle Menu")]
     ]
     if is_admin_user(user.id):
         menu_keyboard.append([KeyboardButton("📊 Admin Panel")])
@@ -414,6 +437,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = 'phone'
         await update.message.reply_text("📱 *Number Info Mode Active*\nKripya ab koi bhi 10-digit mobile number bhejein:", parse_mode='Markdown')
         return
+    elif text == "📍 Pincode Info":
+        context.user_data['mode'] = 'pincode'
+        await update.message.reply_text("📍 *Pincode Lookup Mode Active*\nKripya ab koi bhi valid 6-digit Indian PIN code bhejein (jaise `411001`):", parse_mode='Markdown')
+        return
     elif text == "💎 Buy Premium / Credits":
         await show_premium_plans(update, context)
         return
@@ -446,12 +473,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not await check_user_credit(update, user): return
 
+    mode = context.user_data.get('mode', None)
     cleaned = re.sub(r'\D', '', text)
 
-    if 10 <= len(cleaned) <= 15:
+    if mode == 'pincode' or (len(cleaned) == 6 and mode != 'phone'):
+        pincode = cleaned if len(cleaned) == 6 else text
+        msg = await update.message.reply_text("📍 *PINCODE INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
+        await show_hacking_animation(msg, pincode, is_pincode=True)
+        
+        data = await get_pincode_info(pincode)
+        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"PIN:{pincode}", json.dumps(data)), commit=True)
+        db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+        
+        formatted = format_pincode_response(data, pincode)
+        await msg.edit_text(formatted, parse_mode='Markdown')
+        context.user_data['mode'] = None
+    elif mode == 'phone' or (10 <= len(cleaned) <= 15):
         phone = cleaned
         msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
-        await show_hacking_animation(msg, phone)
+        await show_hacking_animation(msg, phone, is_pincode=False)
         
         data = await get_phone_info(phone)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, phone, json.dumps(data)), commit=True)
@@ -459,15 +499,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         formatted = format_response(data, phone)
         await msg.edit_text(formatted, parse_mode='Markdown')
+        context.user_data['mode'] = None
     else:
-        await update.message.reply_text("❌ Kripya valid 10-digit mobile number bhejein.", parse_mode='Markdown')
+        await update.message.reply_text("❌ Kripya valid 10-digit mobile number ya 6-digit PIN code bhejein.", parse_mode='Markdown')
 
 # ============================================
 # INSTANT ZERO-LAG ADMIN CALLBACK HANDLER
 # ============================================
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    # INSTANT ACKNOWLEDGEMENT TO PREVENT LAG / LOADING CIRCLE
     await query.answer()
     data = query.data
     
@@ -490,7 +530,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ⚡ API Status: `{check_api_health()}`
         """
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
@@ -543,7 +583,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
         new_val = 'off' if current == 'on' else 'on'
         db_execute("UPDATE settings SET value = ? WHERE key = 'maintenance'", (new_val,), commit=True)
-        # Instantly refresh panel view
         query.data = "admin_panel"
         await button_callback(update, context)
 
@@ -653,7 +692,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (ZERO-LAG ADMIN EDITION)...")
+    print("🚀 HARSH OSINT BOT STARTING (PINCODE LOOKUP INTEGRATED)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
