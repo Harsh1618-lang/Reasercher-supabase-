@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# Number & Pincode Info Bot - Multi-Record Chunked Edition
+# OSINT & Pincode Bot - Ultimate Multi-Tool Edition
 """
 Developer: HARSH
-Description: Advanced OSINT Phone & Pincode Lookup Telegram Bot with Multi-Record Chunking & Zero-Lag Admin Panel
+Description: Advanced Telegram OSINT Bot with Phone, Pincode, TG Username & UserID Lookup, Credits & Zero-Lag Admin Panel
 """
 
 import os
@@ -13,9 +13,6 @@ import asyncio
 import sqlite3
 import requests
 import re
-import csv
-import io
-import logging
 import threading
 from flask import Flask
 
@@ -36,12 +33,12 @@ def run_flask():
 # TELEGRAM BOT SETUP
 # ============================================
 try:
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
     os.system('pip install python-telegram-bot==20.7 requests flask')
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 
@@ -54,6 +51,8 @@ ADMIN_ID = 1420016904                                           # Main Admin ID
 OWNER_USERNAME = "@Endgame55"                                   # Owner Username
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
 PINCODE_API_URL = "https://rack-pincodeapi.vercel.app/api?search={pincode}"
+TG_USERNAME_API_URL = "https://felix-info-x-bot.onrender.com/key=felix67&tg={username}"
+TG_USERID_API_URL = "https://felix-info-x-bot.onrender.com/key=felix67&tg={userid}"
 
 # ============================================
 # DATABASE SETUP
@@ -178,6 +177,30 @@ async def get_pincode_info(pincode):
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
+async def get_tg_username_info(username):
+    try:
+        if not username.startswith('@'):
+            username = '@' + username
+        url = TG_USERNAME_API_URL.format(username=username)
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"status": False, "error": f"API returned status {response.status_code}"}
+    except Exception as e:
+        return {"status": False, "error": str(e)}
+
+async def get_tg_userid_info(userid):
+    try:
+        url = TG_USERID_API_URL.format(userid=userid)
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"status": False, "error": f"API returned status {response.status_code}"}
+    except Exception as e:
+        return {"status": False, "error": str(e)}
+
 def check_api_health():
     try:
         response = requests.get(API_URL.format(number="0000000000"), timeout=3)
@@ -188,8 +211,14 @@ def check_api_health():
 # ============================================
 # HACKING STYLE ANIMATED PROGRESS BAR
 # ============================================
-async def show_hacking_animation(msg_obj, target_str, is_pincode=False):
-    title = "📍 PINCODE INTELLIGENCE BREACH" if is_pincode else "💻 SYSTEM BREACH IN PROGRESS"
+async def show_hacking_animation(msg_obj, target_str, title_type="PHONE"):
+    if title_type == "PINCODE":
+        title = "📍 PINCODE INTELLIGENCE BREACH"
+    elif title_type == "TG":
+        title = "🕵️‍♂️ TELEGRAM INTEL BREACH"
+    else:
+        title = "💻 SYSTEM BREACH IN PROGRESS"
+        
     steps = [
         ("🔓 Bypassing target firewall...", "▒▒▒▒▒▒▒▒▒▒ 0%"),
         ("🔌 Establishing secure proxy tunnel...", "███▒▒▒▒▒▒▒ 30%"),
@@ -204,13 +233,13 @@ async def show_hacking_animation(msg_obj, target_str, is_pincode=False):
             pass
 
 # ============================================
-# PREPARE ALL RECORDS WITHOUT TRUNCATION
+# PARSE PHONE RECORDS
 # ============================================
-def build_phone_json(data, phone):
+def parse_phone_records(data, phone):
     try:
         if not data or (isinstance(data, dict) and data.get('status') == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
-            return None, f"❌ Error: {error_msg}"
+            return [], f"❌ Error: {error_msg}"
         
         actual_results = []
         if isinstance(data, dict):
@@ -240,76 +269,65 @@ def build_phone_json(data, phone):
 
         if not actual_results: actual_results = [data]
 
-        results_list = []
-        for i, rec in enumerate(actual_results, 1):
+        parsed_list = []
+        for rec in actual_results:
             if not isinstance(rec, dict): rec = {}
-            results_list.append({
-                "address": str(rec.get('address') or rec.get('Address') or 'N/A'),
-                "circle": str(rec.get('circle') or rec.get('operator') or 'N/A'),
-                "email": str(rec.get('email') or 'N/A'),
-                "father_name": str(rec.get('fname') or rec.get('father_name') or 'N/A'),
-                "id": str(rec.get('aadhar') or rec.get('id') or 'N/A'),
+            parsed_list.append({
                 "name": str(rec.get('name') or rec.get('FullName') or 'Unknown'),
-                "number": str(rec.get('mobile', rec.get('phone', phone))),
-                "result": f"Result {i}"
+                "father": str(rec.get('fname') or rec.get('father_name') or 'N/A'),
+                "mobile": str(rec.get('mobile', rec.get('phone', phone))),
+                "alt_num": str(rec.get('alt') or rec.get('alt_num') or 'N/A'),
+                "circle": str(rec.get('circle') or rec.get('operator') or 'N/A'),
+                "caf_id": str(rec.get('aadhar') or rec.get('id') or 'N/A'),
+                "address": str(rec.get('address') or rec.get('Address') or 'N/A')
             })
-
-        full_json = {
-            "data": {
-                "country": "India",
-                "number": str(phone),
-                "result_count": len(results_list),
-                "results": results_list,
-                "total_records": len(results_list)
-            },
-            "status": True,
-            "Dev": "@RAJFFLIVE",
-            "Bot": "@RAJFFLIVEBOT"
-        }
-        return full_json, None
+        return parsed_list, None
     except Exception as e:
-        return None, f"❌ Parsing Error: {str(e)}"
+        return [], f"❌ Parsing Error: {str(e)}"
 
 # ============================================
-# CHUNKED SENDER FOR ALL RECORDS
+# CHUNKED STYLISH PHONE SENDER
 # ============================================
-async def send_chunked_phone_response(msg_obj, full_json_dict, phone):
-    results = full_json_dict['data']['results']
-    total = len(results)
-    
-    if total <= 5:
-        json_str = json.dumps(full_json_dict, indent=2, ensure_ascii=False)
-        await msg_obj.edit_text(f"```json\n{json_str}\n```", parse_mode='Markdown')
+async def send_stylish_chunked_response(msg_obj, records, phone):
+    total = len(records)
+    if total == 0:
+        await msg_obj.edit_text("❌ Koi record nahi mila.")
         return
 
-    # If more records exist, split into batches of 5 records per message
-    chunk_size = 5
+    chunk_size = 3
     first_chunk = True
-    
+
     for i in range(0, total, chunk_size):
-        chunk_results = results[i:i+chunk_size]
-        chunk_dict = {
-            "data": {
-                "country": "India",
-                "number": str(phone),
-                "result_count": total,
-                "showing_range": f"Records {i+1} to {min(i+chunk_size, total)}",
-                "results": chunk_results,
-                "total_records": total
-            },
-            "status": True,
-            "Dev": "@RAJFFLIVE",
-            "Bot": "@RAJFFLIVEBOT"
-        }
-        json_str = json.dumps(chunk_dict, indent=2, ensure_ascii=False)
-        formatted_text = f"```json\n{json_str}\n```"
+        chunk = records[i:i+chunk_size]
         
+        text = f"┌─── 📱 **NUMBER INTELLIGENCE** ───┐\n"
+        text += f"🎯 **Query:** `{phone}`\n"
+        text += f"📊 **Records Found:** {total}\n"
+        text += f"└──────────────────────────────┘\n\n"
+
+        for idx, rec in enumerate(chunk, start=i+1):
+            text += f"┌─── **RECORD #{idx}** ───┐\n"
+            text += f"👤 **NAME:** {rec['name']}\n"
+            text += f"👨‍👧 **FATHER:** {rec['father']}\n"
+            text += f"📱 **MOBILE:** {rec['mobile']}\n"
+            text += f"📞 **ALT NUM:** {rec['alt_num']}\n"
+            text += f"🌐 **CIRCLE:** {rec['circle']}\n"
+            text += f"🆔 **CAF / ID:** {rec['caf_id']}\n"
+            text += f"🏠 **ADDRESS:**\n{rec['address']}\n"
+            text += f"└──────────────────────────────┘\n\n"
+
+        text += f"⚡ Dev: @RAJFFLIVE | Bot: @RAJFFLIVEBOT"
+
         if first_chunk:
-            await msg_obj.edit_text(formatted_text, parse_mode='Markdown')
+            await msg_obj.edit_text(text, parse_mode='Markdown')
             first_chunk = False
         else:
-            await msg_obj.reply_text(formatted_text, parse_mode='Markdown')
+            await asyncio.sleep(0.3)
+            await msg_obj.reply_text(text, parse_mode='Markdown')
 
+# ============================================
+# PINCODE & TG RESPONSE FORMATTERS
+# ============================================
 def format_pincode_response(data, pincode):
     try:
         if not data or not isinstance(data, dict):
@@ -330,8 +348,8 @@ def format_pincode_response(data, pincode):
                 "pincode": str(rec.get('pincode', pincode))
             })
 
-        if len(formatted_records) > 15:
-            formatted_records = formatted_records[:15]
+        if len(formatted_records) > 10:
+            formatted_records = formatted_records[:10]
 
         json_output = {
             "status": "success",
@@ -346,6 +364,17 @@ def format_pincode_response(data, pincode):
         return f"```json\n{json_str}\n```"
     except Exception as e:
         return f"❌ Error formatting pincode data: {str(e)}"
+
+def format_tg_response(data, query_str):
+    try:
+        if not data:
+            return "❌ Error: No response from Telegram API."
+        json_str = json.dumps(data, indent=2, ensure_ascii=False)
+        if len(json_str) > 4000:
+            json_str = json_str[:4000] + "\n... (Truncated)"
+        return f"```json\n{json_str}\n```"
+    except Exception as e:
+        return f"❌ Error formatting TG data: {str(e)}"
 
 # ============================================
 # TELEGRAM HANDLERS
@@ -367,7 +396,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
         db_execute("INSERT OR IGNORE INTO users (user_id, username, first_name, credits) VALUES (?, ?, ?, ?)",
                    (user.id, user.username or "NoUsername", user.first_name, 2), commit=True)
-        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     await send_welcome_menu(update, context, user)
@@ -380,15 +409,16 @@ async def send_welcome_menu(update_or_query, context, user):
 👋 *Welcome to OSINT & Pincode Lookup Bot!*
 
 💎 Remaining Credits: `{credits}`
-Neeche diye gaye menu se option select karein ya direct number/pincode bhejein!
+Neeche diye gaye menu se option select karein!
 💡 *Feedback/Report:* Use `/report <message>`
 
-⚡ Support: {OWNER_USERNAME}
+⚡ Owner: {OWNER_USERNAME}
     """
     
     menu_keyboard = [
         [KeyboardButton("🔍 Number Info"), KeyboardButton("📍 Pincode Info")],
-        [KeyboardButton("💎 Buy Premium / Credits"), KeyboardButton("🛠️ Toggle Menu")]
+        [KeyboardButton("🔤 TG To Number"), KeyboardButton("💎 Buy Premium / Credits")],
+        [KeyboardButton("🛠️ Toggle Menu")]
     ]
     if is_admin_user(user.id):
         menu_keyboard.append([KeyboardButton("📊 Admin Panel")])
@@ -483,6 +513,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = 'pincode'
         await update.message.reply_text("📍 *Pincode Lookup Mode Active*\nKripya ab koi bhi valid 6-digit Indian PIN code bhejein (jaise `411001`):", parse_mode='Markdown')
         return
+    elif text == "🔤 TG To Number":
+        tg_keyboard = [
+            [KeyboardButton("👤 Telegram to Username"), KeyboardButton("🆔 Telegram to UserID")],
+            [KeyboardButton("🔙 Back to Main Menu")]
+        ]
+        await update.message.reply_text("🔤 *TG TO NUMBER SUB-MENU*\nNeeche diye gaye option ko select karein:", parse_mode='Markdown', reply_markup=ReplyKeyboardMarkup(tg_keyboard, resize_keyboard=True))
+        return
+    elif text == "👤 Telegram to Username":
+        context.user_data['mode'] = 'tg_username'
+        await update.message.reply_text("👤 *Telegram to Username Mode Active*\nKripya ab Telegram username bhejein (jaise `@username` ya bina `@` ke):", parse_mode='Markdown')
+        return
+    elif text == "🆔 Telegram to UserID":
+        context.user_data['mode'] = 'tg_userid'
+        await update.message.reply_text("🆔 *Telegram to UserID Mode Active*\nKripya ab Telegram numeric UserID bhejein (jaise `75438060`):", parse_mode='Markdown')
+        return
+    elif text == "🔙 Back to Main Menu":
+        context.user_data['mode'] = None
+        await send_welcome_menu(update, context, user)
+        return
     elif text == "💎 Buy Premium / Credits":
         await show_premium_plans(update, context)
         return
@@ -507,7 +556,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🛡️️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -518,10 +567,40 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = context.user_data.get('mode', None)
     cleaned = re.sub(r'\D', '', text)
 
-    if mode == 'pincode' or (len(cleaned) == 6 and len(text) == 6 and not mode):
+    if mode == 'tg_username':
+        query_str = text if text.startswith('@') else '@' + text
+        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERNAME INTEL BREACH*\nInitializing...", parse_mode='Markdown')
+        await show_hacking_animation(msg, query_str, title_type="TG")
+        
+        data = await get_tg_username_info(query_str)
+        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"TG_USER:{query_str}", json.dumps(data)), commit=True)
+        db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+        
+        formatted = format_tg_response(data, query_str)
+        try:
+            await msg.edit_text(formatted, parse_mode='Markdown')
+        except Exception:
+            await msg.edit_text(formatted, parse_mode=None)
+        context.user_data['mode'] = None
+    elif mode == 'tg_userid':
+        userid_str = cleaned
+        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERID INTEL BREACH*\nInitializing...", parse_mode='Markdown')
+        await show_hacking_animation(msg, userid_str, title_type="TG")
+        
+        data = await get_tg_userid_info(userid_str)
+        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"TG_ID:{userid_str}", json.dumps(data)), commit=True)
+        db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+        
+        formatted = format_tg_response(data, userid_str)
+        try:
+            await msg.edit_text(formatted, parse_mode='Markdown')
+        except Exception:
+            await msg.edit_text(formatted, parse_mode=None)
+        context.user_data['mode'] = None
+    elif mode == 'pincode' or (len(cleaned) == 6 and len(text) == 6 and not mode):
         pincode = cleaned
         msg = await update.message.reply_text("📍 *PINCODE INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
-        await show_hacking_animation(msg, pincode, is_pincode=True)
+        await show_hacking_animation(msg, pincode, title_type="PINCODE")
         
         data = await get_pincode_info(pincode)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"PIN:{pincode}", json.dumps(data)), commit=True)
@@ -536,20 +615,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif mode == 'phone' or (10 <= len(cleaned) <= 15):
         phone = cleaned
         msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
-        await show_hacking_animation(msg, phone, is_pincode=False)
+        await show_hacking_animation(msg, phone, title_type="PHONE")
         
         data = await get_phone_info(phone)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, phone, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         
-        full_json, err = build_phone_json(data, phone)
+        records, err = parse_phone_records(data, phone)
         if err:
             await msg.edit_text(err)
         else:
-            await send_chunked_phone_response(msg, full_json, phone)
+            await send_stylish_chunked_response(msg, records, phone)
         context.user_data['mode'] = None
     else:
-        await update.message.reply_text("❌ Kripya valid 10-digit mobile number ya 6-digit PIN code bhejein.", parse_mode='Markdown')
+        await update.message.reply_text("❌ Kripya valid input enter karein (Mobile Number, Pincode, ya TG query).", parse_mode='Markdown')
 
 # ============================================
 # INSTANT ZERO-LAG ADMIN CALLBACK HANDLER
@@ -740,7 +819,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (MULTI-RECORD CHUNKED EDITION)...")
+    print("🚀 HARSH OSINT BOT STARTING (BOTH TG APIS CONFIGURED)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
