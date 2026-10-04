@@ -328,7 +328,7 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update):
             text += f"🏡 **ADDRESS:**\n{rec['address']}\n"
             text += f"└──────────────────────────────┘\n\n"
 
-        text += f"⚡ Developed by {@Harsx1618} | Bot: {@Reasercherinfobot}"
+        text += f"⚡ Developed by {} | Bot: {}"
 
         if first_chunk:
             await msg_obj.edit_text(text, parse_mode='Markdown')
