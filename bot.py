@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Restored & Fixed Edition
+# OSINT & Pincode Bot - Ultimate Stable Fix Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Working Verification, Credits, Maintenance & All Original Features
+Description: Advanced Telegram OSINT Bot with Fixed State Routing, Working Maintenance & All Features Intact
 """
 
 import os
@@ -323,7 +323,7 @@ async def show_hacking_animation(msg_obj, target_str, title_type="PHONE"):
 
 def parse_phone_records(data, phone):
     try:
-        if not data or (isinstance(data, dict) and data.get('status'] == False):
+        if not data or (isinstance(data, dict) and data.get('status') == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return [], "❌ Error: " + error_msg
         
@@ -544,6 +544,9 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     active_live_users.add(user.id)
+    
+    # Reset any lingering waiting states on start
+    context.user_data.clear()
     
     maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
     if maint == 'on' and not is_admin_user(user.id):
@@ -788,78 +791,80 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text.strip() if update.message.text else ""
 
-    if is_admin_user(user.id) and context.user_data.get('waiting_for_banner'):
-        media_id = ""
-        media_type = "none"
-        if update.message.animation:
-            media_id = update.message.animation.file_id
-            media_type = "animation"
-        elif update.message.video:
-            media_id = update.message.video.file_id
-            media_type = "video"
-        elif update.message.photo:
-            media_id = update.message.photo[-1].file_id
-            media_type = "photo"
+    # Strict Admin Prompt Handlers (Only execute if waiting flag is True)
+    if is_admin_user(user.id):
+        if context.user_data.get('waiting_for_banner'):
+            media_id = ""
+            media_type = "none"
+            if update.message.animation:
+                media_id = update.message.animation.file_id
+                media_type = "animation"
+            elif update.message.video:
+                media_id = update.message.video.file_id
+                media_type = "video"
+            elif update.message.photo:
+                media_id = update.message.photo[-1].file_id
+                media_type = "photo"
 
-        if media_id:
-            db_execute("UPDATE settings SET value = ? WHERE key = 'banner_media'", (media_id,), commit=True)
-            db_execute("UPDATE settings SET value = ? WHERE key = 'banner_type'", (media_type,), commit=True)
-            context.user_data['waiting_for_banner'] = False
-            await update.message.reply_text("✅ Success! Naya banner media (`" + media_type + "`) set ho chuka hai.", parse_mode='Markdown')
+            if media_id:
+                db_execute("UPDATE settings SET value = ? WHERE key = 'banner_media'", (media_id,), commit=True)
+                db_execute("UPDATE settings SET value = ? WHERE key = 'banner_type'", (media_type,), commit=True)
+                context.user_data['waiting_for_banner'] = False
+                await update.message.reply_text("✅ Success! Naya banner media set ho chuka hai.", parse_mode='Markdown')
+                return
+            else:
+                await update.message.reply_text("❌ Kripya gallery se koi valid GIF, Video ya Photo bhejein.")
+                return
+
+        if context.user_data.get('waiting_for_maint_msg'):
+            feat_key = context.user_data.get('target_maint_feat')
+            new_msg = text
+            db_execute("UPDATE feature_maint SET message = ? WHERE feature_key = ?", (new_msg, feat_key), commit=True)
+            context.user_data['waiting_for_maint_msg'] = False
+            context.user_data['target_maint_feat'] = None
+            await update.message.reply_text("✅ *Feature Maintenance Message Successfully Updated!*", parse_mode='Markdown')
             return
-        else:
-            await update.message.reply_text("❌ Kripya gallery se koi valid GIF, Video ya Photo bhejein.")
+
+        if context.user_data.get('waiting_for_force_channels'):
+            new_channels = text.strip()
+            db_execute("UPDATE settings SET value = ? WHERE key = 'force_channels'", (new_channels,), commit=True)
+            context.user_data['waiting_for_force_channels'] = False
+            await update.message.reply_text(f"✅ Multi-Channel Force Join successfully set to: `{new_channels}`", parse_mode='Markdown')
             return
 
-    if is_admin_user(user.id) and context.user_data.get('waiting_for_maint_msg'):
-        feat_key = context.user_data.get('target_maint_feat')
-        new_msg = text
-        db_execute("UPDATE feature_maint SET message = ? WHERE feature_key = ?", (new_msg, feat_key), commit=True)
-        context.user_data['waiting_for_maint_msg'] = False
-        context.user_data['target_maint_feat'] = None
-        await update.message.reply_text("✅ *Feature Maintenance Message Successfully Updated!*", parse_mode='Markdown')
-        return
+        if context.user_data.get('waiting_for_broadcast'):
+            broadcast_text = text
+            context.user_data['waiting_for_broadcast'] = False
+            
+            inline_keyboard = []
+            if "|" in broadcast_text and "-" in broadcast_text:
+                parts = broadcast_text.split("|")
+                main_msg = parts[0].strip()
+                btn_part = parts[1].strip()
+                if "-" in btn_part:
+                    btn_name, btn_url = btn_part.split("-", 1)
+                    inline_keyboard.append([InlineKeyboardButton(btn_name.strip(), url=btn_url.strip())])
+            
+            users = db_get_all("SELECT user_id FROM users")
+            sent = 0
+            for u in users:
+                try:
+                    if inline_keyboard:
+                        await context.bot.send_message(chat_id=u['user_id'], text=main_msg if 'main_msg' in locals() else broadcast_text, reply_markup=InlineKeyboardMarkup(inline_keyboard), parse_mode='Markdown')
+                    else:
+                        await context.bot.send_message(chat_id=u['user_id'], text=broadcast_text, parse_mode='Markdown')
+                    sent += 1
+                except: pass
+            await update.message.reply_text(f"📢 Broadcast sent to {sent} users.")
+            return
 
-    if is_admin_user(user.id) and context.user_data.get('waiting_for_force_channels'):
-        new_channels = text.strip()
-        db_execute("UPDATE settings SET value = ? WHERE key = 'force_channels'", (new_channels,), commit=True)
-        context.user_data['waiting_for_force_channels'] = False
-        await update.message.reply_text(f"✅ Multi-Channel Force Join successfully set to: `{new_channels}`", parse_mode='Markdown')
-        return
-
-    if is_admin_user(user.id) and context.user_data.get('waiting_for_broadcast'):
-        broadcast_text = text
-        context.user_data['waiting_for_broadcast'] = False
-        
-        inline_keyboard = []
-        if "|" in broadcast_text and "-" in broadcast_text:
-            parts = broadcast_text.split("|")
-            main_msg = parts[0].strip()
-            btn_part = parts[1].strip()
-            if "-" in btn_part:
-                btn_name, btn_url = btn_part.split("-", 1)
-                inline_keyboard.append([InlineKeyboardButton(btn_name.strip(), url=btn_url.strip())])
-        
-        users = db_get_all("SELECT user_id FROM users")
-        sent = 0
-        for u in users:
-            try:
-                if inline_keyboard:
-                    await context.bot.send_message(chat_id=u['user_id'], text=main_msg if 'main_msg' in locals() else broadcast_text, reply_markup=InlineKeyboardMarkup(inline_keyboard), parse_mode='Markdown')
-                else:
-                    await context.bot.send_message(chat_id=u['user_id'], text=broadcast_text, parse_mode='Markdown')
-                sent += 1
-            except: pass
-        await update.message.reply_text(f"📢 Broadcast with inline buttons sent to {sent} users.")
-        return
-
-    if is_admin_user(user.id) and context.user_data.get('waiting_for_clone_token'):
-        token_str = text.strip()
-        bot_username_val = "@CloneBot"
-        db_execute("INSERT INTO clones (owner_id, bot_token, bot_username, status) VALUES (?, ?, ?, ?)", (user.id, token_str, bot_username_val, 'Active'), commit=True)
-        context.user_data['waiting_for_clone_token'] = False
-        await update.message.reply_text("✅ *Aapka Clone Bot Successfully Register Ho Chuka Hai!*\nAb yeh admin panel ke Clone Manager mein dikhega.", parse_mode='Markdown')
-        return
+        if context.user_data.get('waiting_for_clone_token'):
+            token_str = text.strip()
+            bot_username_val = "@CloneBot"
+            db_execute("INSERT INTO clones (owner_id, bot_token, bot_username, status) VALUES (?, ?, ?, ?)", (user.id, token_str, bot_username_val, 'Active'), commit=True)
+            context.user_data['waiting_for_clone_token'] = False
+            await update.message.reply_text("✅ *Aapka Clone Bot Successfully Register Ho Chuka Hai!*", parse_mode='Markdown')
+            return
 
     # Check Individual Feature Maintenance
     def check_feat_maint(f_key):
@@ -1015,7 +1020,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    # Check verification & credits before search
+    # Check verification & credits before executing any search/mode
     user_data = db_get_one("SELECT phone_number, is_banned FROM users WHERE user_id = ?", (user.id,))
     if not user_data or user_data.get('is_banned') == 1:
         await update.message.reply_text("❌ Aapko bot use karne se block kar diya gaya hai.")
@@ -1147,7 +1152,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
-            [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
+            [InlineKeyboardButton("🛠️️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
             [InlineKeyboardButton("📢 ⚙️ Multi-Channel", callback_data="admin_forcechan_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
@@ -1296,7 +1301,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + new_val.upper() + "`\n⚡ API Status: `🟢 Online`\n        "
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
@@ -1430,7 +1435,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (ALL ORIGINAL SAFEGUARDS RESTORED)...")
+    print("🚀 HARSH OSINT BOT STARTING (STABLE STATE & MAINTENANCE FIXED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
