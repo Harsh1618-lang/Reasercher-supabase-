@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Feature-Wise Maintenance Edition
+# OSINT & Pincode Bot - Ultimate Complete Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Feature-Wise Maintenance, Aadhaar, IP, Multi-Channel Force Join, Anti-Flood & All Working Features
+Description: Advanced Telegram OSINT Bot with Clean Aadhaar JSON, Feature-Wise Maintenance, IP Info, Multi-Channel Force Join, Anti-Flood & All Working Features
 """
 
 import os
@@ -527,6 +527,13 @@ def format_aadhaar_response(data, query_str):
         if not data or (isinstance(data, dict) and data.get('status') == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return "❌ Error: " + error_msg
+        
+        # Hide developer, owner, and channel details
+        if isinstance(data, dict):
+            data.pop('developer', None)
+            data.pop('owner', None)
+            data.pop('channel', None)
+
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
         if len(json_str) > 4000:
             json_str = json_str[:4000] + "\n... (Truncated)"
@@ -1012,7 +1019,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
         
-        panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if cint(upi_record) else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `🟢 Online`\n        "
+        panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `🟢 Online`\n        "
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
@@ -1143,11 +1150,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `🟢 Online`\n        "
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
-            [InlineKeyboardButton("📢 ⚙️ Multi-Channel", callback_data="admin_forcechan_prompt"), InlineKeyboardButton("🖼️ ⚙️️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("📢 ⚙️ Multi-Channel", callback_data="admin_forcechan_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -1161,7 +1168,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for f in feats:
             status_icon = "🟢 ACTIVE" if f['status'] == 'off' else "🔴 UNDER WORK"
             text += f"• **{f['feature_key'].upper()}**: `{status_icon}`\n  _Msg: {f['message']}_\n\n"
-            toggle_text = f"Toggle {f['feature_key']}"
             keyboard.append([InlineKeyboardButton(f"🔄 Toggle {f['feature_key']}", callback_data=f"toggle_feat_{f['feature_key']}"), InlineKeyboardButton(f"💬 Edit Msg", callback_data=f"edit_feat_{f['feature_key']}")])
         keyboard.append([InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")])
         try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1430,7 +1436,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (FEATURE-WISE MAINTENANCE READY)...")
+    print("🚀 HARSH OSINT BOT STARTING (ADMIN PANEL FULLY RESTORED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
