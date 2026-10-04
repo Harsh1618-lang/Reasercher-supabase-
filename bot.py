@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Fail-Safe Telegram Fix Edition
+# OSINT & Pincode Bot - Ultimate Clean Edition (No Backup API)
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Fallback Default APIs, Fixed TG Lookups, Maintenance & All Features Intact
+Description: Advanced Telegram OSINT Bot with Clean Single Dynamic API, Maintenance & All Original Features Intact
 """
 
 import os
@@ -110,7 +110,6 @@ def init_database():
         api_key TEXT PRIMARY KEY,
         api_name TEXT,
         api_url TEXT,
-        backup_url TEXT DEFAULT '',
         old_credit TEXT DEFAULT '',
         new_credit TEXT DEFAULT ''
     )''')
@@ -152,16 +151,16 @@ def init_database():
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('force_channels', '')")
     
     default_apis = [
-        ('phone', 'Number Info', 'https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={query}', '', '@FizzaGirl', '@Harsx1618'),
-        ('pincode', 'Pincode Info', 'https://rack-pincodeapi.vercel.app/api?search={query}', '', '', ''),
-        ('ip_info', 'IP Info', 'https://oriss-ip-info-api.antideploy.com/ip/{query}', '', '', ''),
-        ('aadhaar_info', 'Aadhaar Info', 'https://nitin-vio-api-paid-best.boyu3054.workers.dev/aadhaar?key=FZ-UJKAHS8A2ABUJA8LBBK9&aadhaar={query}', '', '@FizzaGirl', '@Harsx1618'),
-        ('tg_username', 'TG Username', 'https://felix-info-x-bot.onrender.com/key=felix67&tg={query}', '', '', ''),
-        ('tg_userid', 'TG UserID', 'https://felix-info-x-bot.onrender.com/key=felix67&tg={query}', '', '', '')
+        ('phone', 'Number Info', 'https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={query}', '@FizzaGirl', '@Harsx1618'),
+        ('pincode', 'Pincode Info', 'https://rack-pincodeapi.vercel.app/api?search={query}', '', ''),
+        ('ip_info', 'IP Info', 'https://oriss-ip-info-api.antideploy.com/ip/{query}', '', ''),
+        ('aadhaar_info', 'Aadhaar Info', 'https://nitin-vio-api-paid-best.boyu3054.workers.dev/aadhaar?key=FZ-UJKAHS8A2ABUJA8LBBK9&aadhaar={query}', '@FizzaGirl', '@Harsx1618'),
+        ('tg_username', 'TG Username', 'https://felix-info-x-bot.onrender.com/key=felix67&tg={query}', '', ''),
+        ('tg_userid', 'TG UserID', 'https://felix-info-x-bot.onrender.com/key=felix67&tg={query}', '', '')
     ]
 
-    for ak, an, au, bu, oc, nc in default_apis:
-        c.execute("INSERT OR IGNORE INTO dynamic_apis (api_key, api_name, api_url, backup_url, old_credit, new_credit) VALUES (?, ?, ?, ?, ?, ?)", (ak, an, au, bu, oc, nc))
+    for ak, an, au, oc, nc in default_apis:
+        c.execute("INSERT OR IGNORE INTO dynamic_apis (api_key, api_name, api_url, old_credit, new_credit) VALUES (?, ?, ?, ?, ?)", (ak, an, au, oc, nc))
 
     for feat_key, feat_name in [('phone', 'Number Info'), ('pincode', 'Pincode Info'), ('ip_info', 'IP Info'), ('aadhaar_info', 'Aadhaar Info'), ('tg_info', 'TG To Number'), ('ref', 'Refer & Earn')]:
         c.execute("INSERT OR IGNORE INTO analytics (feature_name, count) VALUES (?, 0)", (feat_name,))
@@ -232,52 +231,46 @@ async def check_multi_force_subscription(bot, user_id):
     return len(unjoined) == 0, unjoined
 
 # ============================================
-# DYNAMIC API FETCH HELPER WITH FAILOVER & FALLBACK DEFAULTS
+# CLEAN SINGLE DYNAMIC API FETCH HELPER
 # ============================================
 async def fetch_dynamic_api(api_key, query_val, timeout_sec=15):
     api_record = db_get_one("SELECT * FROM dynamic_apis WHERE api_key = ?", (api_key,))
     
-    urls_to_try = []
+    target_url = ""
     if api_record and api_record.get('api_url'):
-        urls_to_try.append(api_record['api_url'].strip())
-    if api_record and api_record.get('backup_url') and api_record['backup_url'].strip():
-        urls_to_try.append(api_record['backup_url'].strip())
-
-    # Fallback default hardcoded URLs if database is empty for these keys
-    if not urls_to_try:
+        target_url = api_record['api_url'].strip()
+    
+    # Fallback default URLs if database missing
+    if not target_url:
         if api_key == 'phone':
-            urls_to_try.append("https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={query}")
+            target_url = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={query}"
         elif api_key == 'pincode':
-            urls_to_try.append("https://rack-pincodeapi.vercel.app/api?search={query}")
+            target_url = "https://rack-pincodeapi.vercel.app/api?search={query}"
         elif api_key == 'ip_info':
-            urls_to_try.append("https://oriss-ip-info-api.antideploy.com/ip/{query}")
+            target_url = "https://oriss-ip-info-api.antideploy.com/ip/{query}"
         elif api_key == 'aadhaar_info':
-            urls_to_try.append("https://nitin-vio-api-paid-best.boyu3054.workers.dev/aadhaar?key=FZ-UJKAHS8A2ABUJA8LBBK9&aadhaar={query}")
+            target_url = "https://nitin-vio-api-paid-best.boyu3054.workers.dev/aadhaar?key=FZ-UJKAHS8A2ABUJA8LBBK9&aadhaar={query}"
         elif api_key in ['tg_username', 'tg_userid']:
-            urls_to_try.append("https://felix-info-x-bot.onrender.com/key=felix67&tg={query}")
+            target_url = "https://felix-info-x-bot.onrender.com/key=felix67&tg={query}"
 
+    final_url = target_url.replace("{query}", str(query_val))
     old_c = api_record['old_credit'] if api_record and api_record.get('old_credit') else ""
     new_c = api_record['new_credit'] if api_record and api_record.get('new_credit') else ""
 
-    for target_template in urls_to_try:
-        target_url = target_template.replace("{query}", str(query_val))
-        try:
-            response = requests.get(target_url, headers=HTTP_HEADERS, timeout=timeout_sec)
-            if response.status_code == 200:
-                raw_text = response.text
-                if old_c:
-                    raw_text = raw_text.replace(old_c, new_c)
-                try:
-                    res_json = json.loads(raw_text)
-                    if isinstance(res_json, dict) and res_json.get('status') == False:
-                        continue
-                    return res_json
-                except:
-                    return {"status": True, "raw_result": raw_text}
-        except Exception as e:
-            continue
-
-    return {"status": False, "error": "Primary aur Backup dono APIs fail ho gayi hain."}
+    try:
+        response = requests.get(final_url, headers=HTTP_HEADERS, timeout=timeout_sec)
+        if response.status_code == 200:
+            raw_text = response.text
+            if old_c:
+                raw_text = raw_text.replace(old_c, new_c)
+            try:
+                return json.loads(raw_text)
+            except:
+                return {"status": True, "raw_result": raw_text}
+        else:
+            return {"status": False, "error": "API returned status " + str(response.status_code)}
+    except Exception as e:
+        return {"status": False, "error": str(e)}
 
 # ============================================
 # AUTO-DELETE BACKGROUND TASK
@@ -905,16 +898,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db_execute("UPDATE dynamic_apis SET api_url = ? WHERE api_key = ?", (new_url, api_k), commit=True)
             context.user_data['waiting_for_api_url'] = False
             context.user_data['target_api_key'] = None
-            await update.message.reply_text(f"✅ Primary API URL for `{api_k}` successfully updated!", parse_mode='Markdown')
-            return
-
-        if context.user_data.get('waiting_for_api_backup'):
-            api_k = context.user_data.get('target_api_key')
-            new_backup = text.strip()
-            db_execute("UPDATE dynamic_apis SET backup_url = ? WHERE api_key = ?", (new_backup, api_k), commit=True)
-            context.user_data['waiting_for_api_backup'] = False
-            context.user_data['target_api_key'] = None
-            await update.message.reply_text(f"✅ Backup API URL for `{api_k}` successfully updated!", parse_mode='Markdown')
+            await update.message.reply_text(f"✅ API URL for `{api_k}` successfully updated!", parse_mode='Markdown')
             return
 
         if context.user_data.get('waiting_for_api_old'):
@@ -1069,7 +1053,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
             [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
             [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1125,7 +1109,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = None
     elif mode == 'tg_userid':
         userid_str = cleaned
-        msg = await update.message.reply_text("🕵️‍♂️️ *TELEGRAM USERID INTEL BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERID INTEL BREACH*\nInitializing...", parse_mode='Markdown')
         data = await fetch_dynamic_api('tg_userid', userid_str)
         await show_hacking_animation(msg, userid_str, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_ID:" + userid_str, json.dumps(data)), commit=True)
@@ -1200,7 +1184,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
-            [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
+            [InlineKeyboardButton("🛠️️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
             [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
             [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
@@ -1256,16 +1240,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "admin_dynamic_apis":
         apis = db_get_all("SELECT * FROM dynamic_apis")
-        text = "🌐 *DYNAMIC API MANAGER (Primary & Backup)*\n━━━━━━━━━━━━━━━━━━━━\nSelect an API to configure URLs or Watermark Replacement:\n\n"
+        text = "🌐 *DYNAMIC API MANAGER*\n━━━━━━━━━━━━━━━━━━━━\nSelect an API to configure URL or Watermark Replacement:\n\n"
         keyboard = []
         for ap in apis:
-            text += f"• **{ap['api_name']}** (`{ap['api_key']}`)\n  🔗 Prim: `{ap['api_url']}`\n  🛡️ Back: `{ap['backup_url'] or 'Not Set'}`\n\n"
+            text += f"• **{ap['api_name']}** (`{ap['api_key']}`)\n  `{ap['api_url']}`\n  _Old Text: {ap['old_credit']} -> New: {ap['new_credit']}_\n\n"
             keyboard.append([
-                InlineKeyboardButton(f"🔗 Prim: {ap['api_name']}", callback_data=f"edit_api_url_{ap['api_key']}"),
-                InlineKeyboardButton(f"🛡️ Back: {ap['api_name']}", callback_data=f"edit_api_back_{ap['api_key']}")
-            ])
-            keyboard.append([
-                InlineKeyboardButton(f"✍️ Old/New Watermark", callback_data=f"edit_api_wm_{ap['api_key']}")
+                InlineKeyboardButton(f"🔗 URL: {ap['api_name']}", callback_data=f"edit_api_url_{ap['api_key']}"),
+                InlineKeyboardButton(f"✍️ Old/New", callback_data=f"edit_api_wm_{ap['api_key']}")
             ])
         keyboard.append([InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")])
         try:
@@ -1278,14 +1259,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         api_k = data.replace("edit_api_url_", "")
         context.user_data['waiting_for_api_url'] = True
         context.user_data['target_api_key'] = api_k
-        await context.bot.send_message(chat_id=query.from_user.id, text=f"🌐 Enter new **Primary API URL** for `{api_k}` (Use `{{query}}` as placeholder):", parse_mode='Markdown')
-        return
-
-    elif data.startswith("edit_api_back_"):
-        api_k = data.replace("edit_api_back_", "")
-        context.user_data['waiting_for_api_backup'] = True
-        context.user_data['target_api_key'] = api_k
-        await context.bot.send_message(chat_id=query.from_user.id, text=f"🛡️ Enter new **Backup API URL** for `{api_k}` (Use `{{query}}` as placeholder):", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"🌐 Enter new API URL for `{api_k}` (Use `{{query}}` as placeholder):", parse_mode='Markdown')
         return
 
     elif data.startswith("edit_api_wm_"):
@@ -1314,7 +1288,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
-            [InlineKeyboardButton("🛠️️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
+            [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
             [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
             [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
@@ -1433,7 +1407,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
             [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
-            [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -1569,7 +1543,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (FINAL SYNTAX FIXED & BACKUP API ADDED)...")
+    print("🚀 HARSH OSINT BOT STARTING (CLEAN SINGLE API & WORKING MAINTENANCE)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
