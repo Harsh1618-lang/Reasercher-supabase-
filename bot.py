@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Referral Customization Edition
+# OSINT & Pincode Bot - Ultimate Syntax Fixed Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Custom Referral Rewards, Referral History, Dynamic APIs & All Features Intact
+Description: Advanced Telegram OSINT Bot with Fixed Syntax, Working Maintenance & All Features Intact
 """
 
 import os
@@ -106,7 +106,6 @@ def init_database():
         message TEXT DEFAULT 'Is feature par kaam chal raha hai, jaldi hi yeh live hoga!'
     )''')
 
-    # Dynamic APIs Table
     c.execute('''CREATE TABLE IF NOT EXISTS dynamic_apis (
         api_key TEXT PRIMARY KEY,
         api_name TEXT,
@@ -148,7 +147,7 @@ def init_database():
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('banner_type', 'none')") 
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('clone_req_ref', '2')") 
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('clone_ref_toggle', 'on')")
-    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ref_reward_credits', '2')") # Custom referral reward amount setting
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ref_reward_credits', '2')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('force_channels', '')")
     
     default_apis = [
@@ -454,7 +453,7 @@ def format_pincode_response(data, pincode):
 
 def format_tg_response(data, query_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status'] == False and 'error' in data):
+        if not data or (isinstance(data, dict) and data.get('status') == False and 'error' in data):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return "❌ Error: " + error_msg
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
@@ -466,7 +465,7 @@ def format_tg_response(data, query_str):
 
 def format_ip_response(data, ip_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status'] == False):
+        if not data or (isinstance(data, dict) and data.get('status') == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return "❌ Error: " + error_msg
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
@@ -478,7 +477,7 @@ def format_ip_response(data, ip_str):
 
 def format_aadhaar_response(data, query_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status'] == False):
+        if not data or (isinstance(data, dict) and data.get('status') == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return "❌ Error: " + error_msg
         
@@ -530,7 +529,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ref_id != user.id:
             referrer_id = ref_id
 
-    # Fetch custom referral reward amount from settings (default to 2 if not set)
     reward_setting = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")
     ref_reward = int(reward_setting['value']) if reward_setting and reward_setting['value'].isdigit() else 2
 
@@ -545,7 +543,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
     else:
-        if user_db.get('is_banned'] == 1:
+        if user_db.get('is_banned') == 1:
             await update.message.reply_text("❌ Aapko bot use karne se block kar diya gaya hai.")
             return
 
@@ -653,7 +651,7 @@ async def show_premium_plans(update, context):
 
 async def check_user_credit(update, user):
     user_data = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
-    if not user_data or user_data.get('is_banned'] == 1:
+    if not user_data or user_data.get('is_banned') == 1:
         await update.message.reply_text("❌ Aapko block kar diya gaya hai.")
         return False
     if not user_data.get('phone_number') or not user_data['phone_number']:
@@ -664,7 +662,7 @@ async def check_user_credit(update, user):
         upi_id = upi_record['value'] if upi_record else "harshhacker@upi"
         
         await update.message.reply_text(
-            "❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `" + incoming_upi := upi_id + "` par payment karein aur Admin (`" + OWNER_USERNAME + "`) ko screenshot bhejein.",
+            "❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `" + upi_id + "` par payment karein aur Admin (`" + OWNER_USERNAME + "`) ko screenshot bhejein.",
             parse_mode='Markdown'
         )
         return False
@@ -693,7 +691,6 @@ async def ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reward_setting = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")
     ref_reward = reward_setting['value'] if reward_setting else "2"
     
-    # Fetch Referral History
     referred_users = db_get_all("SELECT first_name, username, joined_date FROM users WHERE referred_by = ? ORDER BY joined_date DESC LIMIT 10", (user.id,))
     
     text = "➿➿➿➿➿➿➿➿➿➿➿\n💰 𝗥𝗲𝗳𝗲𝗿 & 𝗲𝗮𝗿𝗻 ⛓\n➿➿➿➿➿➿➿➿➿➿➿\n\n"
@@ -1047,9 +1044,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    # Check verification & credits before executing any search/mode
     user_data = db_get_one("SELECT phone_number, is_banned FROM users WHERE user_id = ?", (user.id,))
-    if not user_data or user_data.get('is_banned'] == 1:
+    if not user_data or user_data.get('is_banned') == 1:
         await update.message.reply_text("❌ Aapko bot use karne se block kar diya gaya hai.")
         return
     if not user_data.get('phone_number') or not user_data['phone_number']:
@@ -1098,7 +1094,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = None
     elif mode == 'tg_userid':
         userid_str = cleaned
-        msg = await update.message.reply_text("🕵️️‍♂️ *TELEGRAM USERID INTEL BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERID INTEL BREACH*\nInitializing...", parse_mode='Markdown')
         data = await fetch_dynamic_api('tg_userid', userid_str)
         await show_hacking_animation(msg, userid_str, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_ID:" + userid_str, json.dumps(data)), commit=True)
@@ -1173,7 +1169,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
-            [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
+            [InlineKeyboardButton("🛠️ ⚙️️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
             [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
             [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
@@ -1187,7 +1183,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = "🌐 *DYNAMIC API MANAGER*\n━━━━━━━━━━━━━━━━━━━━\nSelect an API to configure URL or Watermark Replacement:\n\n"
         keyboard = []
         for ap in apis:
-            text += f"• **{ap['api_name']}** (`{ap['api_key']}`)\n  `{ap['api_url']}`\n  _Old Text: {ap['api_key']} -> New: {ap['new_credit']}_\n\n"
+            text += f"• **{ap['api_name']}** (`{ap['api_key']}`)\n  `{ap['api_url']}`\n  _Old Text: {ap['old_credit']} -> New: {ap['new_credit']}_\n\n"
             keyboard.append([
                 InlineKeyboardButton(f"🔗 URL: {ap['api_name']}", callback_data=f"edit_api_url_{ap['api_key']}"),
                 InlineKeyboardButton(f"✍️ Old/New", callback_data=f"edit_api_wm_{ap['api_key']}")
@@ -1200,7 +1196,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         api_k = data.replace("edit_api_url_", "")
         context.user_data['waiting_for_api_url'] = True
         context.user_data['target_api_key'] = api_k
-        await context.bot.send_message(chat_id=query.from_user.id, text=f"🌐 Enter new API URL for `{api_k}` (Use `{query}` as placeholder):", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"🌐 Enter new API URL for `{api_k}` (Use `{{query}}` as placeholder):", parse_mode='Markdown')
 
     elif data.startswith("edit_api_wm_"):
         api_k = data.replace("edit_api_wm_", "")
@@ -1501,7 +1497,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (REFERRAL HISTORY & CUSTOM QUANTITY ADDED)...")
+    print("🚀 HARSH OSINT BOT STARTING (SYNTAX ERROR FIXED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
