@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Backup API & Maintenance Fixed Edition
+# OSINT & Pincode Bot - Final Fixed Deployment Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Backup API Failover, Fixed Feature Maintenance & All Features Intact
+Description: Advanced Telegram OSINT Bot with Fixed Syntax, Working Feature Maintenance, Backup API Failover & All Features Intact
 """
 
 import os
@@ -106,7 +106,6 @@ def init_database():
         message TEXT DEFAULT 'Is feature par kaam chal raha hai, jaldi hi yeh live hoga!'
     )''')
 
-    # Dynamic APIs Table with Backup URL Support
     c.execute('''CREATE TABLE IF NOT EXISTS dynamic_apis (
         api_key TEXT PRIMARY KEY,
         api_name TEXT,
@@ -262,13 +261,13 @@ async def fetch_dynamic_api(api_key, query_val, timeout_sec=15):
                     raw_text = raw_text.replace(old_c, new_c)
                 try:
                     res_json = json.loads(raw_text)
-                    if isinstance(res_json, dict) and res_json.get('status'] == False:
-                        continue # Try backup if status is false
+                    if isinstance(res_json, dict) and res_json.get('status') == False:
+                        continue
                     return res_json
                 except:
                     return {"status": True, "raw_result": raw_text}
         except Exception as e:
-            continue # Try next backup URL on exception
+            continue
 
     return {"status": False, "error": "Primary aur Backup dono APIs fail ho gayi hain."}
 
@@ -1061,7 +1060,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
             [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
-            [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -1107,7 +1106,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = None
     elif mode == 'tg_username':
         query_str = text if text.startswith('@') else '@' + text
-        msg = await update.message.reply_text("🕵️️‍♂️ *TELEGRAM USERNAME INTEL BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERNAME INTEL BREACH*\nInitializing...", parse_mode='Markdown')
         data = await fetch_dynamic_api('tg_username', query_str)
         await show_hacking_animation(msg, query_str, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_USER:" + query_str, json.dumps(data)), commit=True)
@@ -1226,7 +1225,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         new_status = 'on' if cur['status'] == 'off' else 'off'
         db_execute("UPDATE feature_maint SET status = ? WHERE feature_key = ?", (new_status, f_key), commit=True)
         
-        # Refresh the maintenance panel safely
         feats = db_get_all("SELECT * FROM feature_maint")
         text = "🛠️ *FEATURE-WISE MAINTENANCE MANAGER*\n━━━━━━━━━━━━━━━━━━━━\n"
         keyboard = []
@@ -1294,7 +1292,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         new_val = 'off' if curr and curr['value'] == 'on' else 'on'
         db_execute("UPDATE settings SET value = ? WHERE key = 'clone_ref_toggle'", (new_val,), commit=True)
         await query.answer(f"✅ Clone Referral Requirement is now {new_val.upper()}!", show_alert=True)
-        # Refresh admin panel
+        
         total_users = db_get_one("SELECT COUNT(*) as count FROM users")['count']
         total_searches = db_get_one("SELECT COUNT(*) as count FROM searches")['count']
         maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
@@ -1308,10 +1306,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
-            [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
+            [InlineKeyboardButton("🛠️️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
             [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
             [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         try:
@@ -1422,7 +1420,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 Current UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🚧 Maintenance Mode: `{new_val.upper()}`\n🤖 Clone Refs Req: `{clone_ref_val}` (Status: `{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n⚡ API Status: `🟢 Online`\n        "
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
@@ -1563,7 +1561,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (BACKUP API & MAINTENANCE FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (FINAL SYNTAX FIXED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
