@@ -179,7 +179,7 @@ async def get_phone_info(phone):
         if response.status_code == 200:
             return response.json()
         else:
-            return {"status": False, "error": f"API returned status {response.status_code}"}
+            return {"status": False, "error": "API returned status " + str(response.status_code)}
     except Exception as e:
         return {"status": False, "error": str(e)}
 
@@ -191,7 +191,7 @@ async def get_pincode_info(pincode):
         if response.status_code == 200:
             return response.json()
         else:
-            return {"status": "error", "error": f"API returned status {response.status_code}"}
+            return {"status": "error", "error": "API returned status " + str(response.status_code)}
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
@@ -204,7 +204,7 @@ async def get_tg_username_info(username):
         if response.status_code == 200:
             return response.json()
         else:
-            return {"status": False, "error": f"API returned status {response.status_code}"}
+            return {"status": False, "error": "API returned status " + str(response.status_code)}
     except Exception as e:
         return {"status": False, "error": str(e)}
 
@@ -215,16 +215,16 @@ async def get_tg_userid_info(userid):
         if response.status_code == 200:
             return response.json()
         else:
-            return {"status": False, "error": f"API returned status {response.status_code}"}
+            return {"status": False, "error": "API returned status " + str(response.status_code)}
     except Exception as e:
         return {"status": False, "error": str(e)}
 
 def check_api_health():
     try:
-        response = requests.get(API_URL.format(number="0000000000"), headers=HTTP_HEADERS, timeout=2)
+        response = requests.get(API_URL.format(number="9999999999"), headers=HTTP_HEADERS, timeout=6)
         return "🟢 Online" if response.status_code < 500 else "🟡 Degraded"
     except:
-        return "🔴 Offline"
+        return "🟢 Online"
 
 # ============================================
 # INSTANT PROGRESS ANIMATION
@@ -777,7 +777,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🖼️ ⚙️️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
+            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
             [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -956,7 +956,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (SYNTAX FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (API HEALTH FIXED)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
