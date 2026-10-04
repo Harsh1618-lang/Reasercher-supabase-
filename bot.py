@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Bug-Free Edition
+# OSINT & Pincode Bot - Ultimate Referral Customization Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Fixed Clone Bot & Main Bot Restrictions, Aadhaar JSON Clean, Feature Maintenance & All Features Intact
+Description: Advanced Telegram OSINT Bot with Custom Referral Rewards, Referral History, Dynamic APIs & All Features Intact
 """
 
 import os
@@ -51,12 +51,6 @@ BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Bot Token
 ADMIN_ID = 1420016904                                           # Main Admin ID
 OWNER_USERNAME = "@Harsx1618"                                   # Owner Username
 BOT_USERNAME = "@Reasercherinfobot"                             # Bot Username
-API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
-PINCODE_API_URL = "https://rack-pincodeapi.vercel.app/api?search={pincode}"
-TG_USERNAME_API_URL = "https://felix-info-x-bot.onrender.com/key=felix67&tg={username}"
-TG_USERID_API_URL = "https://felix-info-x-bot.onrender.com/key=felix67&tg={userid}"
-IP_API_URL = "https://oriss-ip-info-api.antideploy.com/ip/{ip}"
-AADHAAR_API_URL = "https://nitin-vio-api-paid-best.boyu3054.workers.dev/aadhaar?key=FZ-UJKAHS8A2ABUJA8LBBK9&aadhaar={aadhaar}"
 
 HTTP_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -112,6 +106,15 @@ def init_database():
         message TEXT DEFAULT 'Is feature par kaam chal raha hai, jaldi hi yeh live hoga!'
     )''')
 
+    # Dynamic APIs Table
+    c.execute('''CREATE TABLE IF NOT EXISTS dynamic_apis (
+        api_key TEXT PRIMARY KEY,
+        api_name TEXT,
+        api_url TEXT,
+        old_credit TEXT DEFAULT '',
+        new_credit TEXT DEFAULT ''
+    )''')
+
     c.execute('''CREATE TABLE IF NOT EXISTS plans (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
@@ -144,8 +147,22 @@ def init_database():
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('banner_media', '')") 
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('banner_type', 'none')") 
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('clone_req_ref', '2')") 
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('clone_ref_toggle', 'on')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ref_reward_credits', '2')") # Custom referral reward amount setting
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('force_channels', '')")
     
+    default_apis = [
+        ('phone', 'Number Info', 'https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={query}', '@FizzaGirl', '@Harsx1618'),
+        ('pincode', 'Pincode Info', 'https://rack-pincodeapi.vercel.app/api?search={query}', '', ''),
+        ('ip_info', 'IP Info', 'https://oriss-ip-info-api.antideploy.com/ip/{query}', '', ''),
+        ('aadhaar_info', 'Aadhaar Info', 'https://nitin-vio-api-paid-best.boyu3054.workers.dev/aadhaar?key=FZ-UJKAHS8A2ABUJA8LBBK9&aadhaar={query}', '@FizzaGirl', '@Harsx1618'),
+        ('tg_username', 'TG Username', 'https://felix-info-x-bot.onrender.com/key=felix67&tg={query}', '', ''),
+        ('tg_userid', 'TG UserID', 'https://felix-info-x-bot.onrender.com/key=felix67&tg={query}', '', '')
+    ]
+
+    for ak, an, au, oc, nc in default_apis:
+        c.execute("INSERT OR IGNORE INTO dynamic_apis (api_key, api_name, api_url, old_credit, new_credit) VALUES (?, ?, ?, ?, ?)", (ak, an, au, oc, nc))
+
     for feat_key, feat_name in [('phone', 'Number Info'), ('pincode', 'Pincode Info'), ('ip_info', 'IP Info'), ('aadhaar_info', 'Aadhaar Info'), ('tg_info', 'TG To Number'), ('ref', 'Refer & Earn')]:
         c.execute("INSERT OR IGNORE INTO analytics (feature_name, count) VALUES (?, 0)", (feat_name,))
         c.execute("INSERT OR IGNORE INTO feature_maint (feature_key, status, message) VALUES (?, 'off', ?)", (feat_key, 'Is feature par kaam chal raha hai, jaldi hi yeh live hoga!'))
@@ -215,74 +232,27 @@ async def check_multi_force_subscription(bot, user_id):
     return len(unjoined) == 0, unjoined
 
 # ============================================
-# API FETCH FUNCTIONS
+# DYNAMIC API FETCH HELPER WITH WATERMARK REPLACEMENT
 # ============================================
-async def get_phone_info(phone):
-    try:
-        clean_phone = re.sub(r'\D', '', phone)
-        url = API_URL.format(number=clean_phone)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=15)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {"status": False, "error": "API returned status " + str(response.status_code)}
-    except Exception as e:
-        return {"status": False, "error": str(e)}
+async def fetch_dynamic_api(api_key, query_val, timeout_sec=15):
+    api_record = db_get_one("SELECT * FROM dynamic_apis WHERE api_key = ?", (api_key,))
+    if not api_record or not api_record['api_url']:
+        return {"status": False, "error": "API URL not configured in Admin Panel"}
+    
+    target_url = api_record['api_url'].replace("{query}", str(query_val))
+    old_c = api_record['old_credit'] or ""
+    new_c = api_record['new_credit'] or ""
 
-async def get_pincode_info(pincode):
     try:
-        clean_pin = re.sub(r'\D', '', pincode)
-        url = PINCODE_API_URL.format(pincode=clean_pin)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
+        response = requests.get(target_url, headers=HTTP_HEADERS, timeout=timeout_sec)
         if response.status_code == 200:
-            return response.json()
-        else:
-            return {"status": "error", "error": "API returned status " + str(response.status_code)}
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
-
-async def get_tg_username_info(username):
-    try:
-        if not username.startswith('@'):
-            username = '@' + username
-        url = TG_USERNAME_API_URL.format(username=username)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {"status": False, "error": "API returned status " + str(response.status_code)}
-    except Exception as e:
-        return {"status": False, "error": str(e)}
-
-async def get_tg_userid_info(userid):
-    try:
-        url = TG_USERID_API_URL.format(userid=userid)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {"status": False, "error": "API returned status " + str(response.status_code)}
-    except Exception as e:
-        return {"status": False, "error": str(e)}
-
-async def get_ip_info(ip):
-    try:
-        url = IP_API_URL.format(ip=ip)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {"status": False, "error": "API returned status " + str(response.status_code)}
-    except Exception as e:
-        return {"status": False, "error": str(e)}
-
-async def get_aadhaar_info(aadhaar):
-    try:
-        clean_aadhaar = re.sub(r'\D', '', aadhaar)
-        url = AADHAAR_API_URL.format(aadhaar=clean_aadhaar)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=15)
-        if response.status_code == 200:
-            return response.json()
+            raw_text = response.text
+            if old_c:
+                raw_text = raw_text.replace(old_c, new_c)
+            try:
+                return json.loads(raw_text)
+            except:
+                return {"status": True, "raw_result": raw_text}
         else:
             return {"status": False, "error": "API returned status " + str(response.status_code)}
     except Exception as e:
@@ -496,7 +466,7 @@ def format_tg_response(data, query_str):
 
 def format_ip_response(data, ip_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status') == False):
+        if not data or (isinstance(data, dict) and data.get('status'] == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return "❌ Error: " + error_msg
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
@@ -508,7 +478,7 @@ def format_ip_response(data, ip_str):
 
 def format_aadhaar_response(data, query_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status') == False):
+        if not data or (isinstance(data, dict) and data.get('status'] == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return "❌ Error: " + error_msg
         
@@ -560,18 +530,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ref_id != user.id:
             referrer_id = ref_id
 
+    # Fetch custom referral reward amount from settings (default to 2 if not set)
+    reward_setting = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")
+    ref_reward = int(reward_setting['value']) if reward_setting and reward_setting['value'].isdigit() else 2
+
     user_db = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
     if not user_db:
         db_execute("INSERT INTO users (user_id, username, first_name, credits, referred_by) VALUES (?, ?, ?, ?, ?)",
-                   (user.id, user.username or "NoUsername", user.first_name, 2, referrer_id), commit=True)
+                   (user.id, user.username or "NoUsername", user.first_name, ref_reward, referrer_id), commit=True)
         if referrer_id != 0:
-            db_execute("UPDATE users SET credits = credits + 2 WHERE user_id = ?", (referrer_id,), commit=True)
+            db_execute("UPDATE users SET credits = credits + ? WHERE user_id = ?", (ref_reward, referrer_id), commit=True)
             try:
-                await context.bot.send_message(chat_id=referrer_id, text="🎉 **Referral Bonus!** Aapke link se ek naye user ne join kiya, aapko `2` extra credits mile hain!")
+                await context.bot.send_message(chat_id=referrer_id, text=f"🎉 **Referral Bonus!** Aapke link se ek naye user ne join kiya, aapko `{ref_reward}` extra credits mile hain!")
             except:
                 pass
     else:
-        if user_db.get('is_banned') == 1:
+        if user_db.get('is_banned'] == 1:
             await update.message.reply_text("❌ Aapko bot use karne se block kar diya gaya hai.")
             return
 
@@ -641,7 +615,7 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         phone_number = contact.phone_number
         username = user.username or "NoUsername"
         db_execute("UPDATE users SET phone_number = ?, username = ? WHERE user_id = ?", (phone_number, username, user.id), commit=True)
-        await update.message.reply_text("✅ *Verification Successful!* You now have 2 free credits.", parse_mode='Markdown', reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text("✅ *Verification Successful!* You now have free credits.", parse_mode='Markdown', reply_markup=ReplyKeyboardRemove())
         
         is_joined, unjoined_channels = await check_multi_force_subscription(context.bot, user.id)
         if not is_joined:
@@ -679,7 +653,7 @@ async def show_premium_plans(update, context):
 
 async def check_user_credit(update, user):
     user_data = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
-    if not user_data or user_data.get('is_banned') == 1:
+    if not user_data or user_data.get('is_banned'] == 1:
         await update.message.reply_text("❌ Aapko block kar diya gaya hai.")
         return False
     if not user_data.get('phone_number') or not user_data['phone_number']:
@@ -690,7 +664,7 @@ async def check_user_credit(update, user):
         upi_id = upi_record['value'] if upi_record else "harshhacker@upi"
         
         await update.message.reply_text(
-            "❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `" + upi_id + "` par payment karein aur Admin (`" + OWNER_USERNAME + "`) ko screenshot bhejein.",
+            "❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `" + incoming_upi := upi_id + "` par payment karein aur Admin (`" + OWNER_USERNAME + "`) ko screenshot bhejein.",
             parse_mode='Markdown'
         )
         return False
@@ -716,8 +690,29 @@ async def ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bot_username = context.bot.username
     ref_link = "https://t.me/" + str(bot_username) + "?start=" + str(user.id)
     
-    text = "🔗 **Aapka Referral Link:**\n`" + ref_link + "`\n\nIs link ko apne doston ke sath share karein. Jab koi isse join karega, toh aapko `2` free credits milenge!"
-    await update.message.reply_text(text, parse_mode='Markdown')
+    reward_setting = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")
+    ref_reward = reward_setting['value'] if reward_setting else "2"
+    
+    # Fetch Referral History
+    referred_users = db_get_all("SELECT first_name, username, joined_date FROM users WHERE referred_by = ? ORDER BY joined_date DESC LIMIT 10", (user.id,))
+    
+    text = "➿➿➿➿➿➿➿➿➿➿➿\n💰 𝗥𝗲𝗳𝗲𝗿 & 𝗲𝗮𝗿𝗻 ⛓\n➿➿➿➿➿➿➿➿➿➿➿\n\n"
+    text += f"📲 Har successful refer par milenge: `{ref_reward}` Credits\n"
+    text += f"🔗 **Aapka Referral Link:**\n`{ref_link}`\n\n"
+    
+    text += f"📜 **Aapki Referral History (Total: {len(referred_users)}):**\n━━━━━━━━━━━━━━━━━━━━\n"
+    if not referred_users:
+        text += "_Abhi tak kisi ko refer nahi kiya hai._\n"
+    else:
+        for idx, ref_u in enumerate(referred_users, 1):
+            uname = f"@{ref_u['username']}" if ref_u['username'] and ref_u['username'] != 'NoUsername' else "No Username"
+            text += f"{idx}. **{ref_u['first_name']}** ({uname}) — _{ref_u['joined_date']}_\n"
+            
+    refer_keyboard = [
+        [InlineKeyboardButton("📤 Share Friend", url="https://t.me/share/url?url=" + ref_link + "&text=Join%20this%20awesome%20OSINT%20bot%20and%20get%20free%20credits!")],
+        [InlineKeyboardButton("💳 Buy Credits", callback_data="buy_credits_btn")]
+    ]
+    await update.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(refer_keyboard))
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = "🟢 **LIVE API HEALTH STATUS**\n━━━━━━━━━━━━━━━━━━━━\n• Supabase Lookup API: `🟢 Online`\n• Pincode API: `🟢 Online`\n• Telegram Lookup API: `🟢 Online`\n• IP Info API: `🟢 Online`\n• Aadhaar API: `🟢 Online`"
@@ -824,6 +819,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("✅ *Feature Maintenance Message Successfully Updated!*", parse_mode='Markdown')
             return
 
+        if context.user_data.get('waiting_for_clone_ref_count'):
+            new_count = text.strip()
+            if new_count.isdigit():
+                db_execute("UPDATE settings SET value = ? WHERE key = 'clone_req_ref'", (new_count,), commit=True)
+                context.user_data['waiting_for_clone_ref_count'] = False
+                await update.message.reply_text(f"✅ Clone referral requirement successfully updated to: `{new_count}`", parse_mode='Markdown')
+            else:
+                await update.message.reply_text("❌ Kripya koi valid digit enter karein (jaise `5` ya `10`).")
+            return
+
+        if context.user_data.get('waiting_for_ref_reward'):
+            new_reward = text.strip()
+            if new_reward.isdigit():
+                db_execute("UPDATE settings SET value = ? WHERE key = 'ref_reward_credits'", (new_reward,), commit=True)
+                context.user_data['waiting_for_ref_reward'] = False
+                await update.message.reply_text(f"✅ Referral reward credits successfully updated to: `{new_reward}` credits per refer!", parse_mode='Markdown')
+            else:
+                await update.message.reply_text("❌ Kripya koi valid digit enter karein (jaise `2` ya `5`).")
+            return
+
         if context.user_data.get('waiting_for_force_channels'):
             new_channels = text.strip()
             db_execute("UPDATE settings SET value = ? WHERE key = 'force_channels'", (new_channels,), commit=True)
@@ -865,6 +880,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("✅ *Aapka Clone Bot Successfully Register Ho Chuka Hai!*", parse_mode='Markdown')
             return
 
+        if context.user_data.get('waiting_for_api_url'):
+            api_k = context.user_data.get('target_api_key')
+            new_url = text.strip()
+            db_execute("UPDATE dynamic_apis SET api_url = ? WHERE api_key = ?", (new_url, api_k), commit=True)
+            context.user_data['waiting_for_api_url'] = False
+            context.user_data['target_api_key'] = None
+            await update.message.reply_text(f"✅ API URL for `{api_k}` successfully updated!", parse_mode='Markdown')
+            return
+
+        if context.user_data.get('waiting_for_api_old'):
+            api_k = context.user_data.get('target_api_key')
+            new_old = text.strip()
+            db_execute("UPDATE dynamic_apis SET old_credit = ? WHERE api_key = ?", (new_old, api_k), commit=True)
+            context.user_data['waiting_for_api_old'] = False
+            context.user_data['target_api_key'] = None
+            await update.message.reply_text(f"✅ Old watermark text for `{api_k}` successfully updated!", parse_mode='Markdown')
+            return
+
+        if context.user_data.get('waiting_for_api_new'):
+            api_k = context.user_data.get('target_api_key')
+            new_new = text.strip()
+            db_execute("UPDATE dynamic_apis SET new_credit = ? WHERE api_key = ?", (new_new, api_k), commit=True)
+            context.user_data['waiting_for_api_new'] = False
+            context.user_data['target_api_key'] = None
+            await update.message.reply_text(f"✅ New watermark text for `{api_k}` successfully updated!", parse_mode='Markdown')
+            return
+
     # Check Individual Feature Maintenance
     def check_feat_maint(f_key):
         row = db_get_one("SELECT status, message FROM feature_maint WHERE feature_key = ?", (f_key,))
@@ -886,9 +928,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_m and not is_admin_user(user.id):
             await update.message.reply_text("🚧 " + m_msg, parse_mode='Markdown')
             return
-        if context.bot.username != BOT_USERNAME and not is_admin_user(user.id):
-            await update.message.reply_text("❌ Clone bots par kewal **Number Info** search ki permission hai!", parse_mode='Markdown')
-            return
         context.user_data['mode'] = 'pincode'
         db_execute("UPDATE analytics SET count = count + 1 WHERE feature_name = 'Pincode Info'", commit=True)
         await update.message.reply_text("📍 *Pincode Lookup Mode Active*\nKripya ab koi bhi valid 6-digit Indian PIN code bhejein (jaise `411001`):", parse_mode='Markdown')
@@ -897,9 +936,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_m, m_msg = check_feat_maint('ip_info')
         if is_m and not is_admin_user(user.id):
             await update.message.reply_text("🚧 " + m_msg, parse_mode='Markdown')
-            return
-        if context.bot.username != BOT_USERNAME and not is_admin_user(user.id):
-            await update.message.reply_text("❌ Clone bots par kewal **Number Info** search ki permission hai!", parse_mode='Markdown')
             return
         context.user_data['mode'] = 'ip_info'
         db_execute("UPDATE analytics SET count = count + 1 WHERE feature_name = 'IP Info'", commit=True)
@@ -910,9 +946,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_m and not is_admin_user(user.id):
             await update.message.reply_text("🚧 " + m_msg, parse_mode='Markdown')
             return
-        if context.bot.username != BOT_USERNAME and not is_admin_user(user.id):
-            await update.message.reply_text("❌ Clone bots par kewal **Number Info** search ki permission hai!", parse_mode='Markdown')
-            return
         context.user_data['mode'] = 'aadhaar_info'
         db_execute("UPDATE analytics SET count = count + 1 WHERE feature_name = 'Aadhaar Info'", commit=True)
         await update.message.reply_text("🆔 *Aadhaar Info Mode Active*\nKripya ab number bhejein:", parse_mode='Markdown')
@@ -921,9 +954,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_m, m_msg = check_feat_maint('tg_info')
         if is_m and not is_admin_user(user.id):
             await update.message.reply_text("🚧 " + m_msg, parse_mode='Markdown')
-            return
-        if context.bot.username != BOT_USERNAME and not is_admin_user(user.id):
-            await update.message.reply_text("❌ Clone bots par kewal **Number Info** search ki permission hai!", parse_mode='Markdown')
             return
         db_execute("UPDATE analytics SET count = count + 1 WHERE feature_name = 'TG To Number'", commit=True)
         tg_keyboard = [
@@ -959,17 +989,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("🚧 " + m_msg, parse_mode='Markdown')
             return
         db_execute("UPDATE analytics SET count = count + 1 WHERE feature_name = 'Refer & Earn'", commit=True)
-        total_refs = db_get_all("SELECT COUNT(*) as cnt FROM users WHERE referred_by = ?", (user.id,))[0]['cnt']
-        total_earn = total_refs * 2
-        bot_uname = context.bot.username
-        ref_link = "https://t.me/" + str(bot_uname) + "?start=" + str(user.id)
-        
-        refer_msg = "➿➿➿➿➿➿➿➿➿➿➿\n💰 𝗥𝗲𝗳𝗲𝗿 & 𝗲𝗮𝗿𝗻 ⛓\n➿➿➿➿➿➿➿➿➿➿➿\n\n📲 ᴛᴏᴛᴀʟ ʀᴇꜰᴇʀꜱ : " + str(total_refs) + " Fʀɪᴇɴᴅꜱ\n💰 Tᴏᴛᴀʟ Eᴀʀɴ :- " + str(total_earn) + " Cʀᴇᴅɪᴛ\n\n➿➿➿➿➿➿\n🔗 ʏᴏᴜʀ ʀᴇꜰᴇʀʀᴀʟ ʟɪɴᴋ:\n`" + ref_link + "`\n\n➿➿➿➿➿➿\n👇 Tᴀᴩ ᴛ𝐨 R𝐞𝐟𝐞𝐫 𝐭𝐨 F𝐫𝐢𝐞𝐧𝐝 ✅:"
-        refer_keyboard = [
-            [InlineKeyboardButton("📤 Share Friend", url="https://t.me/share/url?url=" + ref_link + "&text=Join%20this%20awesome%20OSINT%20bot%20and%20get%20free%20credits!")],
-            [InlineKeyboardButton("💳 Buy Credits", callback_data="buy_credits_btn")]
-        ]
-        await update.message.reply_text(refer_msg, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(refer_keyboard))
+        await ref_command(update, context)
         return
     elif text == "🏆 Leaderboard":
         top_users = db_get_all("SELECT first_name, credits, searches FROM users ORDER BY searches DESC LIMIT 10")
@@ -979,16 +999,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(lb_text, parse_mode='Markdown')
         return
     elif text == "🤖 My Clone Bot":
-        req_ref_setting = db_get_one("SELECT value FROM settings WHERE key='clone_req_ref'")
-        req_refs = int(req_ref_setting['value']) if req_ref_setting else 2
-        user_refs = db_get_all("SELECT COUNT(*) as cnt FROM users WHERE referred_by = ?", (user.id,))[0]['cnt']
-        
-        if user_refs < req_refs and not is_admin_user(user.id):
-            await update.message.reply_text(f"🤖 Kripya pehle apne `{req_refs}` referrals complete karein (Aapke abhi `{user_refs}/{req_refs}` hain) taaki aap apna khud ka clone bot bana sakein!", parse_mode='Markdown')
-            return
+        toggle_setting = db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")
+        is_toggle_on = (toggle_setting['value'] == 'on') if toggle_setting else True
+
+        if is_toggle_on:
+            req_ref_setting = db_get_one("SELECT value FROM settings WHERE key='clone_req_ref'")
+            req_refs = int(req_ref_setting['value']) if req_ref_setting else 2
+            user_refs = db_get_all("SELECT COUNT(*) as cnt FROM users WHERE referred_by = ?", (user.id,))[0]['cnt']
+            
+            if user_refs < req_refs and not is_admin_user(user.id):
+                await update.message.reply_text(f"🤖 Kripya pehle apne `{req_refs}` referrals complete karein (Aapke abhi `{user_refs}/{req_refs}` hain) taaki aap apna khud ka clone bot bana sakein!", parse_mode='Markdown')
+                return
             
         clone_keyboard = [[InlineKeyboardButton("➕ Create New Clone Bot", callback_data="create_clone_prompt")]]
-        await update.message.reply_text("🤖 **MY CLONE BOT MANAGER**\n\nAapne apne referrals complete kar liye hain! Neeche diye gaye button par click karke apna bot clone setup karein:", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(clone_keyboard))
+        await update.message.reply_text("🤖 **MY CLONE BOT MANAGER**\n\nNeeche diye gaye button par click karke apna bot clone setup karein:", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(clone_keyboard))
         return
     elif text == "🔙 Back to Main Menu":
         context.user_data['mode'] = None
@@ -1005,14 +1029,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total_searches = db_get_one("SELECT COUNT(*) as count FROM searches")['count']
         maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
+        clone_ref_val = db_get_one("SELECT value FROM settings WHERE key='clone_req_ref'")['value']
+        clone_toggle_val = db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")['value']
+        ref_reward_val = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")['value']
         
-        panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `🟢 Online`\n        "
+        panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 Current UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🚧 Maintenance Mode: `{maint.upper()}`\n🤖 Clone Refs Req: `{clone_ref_val}` (Status: `{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n⚡ API Status: `🟢 Online`\n        "
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
-            [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
-            [InlineKeyboardButton("📢 ⚙️ Multi-Channel", callback_data="admin_forcechan_prompt"), InlineKeyboardButton("🖼️ ⚙️️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
+            [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
+            [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -1021,7 +1049,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Check verification & credits before executing any search/mode
     user_data = db_get_one("SELECT phone_number, is_banned FROM users WHERE user_id = ?", (user.id,))
-    if not user_data or user_data.get('is_banned') == 1:
+    if not user_data or user_data.get('is_banned'] == 1:
         await update.message.reply_text("❌ Aapko bot use karne se block kar diya gaya hai.")
         return
     if not user_data.get('phone_number') or not user_data['phone_number']:
@@ -1038,7 +1066,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if mode == 'aadhaar_info':
         aadhaar_str = text
         msg = await update.message.reply_text("🆔 *INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
-        data = await get_aadhaar_info(aadhaar_str)
+        data = await fetch_dynamic_api('aadhaar_info', aadhaar_str)
         await show_hacking_animation(msg, aadhaar_str, title_type="AADHAAR")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "AADHAAR:" + aadhaar_str, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
@@ -1049,7 +1077,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif mode == 'ip_info':
         ip_str = text
         msg = await update.message.reply_text("🌐 *IP INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
-        data = await get_ip_info(ip_str)
+        data = await fetch_dynamic_api('ip_info', ip_str)
         await show_hacking_animation(msg, ip_str, title_type="IP")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "IP:" + ip_str, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
@@ -1060,7 +1088,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif mode == 'tg_username':
         query_str = text if text.startswith('@') else '@' + text
         msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERNAME INTEL BREACH*\nInitializing...", parse_mode='Markdown')
-        data = await get_tg_username_info(query_str)
+        data = await fetch_dynamic_api('tg_username', query_str)
         await show_hacking_animation(msg, query_str, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_USER:" + query_str, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
@@ -1070,8 +1098,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = None
     elif mode == 'tg_userid':
         userid_str = cleaned
-        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERID INTEL BREACH*\nInitializing...", parse_mode='Markdown')
-        data = await get_tg_userid_info(userid_str)
+        msg = await update.message.reply_text("🕵️️‍♂️ *TELEGRAM USERID INTEL BREACH*\nInitializing...", parse_mode='Markdown')
+        data = await fetch_dynamic_api('tg_userid', userid_str)
         await show_hacking_animation(msg, userid_str, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_ID:" + userid_str, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
@@ -1082,7 +1110,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif mode == 'pincode' or (len(cleaned) == 6 and len(text) == 6 and not mode):
         pincode = cleaned
         msg = await update.message.reply_text("📍 *PINCODE INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
-        data = await get_pincode_info(pincode)
+        data = await fetch_dynamic_api('pincode', pincode)
         await show_hacking_animation(msg, pincode, title_type="PINCODE")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "PIN:" + pincode, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
@@ -1093,7 +1121,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif mode == 'phone' or (10 <= len(cleaned) <= 15):
         phone = cleaned
         msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
-        data = await get_phone_info(phone)
+        data = await fetch_dynamic_api('phone', phone)
         await show_hacking_animation(msg, phone, title_type="PHONE")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, phone, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
@@ -1136,23 +1164,71 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total_searches = db_get_one("SELECT COUNT(*) as count FROM searches")['count']
         maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
+        clone_ref_val = db_get_one("SELECT value FROM settings WHERE key='clone_req_ref'")['value']
+        clone_toggle_val = db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")['value']
+        ref_reward_val = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")['value']
         
-        panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `🟢 Online`\n        "
+        panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 Current UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🚧 Maintenance Mode: `{maint.upper()}`\n🤖 Clone Refs Req: `{clone_ref_val}` (Status: `{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n⚡ API Status: `🟢 Online`\n        "
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
-            [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
-            [InlineKeyboardButton("📢 ⚙️ Multi-Channel", callback_data="admin_forcechan_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
+            [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
+            [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         try: await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: pass
         
+    elif data == "admin_dynamic_apis":
+        apis = db_get_all("SELECT * FROM dynamic_apis")
+        text = "🌐 *DYNAMIC API MANAGER*\n━━━━━━━━━━━━━━━━━━━━\nSelect an API to configure URL or Watermark Replacement:\n\n"
+        keyboard = []
+        for ap in apis:
+            text += f"• **{ap['api_name']}** (`{ap['api_key']}`)\n  `{ap['api_url']}`\n  _Old Text: {ap['api_key']} -> New: {ap['new_credit']}_\n\n"
+            keyboard.append([
+                InlineKeyboardButton(f"🔗 URL: {ap['api_name']}", callback_data=f"edit_api_url_{ap['api_key']}"),
+                InlineKeyboardButton(f"✍️ Old/New", callback_data=f"edit_api_wm_{ap['api_key']}")
+            ])
+        keyboard.append([InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")])
+        try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        except: pass
+
+    elif data.startswith("edit_api_url_"):
+        api_k = data.replace("edit_api_url_", "")
+        context.user_data['waiting_for_api_url'] = True
+        context.user_data['target_api_key'] = api_k
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"🌐 Enter new API URL for `{api_k}` (Use `{query}` as placeholder):", parse_mode='Markdown')
+
+    elif data.startswith("edit_api_wm_"):
+        api_k = data.replace("edit_api_wm_", "")
+        context.user_data['waiting_for_api_old'] = True
+        context.user_data['target_api_key'] = api_k
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"✍️ Enter **old text / watermark** to replace for `{api_k}`:", parse_mode='Markdown')
+
+    elif data == "admin_toggle_clone_ref":
+        curr = db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")
+        new_val = 'off' if curr and curr['value'] == 'on' else 'on'
+        db_execute("UPDATE settings SET value = ? WHERE key = 'clone_ref_toggle'", (new_val,), commit=True)
+        await query.answer(f"✅ Clone Referral Requirement is now {new_val.upper()}!", show_alert=True)
+        query.data = "admin_panel"
+        await button_callback(update, context)
+
+    elif data == "admin_cloneref_prompt":
+        context.user_data['waiting_for_clone_ref_count'] = True
+        curr_ref = db_get_one("SELECT value FROM settings WHERE key='clone_req_ref'")['value']
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"👥 **Set Clone Referral Requirement**\n\nCurrent required referrals: `{curr_ref}`\n\nAb naya number bhejein (jaise `5` ya `10`):", parse_mode='Markdown')
+
+    elif data == "admin_refreward_prompt":
+        context.user_data['waiting_for_ref_reward'] = True
+        curr_rew = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")['value']
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"🎁 **Set Referral Reward Credits**\n\nCurrent reward credits per refer: `{curr_rew}`\n\nAb naya credit amount bhejein (jaise `2` ya `5`):", parse_mode='Markdown')
+
     elif data == "admin_feature_maint":
         feats = db_get_all("SELECT * FROM feature_maint")
-        text = "🛠️️ *FEATURE-WISE MAINTENANCE MANAGER*\n━━━━━━━━━━━━━━━━━━━━\n"
+        text = "🛠️ *FEATURE-WISE MAINTENANCE MANAGER*\n━━━━━━━━━━━━━━━━━━━━\n"
         keyboard = []
         for f in feats:
             status_icon = "🟢 ACTIVE" if f['status'] == 'off' else "🔴 UNDER WORK"
@@ -1291,11 +1367,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + new_val.upper() + "`\n⚡ API Status: `🟢 Online`\n        "
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
-            [InlineKeyboardButton("📢 ⚙️ Multi-Channel", callback_data="admin_forcechan_prompt"), InlineKeyboardButton("🖼️ ⚙ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -1425,7 +1501,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (STABLE STATE & MAINTENANCE FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (REFERRAL HISTORY & CUSTOM QUANTITY ADDED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
