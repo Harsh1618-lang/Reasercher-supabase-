@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# Number & Pincode Info Bot - Ultimate Fixed Edition
+# Number & Pincode Info Bot - Ultimate Bulletproof Edition
 """
 Developer: HARSH
-Description: Advanced OSINT Phone & Pincode Lookup Telegram Bot with Instant Zero-Lag Admin Panel & Safe Pincode JSON Parsing
+Description: Advanced OSINT Phone & Pincode Lookup Telegram Bot with Zero-Lag Admin Panel & Comprehensive Error Handlers
 """
 
 import os
@@ -199,116 +199,89 @@ async def show_hacking_animation(msg_obj, target_str, is_pincode=False):
     for text, bar in steps:
         try:
             await msg_obj.edit_text(f"{title}\nTarget: `{target_str}`\n\n{text}\n`{bar}`", parse_mode='Markdown')
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.05)
         except:
             pass
 
 # ============================================
-# FORMAT RESPONSE (PHONE LOOKUP)
+# SAFE FORMAT RESPONSES (PREVENTING CRASHES & LIMITS)
 # ============================================
 def format_response(data, phone):
-    if not data or (isinstance(data, dict) and data.get('status') == False):
-        error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
-        return f"❌ Error: {error_msg}"
-    
-    actual_results = []
-    
     try:
+        if not data or (isinstance(data, dict) and data.get('status') == False):
+            error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
+            return f"❌ Error: {error_msg}"
+        
+        actual_results = []
         if isinstance(data, dict):
             res_layer1 = data.get('result', data)
             if isinstance(res_layer1, dict):
                 res_layer2 = res_layer1.get('result', res_layer1)
                 if isinstance(res_layer2, dict):
                     val = res_layer2.get('result')
-                    if isinstance(val, list):
-                        actual_results.extend(val)
+                    if isinstance(val, list): actual_results.extend(val)
+                    elif isinstance(val, dict): actual_results.append(val)
+                elif isinstance(res_layer2, list): actual_results.extend(res_layer2)
+            elif isinstance(res_layer1, list): actual_results.extend(res_layer1)
+
+        if not actual_results:
+            if isinstance(data, dict):
+                for key in ['result', 'results', 'data', 'payload', 'response']:
+                    val = data.get(key)
+                    if isinstance(val, list): actual_results.extend(val)
                     elif isinstance(val, dict):
-                        actual_results.append(val)
-                elif isinstance(res_layer2, list):
-                    actual_results.extend(res_layer2)
-            elif isinstance(res_layer1, list):
-                actual_results.extend(res_layer1)
-    except Exception:
-        pass
+                        for sub_key in ['result', 'results', 'data', 'records']:
+                            sub_val = val.get(sub_key)
+                            if isinstance(sub_val, list): actual_results.extend(sub_val)
+                            elif isinstance(sub_val, dict): actual_results.append(sub_val)
+                        if not actual_results: actual_results.append(val)
+                if not actual_results: actual_results = [data]
+            elif isinstance(data, list): actual_results = data
 
-    if not actual_results:
-        if isinstance(data, dict):
-            for key in ['result', 'results', 'data', 'payload', 'response']:
-                val = data.get(key)
-                if isinstance(val, list):
-                    actual_results.extend(val)
-                elif isinstance(val, dict):
-                    for sub_key in ['result', 'results', 'data', 'records']:
-                        sub_val = val.get(sub_key)
-                        if isinstance(sub_val, list):
-                            actual_results.extend(sub_val)
-                        elif isinstance(sub_val, dict):
-                            actual_results.append(sub_val)
-                    if not actual_results:
-                        actual_results.append(val)
-            if not actual_results:
-                actual_results = [data]
-        elif isinstance(data, list):
-            actual_results = data
+        if not actual_results: actual_results = [data]
 
-    if not actual_results:
-        actual_results = [data]
+        results_list = []
+        for i, rec in enumerate(actual_results, 1):
+            if not isinstance(rec, dict): rec = {}
+            results_list.append({
+                "address": str(rec.get('address') or rec.get('Address') or 'N/A'),
+                "circle": str(rec.get('circle') or rec.get('operator') or 'N/A'),
+                "email": str(rec.get('email') or 'N/A'),
+                "father_name": str(rec.get('fname') or rec.get('father_name') or 'N/A'),
+                "id": str(rec.get('aadhar') or rec.get('id') or 'N/A'),
+                "name": str(rec.get('name') or rec.get('FullName') or 'Unknown'),
+                "number": str(rec.get('mobile', rec.get('phone', phone))),
+                "result": f"Result {i}"
+            })
 
-    results_list = []
-    for i, rec in enumerate(actual_results, 1):
-        if not isinstance(rec, dict):
-            rec = {}
-        
-        name = rec.get('name') or rec.get('FullName') or rec.get('owner_name') or 'Unknown'
-        fname = rec.get('fname') or rec.get('father_name') or rec.get('FatherName') or 'N/A'
-        address = rec.get('address') or rec.get('Address') or 'N/A'
-        circle = rec.get('circle') or rec.get('operator') or 'N/A'
-        email = rec.get('email') or 'N/A'
-        aadhar_val = rec.get('aadhar') or rec.get('id') or 'N/A'
+        json_output = {
+            "data": {
+                "country": "India",
+                "number": str(phone),
+                "result_count": len(results_list),
+                "results": results_list,
+                "total_records": len(results_list)
+            },
+            "status": True,
+            "Dev": "@RAJFFLIVE",
+            "Bot": "@RAJFFLIVEBOT"
+        }
+        json_str = json.dumps(json_output, indent=2, ensure_ascii=False)
+        if len(json_str) > 3900:
+            json_str = json.dumps({"status": True, "note": "Trimmed due to length", "results": results_list[:5]}, indent=2, ensure_ascii=False)
+        return f"```json\n{json_str}\n```"
+    except Exception as e:
+        return f"❌ Parsing Error: {str(e)}"
 
-        results_list.append({
-            "address": address,
-            "circle": circle,
-            "email": email,
-            "father_name": fname,
-            "id": aadhar_val,
-            "name": name,
-            "number": rec.get('mobile', rec.get('phone', phone)),
-            "result": f"Result {i}"
-        })
-
-    json_output = {
-        "data": {
-            "country": "India",
-            "number": phone,
-            "result_count": len(results_list),
-            "results": results_list,
-            "total_records": len(results_list),
-            "total_results": len(results_list)
-        },
-        "query": phone,
-        "response_time": "0.45s",
-        "status": True,
-        "Dev": "@RAJFFLIVE",
-        "Channel": "https://t.me/+QUg-JvyJizkxMzAl",
-        "Bot": "@RAJFFLIVEBOT"
-    }
-
-    return f"```json\n{json.dumps(json_output, indent=4, ensure_ascii=False)}\n```"
-
-# ============================================
-# FORMAT PINCODE RESPONSE (TELEGRAM LIMIT SAFE)
-# ============================================
 def format_pincode_response(data, pincode):
     try:
         if not data or not isinstance(data, dict):
-            return f"❌ Error: Invalid response received from Pincode API."
+            return "❌ Error: Invalid response received from Pincode API."
         
         records = data.get('records', [])
         formatted_records = []
         for idx, rec in enumerate(records, 1):
-            if not isinstance(rec, dict):
-                rec = {}
+            if not isinstance(rec, dict): rec = {}
             formatted_records.append({
                 "record_id": str(idx),
                 "office_name": str(rec.get('office_name', 'N/A')),
@@ -320,22 +293,20 @@ def format_pincode_response(data, pincode):
                 "pincode": str(rec.get('pincode', pincode))
             })
 
-        # Limit records to 12 if too many to prevent Telegram 4096 character limit crash
-        if len(formatted_records) > 12:
-            formatted_records = formatted_records[:12]
+        # Safeguard against Telegram message size limit (Max 4096)
+        if len(formatted_records) > 8:
+            formatted_records = formatted_records[:8]
 
         json_output = {
-            "api_info": {"pincode_mega_info_v1": True},
             "status": "success",
             "pincode": str(pincode),
             "total_records_shown": len(formatted_records),
             "records": formatted_records,
             "Dev": "@RAJFFLIVE",
-            "Channel": "https://t.me/+QUg-JvyJizkxMzAl",
             "Bot": "@RAJFFLIVEBOT"
         }
 
-        json_str = json.dumps(json_output, indent=4, ensure_ascii=False)
+        json_str = json.dumps(json_output, indent=2, ensure_ascii=False)
         return f"```json\n{json_str}\n```"
     except Exception as e:
         return f"❌ Error formatting pincode data: {str(e)}"
@@ -511,8 +482,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = context.user_data.get('mode', None)
     cleaned = re.sub(r'\D', '', text)
 
-    if mode == 'pincode' or (len(cleaned) == 6 and mode != 'phone'):
-        pincode = cleaned if len(cleaned) == 6 else text
+    # Bulletproof conditional check for Pincode vs Phone
+    if mode == 'pincode' or (len(cleaned) == 6 and len(text) == 6 and not mode):
+        pincode = cleaned
         msg = await update.message.reply_text("📍 *PINCODE INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
         await show_hacking_animation(msg, pincode, is_pincode=True)
         
@@ -521,7 +493,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         
         formatted = format_pincode_response(data, pincode)
-        await msg.edit_text(formatted, parse_mode='Markdown')
+        try:
+            await msg.edit_text(formatted, parse_mode='Markdown')
+        except Exception:
+            await msg.edit_text(formatted, parse_mode=None) # Fallback to plain text if markdown fails
         context.user_data['mode'] = None
     elif mode == 'phone' or (10 <= len(cleaned) <= 15):
         phone = cleaned
@@ -533,7 +508,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         
         formatted = format_response(data, phone)
-        await msg.edit_text(formatted, parse_mode='Markdown')
+        try:
+            await msg.edit_text(formatted, parse_mode='Markdown')
+        except Exception:
+            await msg.edit_text(formatted, parse_mode=None)
         context.user_data['mode'] = None
     else:
         await update.message.reply_text("❌ Kripya valid 10-digit mobile number ya 6-digit PIN code bhejein.", parse_mode='Markdown')
@@ -727,7 +705,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (PINCODE LIMIT FIX EDITION)...")
+    print("🚀 HARSH OSINT BOT STARTING (BULLETPROOF EDITION)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
