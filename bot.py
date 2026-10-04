@@ -427,7 +427,7 @@ def format_pincode_response(data, pincode):
 
 def format_tg_response(data, query_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status'] == False and 'error' in data):
+        if not data or (isinstance(data, dict) and data.get('status') == False and 'error' in data):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return "❌ Error: " + error_msg
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
