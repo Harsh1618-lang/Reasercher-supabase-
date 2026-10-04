@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Complete Edition
+# OSINT & Pincode Bot - Ultimate Copy-Friendly & Feature Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Clean Aadhaar JSON, Feature-Wise Maintenance, IP Info, Multi-Channel Force Join, Anti-Flood & All Working Features
+Description: Advanced Telegram OSINT Bot with Copy-Friendly Formats, Clean Aadhaar JSON, Feature-Wise Maintenance, IP Info, Multi-Channel Force Join, Anti-Flood & All Working Features
 """
 
 import os
@@ -379,7 +379,7 @@ def parse_phone_records(data, phone):
         return [], "❌ Parsing Error: " + str(e)
 
 # ============================================
-# STYLISH CHUNKED PHONE SENDER & AUTO-DELETE TXT
+# STYLISH CHUNKED PHONE SENDER & AUTO-DELETE TXT (COPY FRIENDLY FORMAT)
 # ============================================
 async def send_stylish_chunked_response(msg_obj, records, phone, update, context):
     total = len(records)
@@ -387,31 +387,29 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update, context
         await msg_obj.edit_text("❌ Koi record nahi mila.")
         return
 
-    chunk_size = 3
+    chunk_size = 2  # Clean copy-friendly chunks
     first_chunk = True
     sent_message_ids = [msg_obj.message_id]
 
     for i in range(0, total, chunk_size):
         chunk = records[i:i+chunk_size]
         
-        text = "┌─── 📱 **NUMBER INTELLIGENCE** ───┐\n"
-        text += "🎯 **Query:** `" + str(phone) + "`\n"
-        text += "📊 **Records Found:** " + str(total) + "\n"
-        text += "└──────────────────────────────┘\n\n"
+        text = "📱 **NUMBER INTELLIGENCE REPORT**\n"
+        text += "🎯 Target: `" + str(phone) + "`\n"
+        text += "📊 Total Records: " + str(total) + "\n━━━━━━━━━━━━━━━━━━━━\n\n"
 
         for idx, rec in enumerate(chunk, start=i+1):
-            text += "┌─── **RECORD #" + str(idx) + "** ───┐\n"
-            text += "👤 **NAME:** " + rec['name'] + "\n"
-            text += "👨‍👧 **FATHER:** " + rec['father'] + "\n"
-            text += "📱 **MOBILE:** " + rec['mobile'] + "\n"
-            text += "📞 **ALT NUM:** " + rec['alt_num'] + "\n"
-            text += "🌐 **CIRCLE:** " + rec['circle'] + "\n"
-            text += "📧 **EMAIL:** " + rec['email'] + "\n"
-            text += "🆔 **CAF / ID:** " + rec['caf_id'] + "\n"
-            text += "🏠 **ADDRESS:**\n" + rec['address'] + "\n"
-            text += "└──────────────────────────────┘\n\n"
+            text += f"🔹 **RECORD #{idx}**\n"
+            text += f"👤 Name: `{rec['name']}`\n"
+            text += f"👨‍👧 Father: `{rec['father']}`\n"
+            text += f"📱 Mobile: `{rec['mobile']}`\n"
+            text += f"📞 Alt Num: `{rec['alt_num']}`\n"
+            text += f"🌐 Circle: `{rec['circle']}`\n"
+            text += f"📧 Email: `{rec['email']}`\n"
+            text += f"🆔 CAF / ID: `{rec['caf_id']}`\n"
+            text += f"🏠 Address:\n`{rec['address']}`\n\n━━━━━━━━━━━━━━━━━━━━\n"
 
-        text += "⚡ Developed by " + OWNER_USERNAME + " | Bot: " + BOT_USERNAME
+        text += "⚡ Developed by " + OWNER_USERNAME
 
         if first_chunk:
             await msg_obj.edit_text(text, parse_mode='Markdown')
@@ -431,15 +429,15 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update, context
         file_content += "=========================================\n\n"
 
         for idx, rec in enumerate(records, start=1):
-            file_content += "--- RECORD #" + str(idx) + " ---\n"
-            file_content += "NAME: " + rec['name'] + "\n"
-            file_content += "FATHER: " + rec['father'] + "\n"
-            file_content += "MOBILE: " + rec['mobile'] + "\n"
-            file_content += "ALT NUM: " + rec['alt_num'] + "\n"
-            file_content += "CIRCLE: " + rec['circle'] + "\n"
-            file_content += "EMAIL: " + rec['email'] + "\n"
-            file_content += "CAF / ID: " + rec['caf_id'] + "\n"
-            file_content += "ADDRESS: " + rec['address'] + "\n\n"
+            file_content += f"--- RECORD #{idx} ---\n"
+            file_content += f"NAME: {rec['name']}\n"
+            file_content += f"FATHER: {rec['father']}\n"
+            file_content += f"MOBILE: {rec['mobile']}\n"
+            file_content += f"ALT NUM: {rec['alt_num']}\n"
+            file_content += f"CIRCLE: {rec['circle']}\n"
+            file_content += f"EMAIL: {rec['email']}\n"
+            file_content += f"CAF / ID: {rec['caf_id']}\n"
+            file_content += f"ADDRESS: {rec['address']}\n\n"
 
         file_name = "report_" + str(phone) + ".txt"
         with open(file_name, "w", encoding="utf-8") as f:
@@ -459,7 +457,7 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update, context
     asyncio.create_task(schedule_message_deletion(context, update.effective_chat.id, sent_message_ids, doc_msg_id))
 
 # ============================================
-# RESPONSE FORMATTERS
+# RESPONSE FORMATTERS (COPY FRIENDLY & CLEAN)
 # ============================================
 def format_pincode_response(data, pincode):
     try:
@@ -488,9 +486,7 @@ def format_pincode_response(data, pincode):
             "status": "success",
             "pincode": str(pincode),
             "total_records_shown": len(formatted_records),
-            "records": formatted_records,
-            "Developed by": OWNER_USERNAME,
-            "Bot": BOT_USERNAME
+            "records": formatted_records
         }
 
         json_str = json.dumps(json_output, indent=2, ensure_ascii=False)
@@ -500,7 +496,7 @@ def format_pincode_response(data, pincode):
 
 def format_tg_response(data, query_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status') == False and 'error' in data):
+        if not data or (isinstance(data, dict) and data.get('status'] == False and 'error' in data):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return "❌ Error: " + error_msg
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
@@ -528,7 +524,7 @@ def format_aadhaar_response(data, query_str):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return "❌ Error: " + error_msg
         
-        # Hide developer, owner, and channel details
+        # Hide developer, owner, and channel details cleanly
         if isinstance(data, dict):
             data.pop('developer', None)
             data.pop('owner', None)
@@ -1436,7 +1432,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (ADMIN PANEL FULLY RESTORED)...")
+    print("🚀 HARSH OSINT BOT STARTING (COPY-FRIENDLY & ALL FEATURES ACTIVE)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
