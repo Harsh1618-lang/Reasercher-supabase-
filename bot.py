@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Final Maintenance Working Edition
+# OSINT & Pincode Bot - Final Fixed Admin Callback Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Fully Working Feature-Wise Maintenance, Dynamic APIs & All Features Intact
+Description: Advanced Telegram OSINT Bot with Fully Working Feature Maintenance Callback & All Features Intact
 """
 
 import os
@@ -361,7 +361,7 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update, context
         for idx, rec in enumerate(chunk, start=i+1):
             text += f"🔹 **RECORD #{idx}**\n"
             text += f"👤 Name: `{rec['name']}`\n"
-            text += f"👨‍👧 Father: `{rec['father']}`\n"
+            text += f"👨‍‍👧 Father: `{rec['father']}`\n"
             text += f"📱 Mobile: `{rec['mobile']}`\n"
             text += f"📞 Alt Num: `{rec['alt_num']}`\n"
             text += f"🌐 Circle: `{rec['circle']}`\n"
@@ -1032,7 +1032,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 Current UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🚧 Maintenance Mode: `{maint.upper()}`\n🤖 Clone Refs Req: `{clone_ref_val}` (Status: `{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n⚡ API Status: `🟢 Online`\n        "
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
@@ -1171,57 +1171,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
             [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
-            [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🎁 ⚙️️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         try: await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: pass
         
-    elif data == "admin_dynamic_apis":
-        apis = db_get_all("SELECT * FROM dynamic_apis")
-        text = "🌐 *DYNAMIC API MANAGER*\n━━━━━━━━━━━━━━━━━━━━\nSelect an API to configure URL or Watermark Replacement:\n\n"
-        keyboard = []
-        for ap in apis:
-            text += f"• **{ap['api_name']}** (`{ap['api_key']}`)\n  `{ap['api_url']}`\n  _Old Text: {ap['old_credit']} -> New: {ap['new_credit']}_\n\n"
-            keyboard.append([
-                InlineKeyboardButton(f"🔗 URL: {ap['api_name']}", callback_data=f"edit_api_url_{ap['api_key']}"),
-                InlineKeyboardButton(f"✍️ Old/New", callback_data=f"edit_api_wm_{ap['api_key']}")
-            ])
-        keyboard.append([InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")])
-        try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
-        except: pass
-
-    elif data.startswith("edit_api_url_"):
-        api_k = data.replace("edit_api_url_", "")
-        context.user_data['waiting_for_api_url'] = True
-        context.user_data['target_api_key'] = api_k
-        await context.bot.send_message(chat_id=query.from_user.id, text=f"🌐 Enter new API URL for `{api_k}` (Use `{{query}}` as placeholder):", parse_mode='Markdown')
-
-    elif data.startswith("edit_api_wm_"):
-        api_k = data.replace("edit_api_wm_", "")
-        context.user_data['waiting_for_api_old'] = True
-        context.user_data['target_api_key'] = api_k
-        await context.bot.send_message(chat_id=query.from_user.id, text=f"✍️️ Enter **old text / watermark** to replace for `{api_k}`:", parse_mode='Markdown')
-
-    elif data == "admin_toggle_clone_ref":
-        curr = db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")
-        new_val = 'off' if curr and curr['value'] == 'on' else 'on'
-        db_execute("UPDATE settings SET value = ? WHERE key = 'clone_ref_toggle'", (new_val,), commit=True)
-        await query.answer(f"✅ Clone Referral Requirement is now {new_val.upper()}!", show_alert=True)
-        query.data = "admin_panel"
-        await button_callback(update, context)
-
-    elif data == "admin_cloneref_prompt":
-        context.user_data['waiting_for_clone_ref_count'] = True
-        curr_ref = db_get_one("SELECT value FROM settings WHERE key='clone_req_ref'")['value']
-        await context.bot.send_message(chat_id=query.from_user.id, text=f"👥 **Set Clone Referral Requirement**\n\nCurrent required referrals: `{curr_ref}`\n\nAb naya number bhejein (jaise `5` ya `10`):", parse_mode='Markdown')
-
-    elif data == "admin_refreward_prompt":
-        context.user_data['waiting_for_ref_reward'] = True
-        curr_rew = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")['value']
-        await context.bot.send_message(chat_id=query.from_user.id, text=f"🎁 **Set Referral Reward Credits**\n\nCurrent reward credits per refer: `{curr_rew}`\n\nAb naya credit amount bhejein (jaise `2` ya `5`):", parse_mode='Markdown')
-
     elif data == "admin_feature_maint":
         feats = db_get_all("SELECT * FROM feature_maint")
         text = "🛠️ *FEATURE-WISE MAINTENANCE MANAGER*\n━━━━━━━━━━━━━━━━━━━━\n"
@@ -1247,6 +1203,50 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['waiting_for_maint_msg'] = True
         context.user_data['target_maint_feat'] = f_key
         await context.bot.send_message(chat_id=query.from_user.id, text=f"💬 Enter new custom message for feature `{f_key}`:", parse_mode='Markdown')
+
+    elif data == "admin_dynamic_apis":
+        apis = db_get_all("SELECT * FROM dynamic_apis")
+        text = "🌐 *DYNAMIC API MANAGER*\n━━━━━━━━━━━━━━━━━━━━\nSelect an API to configure URL or Watermark Replacement:\n\n"
+        keyboard = []
+        for ap in apis:
+            text += f"• **{ap['api_name']}** (`{ap['api_key']}`)\n  `{ap['api_url']}`\n  _Old Text: {ap['old_credit']} -> New: {ap['new_credit']}_\n\n"
+            keyboard.append([
+                InlineKeyboardButton(f"🔗 URL: {ap['api_name']}", callback_data=f"edit_api_url_{ap['api_key']}"),
+                InlineKeyboardButton(f"✍️ Old/New", callback_data=f"edit_api_wm_{ap['api_key']}")
+            ])
+        keyboard.append([InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")])
+        try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        except: pass
+
+    elif data.startswith("edit_api_url_"):
+        api_k = data.replace("edit_api_url_", "")
+        context.user_data['waiting_for_api_url'] = True
+        context.user_data['target_api_key'] = api_k
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"🌐 Enter new API URL for `{api_k}` (Use `{{query}}` as placeholder):", parse_mode='Markdown')
+
+    elif data.startswith("edit_api_wm_"):
+        api_k = data.replace("edit_api_wm_", "")
+        context.user_data['waiting_for_api_old'] = True
+        context.user_data['target_api_key'] = api_k
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"✍️ Enter **old text / watermark** to replace for `{api_k}`:", parse_mode='Markdown')
+
+    elif data == "admin_toggle_clone_ref":
+        curr = db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")
+        new_val = 'off' if curr and curr['value'] == 'on' else 'on'
+        db_execute("UPDATE settings SET value = ? WHERE key = 'clone_ref_toggle'", (new_val,), commit=True)
+        await query.answer(f"✅ Clone Referral Requirement is now {new_val.upper()}!", show_alert=True)
+        query.data = "admin_panel"
+        await button_callback(update, context)
+
+    elif data == "admin_cloneref_prompt":
+        context.user_data['waiting_for_clone_ref_count'] = True
+        curr_ref = db_get_one("SELECT value FROM settings WHERE key='clone_req_ref'")['value']
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"👥 **Set Clone Referral Requirement**\n\nCurrent required referrals: `{curr_ref}`\n\nAb naya number bhejein (jaise `5` ya `10`):", parse_mode='Markdown')
+
+    elif data == "admin_refreward_prompt":
+        context.user_data['waiting_for_ref_reward'] = True
+        curr_rew = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")['value']
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"🎁 **Set Referral Reward Credits**\n\nCurrent reward credits per refer: `{curr_rew}`\n\nAb naya credit amount bhejein (jaise `2` ya `5`):", parse_mode='Markdown')
 
     elif data == "admin_live_analytics":
         live_count = len(active_live_users)
@@ -1497,7 +1497,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (SYNTAX FULLY FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (FEATURE MAINTENANCE FULLY FIXED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
@@ -1517,7 +1517,6 @@ def main():
     application.add_handler(CommandHandler("maint", maint_command))
     application.add_handler(CommandHandler("addplan", addplan_command))
     application.add_handler(CommandHandler("createcoupon", createcoupon_command))
-    application.add_handler(CommandHandler("admin_addsub_prompt", addsub_command)) # Handled via text prompt / commands
     application.add_handler(CommandHandler("addsub", addsub_command))
     application.add_handler(CommandHandler("addcredits", addcredits_command))
     application.add_handler(CommandHandler("broadcast", broadcast_command))
