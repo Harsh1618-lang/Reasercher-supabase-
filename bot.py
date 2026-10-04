@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# Number & Pincode Info Bot - Ultimate Bulletproof Edition
+# Number & Pincode Info Bot - Multi-Record Chunked Edition
 """
 Developer: HARSH
-Description: Advanced OSINT Phone & Pincode Lookup Telegram Bot with Zero-Lag Admin Panel & Comprehensive Error Handlers
+Description: Advanced OSINT Phone & Pincode Lookup Telegram Bot with Multi-Record Chunking & Zero-Lag Admin Panel
 """
 
 import os
@@ -204,13 +204,13 @@ async def show_hacking_animation(msg_obj, target_str, is_pincode=False):
             pass
 
 # ============================================
-# SAFE FORMAT RESPONSES (PREVENTING CRASHES & LIMITS)
+# PREPARE ALL RECORDS WITHOUT TRUNCATION
 # ============================================
-def format_response(data, phone):
+def build_phone_json(data, phone):
     try:
         if not data or (isinstance(data, dict) and data.get('status') == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
-            return f"❌ Error: {error_msg}"
+            return None, f"❌ Error: {error_msg}"
         
         actual_results = []
         if isinstance(data, dict):
@@ -254,7 +254,7 @@ def format_response(data, phone):
                 "result": f"Result {i}"
             })
 
-        json_output = {
+        full_json = {
             "data": {
                 "country": "India",
                 "number": str(phone),
@@ -266,12 +266,49 @@ def format_response(data, phone):
             "Dev": "@RAJFFLIVE",
             "Bot": "@RAJFFLIVEBOT"
         }
-        json_str = json.dumps(json_output, indent=2, ensure_ascii=False)
-        if len(json_str) > 3900:
-            json_str = json.dumps({"status": True, "note": "Trimmed due to length", "results": results_list[:5]}, indent=2, ensure_ascii=False)
-        return f"```json\n{json_str}\n```"
+        return full_json, None
     except Exception as e:
-        return f"❌ Parsing Error: {str(e)}"
+        return None, f"❌ Parsing Error: {str(e)}"
+
+# ============================================
+# CHUNKED SENDER FOR ALL RECORDS
+# ============================================
+async def send_chunked_phone_response(msg_obj, full_json_dict, phone):
+    results = full_json_dict['data']['results']
+    total = len(results)
+    
+    if total <= 5:
+        json_str = json.dumps(full_json_dict, indent=2, ensure_ascii=False)
+        await msg_obj.edit_text(f"```json\n{json_str}\n```", parse_mode='Markdown')
+        return
+
+    # If more records exist, split into batches of 5 records per message
+    chunk_size = 5
+    first_chunk = True
+    
+    for i in range(0, total, chunk_size):
+        chunk_results = results[i:i+chunk_size]
+        chunk_dict = {
+            "data": {
+                "country": "India",
+                "number": str(phone),
+                "result_count": total,
+                "showing_range": f"Records {i+1} to {min(i+chunk_size, total)}",
+                "results": chunk_results,
+                "total_records": total
+            },
+            "status": True,
+            "Dev": "@RAJFFLIVE",
+            "Bot": "@RAJFFLIVEBOT"
+        }
+        json_str = json.dumps(chunk_dict, indent=2, ensure_ascii=False)
+        formatted_text = f"```json\n{json_str}\n```"
+        
+        if first_chunk:
+            await msg_obj.edit_text(formatted_text, parse_mode='Markdown')
+            first_chunk = False
+        else:
+            await msg_obj.reply_text(formatted_text, parse_mode='Markdown')
 
 def format_pincode_response(data, pincode):
     try:
@@ -293,9 +330,8 @@ def format_pincode_response(data, pincode):
                 "pincode": str(rec.get('pincode', pincode))
             })
 
-        # Safeguard against Telegram message size limit (Max 4096)
-        if len(formatted_records) > 8:
-            formatted_records = formatted_records[:8]
+        if len(formatted_records) > 15:
+            formatted_records = formatted_records[:15]
 
         json_output = {
             "status": "success",
@@ -331,7 +367,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
         db_execute("INSERT OR IGNORE INTO users (user_id, username, first_name, credits) VALUES (?, ?, ?, ?)",
                    (user.id, user.username or "NoUsername", user.first_name, 2), commit=True)
-        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     await send_welcome_menu(update, context, user)
@@ -482,7 +518,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = context.user_data.get('mode', None)
     cleaned = re.sub(r'\D', '', text)
 
-    # Bulletproof conditional check for Pincode vs Phone
     if mode == 'pincode' or (len(cleaned) == 6 and len(text) == 6 and not mode):
         pincode = cleaned
         msg = await update.message.reply_text("📍 *PINCODE INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
@@ -496,7 +531,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await msg.edit_text(formatted, parse_mode='Markdown')
         except Exception:
-            await msg.edit_text(formatted, parse_mode=None) # Fallback to plain text if markdown fails
+            await msg.edit_text(formatted, parse_mode=None)
         context.user_data['mode'] = None
     elif mode == 'phone' or (10 <= len(cleaned) <= 15):
         phone = cleaned
@@ -507,11 +542,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, phone, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         
-        formatted = format_response(data, phone)
-        try:
-            await msg.edit_text(formatted, parse_mode='Markdown')
-        except Exception:
-            await msg.edit_text(formatted, parse_mode=None)
+        full_json, err = build_phone_json(data, phone)
+        if err:
+            await msg.edit_text(err)
+        else:
+            await send_chunked_phone_response(msg, full_json, phone)
         context.user_data['mode'] = None
     else:
         await update.message.reply_text("❌ Kripya valid 10-digit mobile number ya 6-digit PIN code bhejein.", parse_mode='Markdown')
@@ -705,7 +740,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (BULLETPROOF EDITION)...")
+    print("🚀 HARSH OSINT BOT STARTING (MULTI-RECORD CHUNKED EDITION)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
