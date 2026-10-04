@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - 100% Working Stable Edition
+# OSINT & Pincode Bot - Final Fixed Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with My Status, DM Owner, Balance, Auto-Deleting Reports, TXT Download, Banner & Fast Lookups
+Description: Advanced Telegram OSINT Bot with Working Maintenance Toggle, Manage Plans, Status, DM, Balance & Lookups
 """
 
 import os
@@ -665,7 +665,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     current_time = time.time()
     if user.id in user_cooldowns and not is_admin_user(user.id):
         if current_time - user_cooldowns[user.id] < 3:
-            await update.message.reply_text("⚠️️ Thoda dheere type karein! Spam protection active hai.")
+            await update.message.reply_text("⚠️ Thoda dheere type karein! Spam protection active hai.")
             return
     user_cooldowns[user.id] = current_time
 
@@ -742,7 +742,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if mode == 'tg_username':
         query_str = text if text.startswith('@') else '@' + text
-        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERNAME INTEL BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("🕵️️‍♂️ *TELEGRAM USERNAME INTEL BREACH*\nInitializing...", parse_mode='Markdown')
         data = await get_tg_username_info(query_str)
         await show_hacking_animation(msg, query_str, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_USER:" + query_str, json.dumps(data)), commit=True)
@@ -808,7 +808,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
+            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
             [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -839,9 +839,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = "📦 *Manage Subscription Plans*\n━━━━━━━━━━━━━━━━━━━━\n"
         for p in plans:
             text += "🆔 ID: `" + str(p['id']) + "` | **" + p['name'] + "**\n💰 Price: `" + str(p['price']) + "` | 💎 Credits: `" + str(p['credits']) + "`\n--------------------\n"
-        keyboard = [[InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")]]
+        text += "\n💡 To add a new plan, use command:\n`/addplan <name> <price> <credits>`\n(Example: `/addplan Ultra ₹299 100`)"
+        keyboard = [
+            [InlineKeyboardButton("➕ Add Plan Prompt", callback_data="admin_addplan_prompt")],
+            [InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")]
+        ]
         try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: pass
+
+    elif data == "admin_addplan_prompt":
+        await context.bot.send_message(chat_id=query.from_user.id, text="💡 To add a plan, use command:\n`/addplan <name> <price> <credits>`", parse_mode='Markdown')
 
     elif data == "admin_setupi_prompt":
         if query.from_user.id != ADMIN_ID: return
@@ -862,7 +869,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=query.from_user.id, text="💡 To add a sub-admin, use command:\n`/addsub <user_id>`", parse_mode='Markdown')
 
     elif data == "toggle_maintenance":
-        if query.from_user.id != ADMIN_ID: return
         current = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
         new_val = 'off' if current == 'on' else 'on'
         db_execute("UPDATE settings SET value = ? WHERE key = 'maintenance'", (new_val,), commit=True)
@@ -898,6 +904,20 @@ async def maint_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🚧 Maintenance Mode **ON**\nReason: `" + reason + "`", parse_mode='Markdown')
     else:
         await update.message.reply_text("🚧 Maintenance Mode set to `" + status.upper() + "`", parse_mode='Markdown')
+
+async def addplan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin_user(update.effective_user.id): return
+    if len(context.args) < 3:
+        await update.message.reply_text("❌ Usage: `/addplan <name> <price> <credits>`\n(Example: `/addplan Ultra ₹299 100`)", parse_mode='Markdown')
+        return
+    name = context.args[0]
+    price = context.args[1]
+    try:
+        credits = int(context.args[2])
+        db_execute("INSERT INTO plans (name, price, credits) VALUES (?, ?, ?)", (name, price, credits), commit=True)
+        await update.message.reply_text("✅ Plan `" + name + "` added successfully!", parse_mode='Markdown')
+    except Exception as e:
+        await update.message.reply_text("❌ Error adding plan: " + str(e))
 
 async def userhistory_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin_user(update.effective_user.id): return
@@ -983,7 +1003,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (ALL FEATURES SECURED)...")
+    print("🚀 HARSH OSINT BOT STARTING (ALL FIXES APPLIED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
@@ -999,6 +1019,7 @@ def main():
     application.add_handler(CommandHandler("unban", unban_command))
     application.add_handler(CommandHandler("setupi", setupi_command))
     application.add_handler(CommandHandler("maint", maint_command))
+    application.add_handler(CommandHandler("addplan", addplan_command))
     application.add_handler(CommandHandler("createcoupon", createcoupon_command))
     application.add_handler(CommandHandler("addsub", addsub_command))
     application.add_handler(CommandHandler("addcredits", addcredits_command))
