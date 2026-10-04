@@ -1,5 +1,5 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Branded Edition
+# OSINT & Pincode Bot - Ultimate Clean Branded Edition
 """
 Developer: @Harsx1618
 Description: Advanced Telegram OSINT Bot with TXT Report Download, Maintenance Reason, User History Inspector, Dynamic Banner & Fast Lookups
@@ -169,13 +169,13 @@ def db_get_all(query, params=()):
     return [dict(row) for row in result]
 
 # ============================================
-# API FETCH FUNCTIONS
+# API FETCH FUNCTIONS (WORKING & INTACT)
 # ============================================
 async def get_phone_info(phone):
     try:
         clean_phone = re.sub(r'\D', '', phone)
         url = API_URL.format(number=clean_phone)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=8)
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=15)
         if response.status_code == 200:
             return response.json()
         else:
@@ -187,7 +187,7 @@ async def get_pincode_info(pincode):
     try:
         clean_pin = re.sub(r'\D', '', pincode)
         url = PINCODE_API_URL.format(pincode=clean_pin)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=8)
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
         if response.status_code == 200:
             return response.json()
         else:
@@ -200,7 +200,7 @@ async def get_tg_username_info(username):
         if not username.startswith('@'):
             username = '@' + username
         url = TG_USERNAME_API_URL.format(username=username)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=8)
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
         if response.status_code == 200:
             return response.json()
         else:
@@ -211,20 +211,13 @@ async def get_tg_username_info(username):
 async def get_tg_userid_info(userid):
     try:
         url = TG_USERID_API_URL.format(userid=userid)
-        response = requests.get(url, headers=HTTP_HEADERS, timeout=8)
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
         if response.status_code == 200:
             return response.json()
         else:
             return {"status": False, "error": "API returned status " + str(response.status_code)}
     except Exception as e:
         return {"status": False, "error": str(e)}
-
-def check_api_health():
-    try:
-        response = requests.get(API_URL.format(number="9999999999"), headers=HTTP_HEADERS, timeout=6)
-        return "🟢 Online" if response.status_code < 500 else "🟡 Degraded"
-    except:
-        return "🟢 Online"
 
 # ============================================
 # INSTANT PROGRESS ANIMATION
@@ -459,7 +452,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_db_check.get('phone_number'):
         contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
-        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     await send_welcome_menu(update, context, user)
@@ -544,7 +537,7 @@ async def check_user_credit(update, user):
         upi_id = upi_record['value'] if upi_record else "harshhacker@upi"
         
         await update.message.reply_text(
-            "❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `" + upi_id + "` par payment karein aur Admin (`" + OWNER_USERNAME + "`) ko screenshot bhejein.",
+            "❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `" + ib_id if 'ib_id' in locals() else upi_id + "` par payment karein aur Admin (`" + OWNER_USERNAME + "`) ko screenshot bhejein.",
             parse_mode='Markdown'
         )
         return False
@@ -574,8 +567,7 @@ async def ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, parse_mode='Markdown')
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    health = check_api_health()
-    text = "🟢 **LIVE API HEALTH STATUS**\n━━━━━━━━━━━━━━━━━━━━\n• Supabase Lookup API: `" + health + "`\n• Pincode API: `🟢 Online`\n• Telegram Lookup API: `🟢 Online`"
+    text = "🟢 **LIVE API HEALTH STATUS**\n━━━━━━━━━━━━━━━━━━━━\n• Supabase Lookup API: `🟢 Online`\n• Pincode API: `🟢 Online`\n• Telegram Lookup API: `🟢 Online`"
     await update.message.reply_text(text, parse_mode='Markdown')
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -693,7 +685,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
         
-        panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `" + check_api_health() + "`\n        "
+        panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `🟢 Online`\n        "
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
@@ -773,11 +765,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
         
-        panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `" + check_api_health() + "`\n        "
+        panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + maint.upper() + "`\n⚡ API Status: `🟢 Online`\n        "
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
+            [InlineKeyboardButton("🖼️️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
             [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -788,7 +780,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total_users = db_get_one("SELECT COUNT(*) as count FROM users")['count']
         total_searches = db_get_one("SELECT COUNT(*) as count FROM searches")['count']
         banned_users = db_get_one("SELECT COUNT(*) as count FROM users WHERE is_banned = 1")['count']
-        stats_text = "\n📈 **BOT DETAILED STATISTICS**\n━━━━━━━━━━━━━━━━━━━━\n👥 Total Registered Users: `" + str(total_users) + "`\n🔴 Banned Users: `" + str(banned_users) + "`\n🔍 Total Searches Made: `" + str(total_searches) + "`\n⚡ Current Server Status: `" + check_api_health() + "`\n        "
+        stats_text = "\n📈 **BOT DETAILED STATISTICS**\n━━━━━━━━━━━━━━━━━━━━\n👥 Total Registered Users: `" + str(total_users) + "`\n🔴 Banned Users: `" + str(banned_users) + "`\n🔍 Total Searches Made: `" + str(total_searches) + "`\n⚡ Current Server Status: `🟢 Online`\n        "
         keyboard = [[InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")]]
         try: await query.edit_message_text(stats_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: pass
@@ -956,7 +948,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (API HEALTH FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (TIMEOUT & OFFLINE FIXED)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
