@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Clean Branded Edition
+# OSINT & Pincode Bot - Ultimate Privacy Edition with Auto-Delete
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with TXT Report Download, Maintenance Reason, User History Inspector, Dynamic Banner & Fast Lookups
+Description: Advanced Telegram OSINT Bot with Auto-Deleting Reports, TXT Download, Maintenance, Banner & Fast Lookups
 """
 
 import os
@@ -220,13 +220,29 @@ async def get_tg_userid_info(userid):
         return {"status": False, "error": str(e)}
 
 # ============================================
+# AUTO-DELETE BACKGROUND TASK
+# ============================================
+async def schedule_message_deletion(context, chat_id, message_ids, doc_message_id=None):
+    await asyncio.sleep(30)
+    for msg_id in message_ids:
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
+        except:
+            pass
+    if doc_message_id:
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=doc_message_id)
+        except:
+            pass
+
+# ============================================
 # INSTANT PROGRESS ANIMATION
 # ============================================
 async def show_hacking_animation(msg_obj, target_str, title_type="PHONE"):
     if title_type == "PINCODE":
         title = "📍 PINCODE INTELLIGENCE BREACH"
     elif title_type == "TG":
-        title = "🕵️‍♂️ TELEGRAM INTEL BREACH"
+        title = "🕵️‍♂️️ TELEGRAM INTEL BREACH"
     else:
         title = "💻 SYSTEM BREACH IN PROGRESS"
         
@@ -290,9 +306,9 @@ def parse_phone_records(data, phone):
         return [], "❌ Parsing Error: " + str(e)
 
 # ============================================
-# STYLISH CHUNKED PHONE SENDER & TXT FILE GENERATOR
+# STYLISH CHUNKED PHONE SENDER & AUTO-DELETE TXT
 # ============================================
-async def send_stylish_chunked_response(msg_obj, records, phone, update):
+async def send_stylish_chunked_response(msg_obj, records, phone, update, context):
     total = len(records)
     if total == 0:
         await msg_obj.edit_text("❌ Koi record nahi mila.")
@@ -300,6 +316,7 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update):
 
     chunk_size = 3
     first_chunk = True
+    sent_message_ids = [msg_obj.message_id]
 
     for i in range(0, total, chunk_size):
         chunk = records[i:i+chunk_size]
@@ -328,8 +345,10 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update):
             first_chunk = False
         else:
             await asyncio.sleep(0.05)
-            await msg_obj.reply_text(text, parse_mode='Markdown')
+            reply_msg = await update.message.reply_text(text, parse_mode='Markdown')
+            sent_message_ids.append(reply_msg.message_id)
 
+    doc_msg_id = None
     try:
         file_content = "=========================================\n"
         file_content += "      OSINT NUMBER INTELLIGENCE REPORT\n"
@@ -354,14 +373,18 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update):
             f.write(file_content)
 
         with open(file_name, "rb") as f:
-            await update.message.reply_document(
+            doc_msg = await update.message.reply_document(
                 document=InputFile(f, filename=file_name),
-                caption="📁 **Downloadable Report File**\nTarget: `" + str(phone) + "`",
+                caption="📁 **Downloadable Report File (Auto-deletes in 30s)**\nTarget: `" + str(phone) + "`",
                 parse_mode='Markdown'
             )
+            doc_msg_id = doc_msg.message_id
         os.remove(file_name)
     except Exception as e:
         print("Error sending file: " + str(e))
+
+    # Trigger background auto-delete task after 30 seconds
+    asyncio.create_task(schedule_message_deletion(context, update.effective_chat.id, sent_message_ids, doc_msg_id))
 
 # ============================================
 # PINCODE & TG RESPONSE FORMATTERS
@@ -452,7 +475,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_db_check.get('phone_number'):
         contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
-        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     await send_welcome_menu(update, context, user)
@@ -537,7 +560,7 @@ async def check_user_credit(update, user):
         upi_id = upi_record['value'] if upi_record else "harshhacker@upi"
         
         await update.message.reply_text(
-            "❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `" + ib_id if 'ib_id' in locals() else upi_id + "` par payment karein aur Admin (`" + OWNER_USERNAME + "`) ko screenshot bhejein.",
+            "❌ **Aapke credits khatam ho chuke hain!**\n\nKripya UPI ID: `" + upi_id + "` par payment karein aur Admin (`" + OWNER_USERNAME + "`) ko screenshot bhejein.",
             parse_mode='Markdown'
         )
         return False
@@ -743,7 +766,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         records, err = parse_phone_records(data, phone)
         if err: await msg.edit_text(err)
-        else: await send_stylish_chunked_response(msg, records, phone, update)
+        else: await send_stylish_chunked_response(msg, records, phone, update, context)
         context.user_data['mode'] = None
     else:
         await update.message.reply_text("❌ Kripya valid input enter karein (Mobile Number, Pincode, ya TG query).", parse_mode='Markdown')
@@ -769,7 +792,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🖼️️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
+            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
             [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -948,7 +971,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (TIMEOUT & OFFLINE FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (AUTO-DELETE & WORKING LOOKUPS)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
