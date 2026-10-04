@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Final Fixed Deployment Edition
+# OSINT & Pincode Bot - Ultimate Fail-Safe Telegram Fix Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Fixed Syntax, Working Feature Maintenance, Backup API Failover & All Features Intact
+Description: Advanced Telegram OSINT Bot with Fallback Default APIs, Fixed TG Lookups, Maintenance & All Features Intact
 """
 
 import os
@@ -232,24 +232,32 @@ async def check_multi_force_subscription(bot, user_id):
     return len(unjoined) == 0, unjoined
 
 # ============================================
-# DYNAMIC API FETCH HELPER WITH FAILOVER (BACKUP API)
+# DYNAMIC API FETCH HELPER WITH FAILOVER & FALLBACK DEFAULTS
 # ============================================
 async def fetch_dynamic_api(api_key, query_val, timeout_sec=15):
     api_record = db_get_one("SELECT * FROM dynamic_apis WHERE api_key = ?", (api_key,))
-    if not api_record:
-        return {"status": False, "error": "API not configured"}
     
     urls_to_try = []
-    if api_record.get('api_url'):
+    if api_record and api_record.get('api_url'):
         urls_to_try.append(api_record['api_url'].strip())
-    if api_record.get('backup_url') and api_record['backup_url'].strip():
+    if api_record and api_record.get('backup_url') and api_record['backup_url'].strip():
         urls_to_try.append(api_record['backup_url'].strip())
 
+    # Fallback default hardcoded URLs if database is empty for these keys
     if not urls_to_try:
-        return {"status": False, "error": "No API URL configured in Admin Panel"}
+        if api_key == 'phone':
+            urls_to_try.append("https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={query}")
+        elif api_key == 'pincode':
+            urls_to_try.append("https://rack-pincodeapi.vercel.app/api?search={query}")
+        elif api_key == 'ip_info':
+            urls_to_try.append("https://oriss-ip-info-api.antideploy.com/ip/{query}")
+        elif api_key == 'aadhaar_info':
+            urls_to_try.append("https://nitin-vio-api-paid-best.boyu3054.workers.dev/aadhaar?key=FZ-UJKAHS8A2ABUJA8LBBK9&aadhaar={query}")
+        elif api_key in ['tg_username', 'tg_userid']:
+            urls_to_try.append("https://felix-info-x-bot.onrender.com/key=felix67&tg={query}")
 
-    old_c = api_record['old_credit'] or ""
-    new_c = api_record['new_credit'] or ""
+    old_c = api_record['old_credit'] if api_record and api_record.get('old_credit') else ""
+    new_c = api_record['new_credit'] if api_record and api_record.get('new_credit') else ""
 
     for target_template in urls_to_try:
         target_url = target_template.replace("{query}", str(query_val))
@@ -565,7 +573,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_db_check.get('phone_number') or not user_db_check['phone_number']:
         contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
-        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     is_joined, unjoined_channels = await check_multi_force_subscription(context.bot, user.id)
@@ -1117,7 +1125,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = None
     elif mode == 'tg_userid':
         userid_str = cleaned
-        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERID INTEL BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("🕵️‍♂️️ *TELEGRAM USERID INTEL BREACH*\nInitializing...", parse_mode='Markdown')
         data = await fetch_dynamic_api('tg_userid', userid_str)
         await show_hacking_animation(msg, userid_str, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_ID:" + userid_str, json.dumps(data)), commit=True)
@@ -1425,7 +1433,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
             [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
-            [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("🖼️ ⚙️️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -1561,7 +1569,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (FINAL SYNTAX FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (FINAL SYNTAX FIXED & BACKUP API ADDED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
