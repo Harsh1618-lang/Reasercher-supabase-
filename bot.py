@@ -1,5 +1,5 @@
 #!/usr/init/env python3
-# Number & Pincode Info Bot - Lightning Fast Admin Edition
+# Number & Pincode Info Bot - Lightning Fast Edition
 """
 Developer: HARSH
 Description: Advanced OSINT Phone & Pincode Lookup Telegram Bot with Instant Zero-Lag Admin Panel & Multi-Record JSON
@@ -72,7 +72,7 @@ def init_database():
         joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         searches INTEGER DEFAULT 0,
         credits INTEGER DEFAULT 2,
-        is_banned INTEGER INTEGER DEFAULT 0,
+        is_banned INTEGER DEFAULT 0,
         is_admin INTEGER DEFAULT 0
     )''')
     
@@ -199,7 +199,7 @@ async def show_hacking_animation(msg_obj, target_str, is_pincode=False):
     for text, bar in steps:
         try:
             await msg_obj.edit_text(f"{title}\nTarget: `{target_str}`\n\n{text}\n`{bar}`", parse_mode='Markdown')
-            await asyncio.sleep(0.15)
+            await asyncio.sleep(0.1)
         except:
             pass
 
@@ -297,13 +297,47 @@ def format_response(data, phone):
     return f"```json\n{json.dumps(json_output, indent=4, ensure_ascii=False)}\n```"
 
 # ============================================
-# FORMAT PINCODE RESPONSE
+# FORMAT PINCODE RESPONSE (OPTIMIZED)
 # ============================================
 def format_pincode_response(data, pincode):
     if not data or (isinstance(data, dict) and data.get('status') != 'success'):
-        return f"❌ Error: Pincode data not found or invalid pincode."
+        error_msg = data.get('error', 'Pincode data not found') if isinstance(data, dict) else 'Pincode data not found'
+        return f"❌ Error: {error_msg}"
     
-    return f"```json\n{json.dumps(data, indent=4, ensure_ascii=False)}\n```"
+    # Ensure all records from the pincode API are cleanly structured
+    records = data.get('records', [])
+    formatted_records = []
+    for idx, rec in enumerate(records, 1):
+        if not isinstance(rec, dict):
+            rec = {}
+        formatted_records.append({
+            "record_id": str(idx),
+            "office_name": rec.get('office_name', 'N/A'),
+            "description": rec.get('description', 'N/A'),
+            "branch_type": rec.get('branch_type', 'N/A'),
+            "delivery_status": rec.get('delivery_status', 'N/A'),
+            "circle": rec.get('circle', 'N/A'),
+            "district": rec.get('district', 'N/A'),
+            "division": rec.get('division', 'N/A'),
+            "region": rec.get('region', 'N/A'),
+            "block": rec.get('block', 'N/A'),
+            "state": rec.get('state', 'N/A'),
+            "country": rec.get('country', 'India'),
+            "pincode": rec.get('pincode', pincode)
+        })
+
+    json_output = {
+        "api_info": data.get('api_info', {"pincode_mega_info_v1": True}),
+        "status": "success",
+        "pincode": pincode,
+        "total_records_found": len(formatted_records),
+        "records": formatted_records,
+        "Dev": "@RAJFFLIVE",
+        "Channel": "https://t.me/+QUg-JvyJizkxMzAl",
+        "Bot": "@RAJFFLIVEBOT"
+    }
+
+    return f"```json\n{json.dumps(json_output, indent=4, ensure_ascii=False)}\n```"
 
 # ============================================
 # TELEGRAM HANDLERS
@@ -346,7 +380,7 @@ Neeche diye gaye menu se option select karein ya direct number/pincode bhejein!
     
     menu_keyboard = [
         [KeyboardButton("🔍 Number Info"), KeyboardButton("📍 Pincode Info")],
-        [KeyboardButton("💎 Buy Premium / Credits"), KeyboardButton("🛠️️ Toggle Menu")]
+        [KeyboardButton("💎 Buy Premium / Credits"), KeyboardButton("🛠️ Toggle Menu")]
     ]
     if is_admin_user(user.id):
         menu_keyboard.append([KeyboardButton("📊 Admin Panel")])
@@ -530,7 +564,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ⚡ API Status: `{check_api_health()}`
         """
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
@@ -692,7 +726,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (PINCODE LOOKUP INTEGRATED)...")
+    print("🚀 HARSH OSINT BOT STARTING (PINCODE FIX EDITION)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
