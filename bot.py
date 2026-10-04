@@ -1,5 +1,5 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Loaded Edition with TXT File Download Support
+# OSINT & Pincode Bot - Ultimate Branded Edition
 """
 Developer: @Harsx1618
 Description: Advanced Telegram OSINT Bot with TXT Report Download, Maintenance Reason, User History Inspector, Dynamic Banner & Fast Lookups
@@ -50,6 +50,7 @@ except ImportError:
 BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Bot Token
 ADMIN_ID = 1420016904                                           # Main Admin ID
 OWNER_USERNAME = "@Harsx1618"                                   # Owner Username
+BOT_USERNAME = "@Reasercherinfobot"                             # Bot Username
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
 PINCODE_API_URL = "https://rack-pincodeapi.vercel.app/api?search={pincode}"
 TG_USERNAME_API_URL = "https://felix-info-x-bot.onrender.com/key=felix67&tg={username}"
@@ -327,7 +328,7 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update):
             text += f"🏠 **ADDRESS:**\n{rec['address']}\n"
             text += f"└──────────────────────────────┘\n\n"
 
-        text += f"⚡ Developed by {@Harsx1618} | Bot: @Reasercherinfobot"
+        text += f"⚡ Developed by {@Harsx1618} | Bot: {@Reasercherinfobot}"
 
         if first_chunk:
             await msg_obj.edit_text(text, parse_mode='Markdown')
@@ -336,7 +337,6 @@ async def send_stylish_chunked_response(msg_obj, records, phone, update):
             await asyncio.sleep(0.05)
             await msg_obj.reply_text(text, parse_mode='Markdown')
 
-    # Generate and send report.txt file for download
     try:
         file_content = f"=========================================\n"
         file_content += f"      OSINT NUMBER INTELLIGENCE REPORT\n"
@@ -402,7 +402,7 @@ def format_pincode_response(data, pincode):
             "total_records_shown": len(formatted_records),
             "records": formatted_records,
             "Developed by": OWNER_USERNAME,
-            "Bot": "@RAJFFLIVEBOT"
+            "Bot": BOT_USERNAME
         }
 
         json_str = json.dumps(json_output, indent=2, ensure_ascii=False)
@@ -715,7 +715,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🖼️️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
+            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
             [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
             [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -989,7 +989,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (TXT REPORT DOWNLOAD LOADED)...")
+    print("🚀 HARSH OSINT BOT STARTING (BRANDED EDITION)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
