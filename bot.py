@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Stable Fix Edition
+# OSINT & Pincode Bot - Ultimate Syntax Fixed Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Fixed State Routing, Working Maintenance & All Features Intact
+Description: Advanced Telegram OSINT Bot with Fixed Syntax, Working Maintenance & All Features Intact
 """
 
 import os
@@ -484,7 +484,7 @@ def format_pincode_response(data, pincode):
 
 def format_tg_response(data, query_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status'] == False and 'error' in data):
+        if not data or (isinstance(data, dict) and data.get('status') == False and 'error' in data):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return "❌ Error: " + error_msg
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
@@ -545,7 +545,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     active_live_users.add(user.id)
     
-    # Reset any lingering waiting states on start
     context.user_data.clear()
     
     maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
@@ -1152,7 +1151,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
-            [InlineKeyboardButton("🛠️️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
+            [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
             [InlineKeyboardButton("📢 ⚙️ Multi-Channel", callback_data="admin_forcechan_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
@@ -1305,7 +1304,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🛠️ ⚙️ Feature Maint.", callback_data="admin_feature_maint"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
-            [InlineKeyboardButton("📢 ⚙️ Multi-Channel", callback_data="admin_forcechan_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("📢 ⚙️ Multi-Channel", callback_data="admin_forcechan_prompt"), InlineKeyboardButton("🖼️ ⚙️️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -1435,7 +1434,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (STABLE STATE & MAINTENANCE FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (SYNTAX ERROR FIXED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
