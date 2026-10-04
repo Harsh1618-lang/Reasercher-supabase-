@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Final Fixed Edition
+# OSINT & Pincode Bot - Ultimate Multi-Channel, Broadcast Inline & Anti-Flood Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Working Maintenance Toggle, Manage Plans, Status, DM, Balance & Lookups
+Description: Advanced Telegram OSINT Bot with Multi-Channel Force Join, Broadcast with Inline Buttons, Anti-Flood Protection, Live Tracking & All Working Features
 """
 
 import os
@@ -61,6 +61,8 @@ HTTP_HEADERS = {
 }
 
 user_cooldowns = {}
+user_flood_tracker = {}
+active_live_users = set()
 
 # ============================================
 # DATABASE SETUP
@@ -113,12 +115,31 @@ def init_database():
         code TEXT PRIMARY KEY,
         credits INTEGER
     )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS clones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_id INTEGER,
+        bot_token TEXT,
+        bot_username TEXT,
+        status TEXT DEFAULT 'Active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS analytics (
+        feature_name TEXT PRIMARY KEY,
+        count INTEGER DEFAULT 0
+    )''')
     
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('maintenance', 'off')")
-    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('maint_msg', 'Bot is currently under maintenance. Please try again later.')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('maint_msg', 'Is feature par kaam chal raha hai, jaldi hi yeh live hoga!')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('upi_id', 'harshhacker@upi')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('banner_media', '')") 
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('banner_type', 'none')") 
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('clone_req_ref', '2')") 
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('force_channels', '')") # Comma separated channels e.g. @chan1,@chan2
+    
+    for feat in ['Number Info', 'Pincode Info', 'TG To Number', 'Refer & Earn']:
+        c.execute("INSERT OR IGNORE INTO analytics (feature_name, count) VALUES (?, 0)", (feat,))
     
     c.execute("SELECT COUNT(*) FROM plans")
     if c.fetchone()[0] == 0:
@@ -167,6 +188,22 @@ def db_get_all(query, params=()):
     result = c.execute(query, params).fetchall()
     conn.close()
     return [dict(row) for row in result]
+
+async def check_multi_force_subscription(bot, user_id):
+    channels_str = db_get_one("SELECT value FROM settings WHERE key='force_channels'")['value']
+    if not channels_str or channels_str.strip() == "":
+        return True, []
+    
+    channels = [ch.strip() for ch in channels_str.split(',') if ch.strip()]
+    unjoined = []
+    for ch in channels:
+        try:
+            member = await bot.get_chat_member(chat_id=ch, user_id=user_id)
+            if member.status not in ['member', 'administrator', 'creator']:
+                unjoined.append(ch)
+        except:
+            unjoined.append(ch)
+    return len(unjoined) == 0, unjoined
 
 # ============================================
 # API FETCH FUNCTIONS (WORKING & INTACT)
@@ -442,10 +479,12 @@ def format_tg_response(data, query_str):
 # ============================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    active_live_users.add(user.id)
+    
     maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
     if maint == 'on' and not is_admin_user(user.id):
         maint_msg = db_get_one("SELECT value FROM settings WHERE key='maint_msg'")['value']
-        await update.message.reply_text("🚧 " + maint_msg)
+        await update.message.reply_text("🚧 " + maint_msg, parse_mode='Markdown')
         return
 
     args = context.args
@@ -477,6 +516,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
+    is_joined, unjoined_channels = await check_multi_force_subscription(context.bot, user.id)
+    if not is_joined:
+        join_buttons = []
+        for ch in unjoined_channels:
+            join_buttons.append([InlineKeyboardButton(f"📢 Join {ch}", url=f"https://t.me/{ch.replace('@', '')}")])
+        join_buttons.append([InlineKeyboardButton("✅ I Have Joined All", callback_data="check_join_btn")])
+        await update.message.reply_text("⚠️ *MULTI-CHANNEL FORCE JOIN REQUIRED*\n\nBot ko use karne ke liye kripya neeche diye gaye sabhi channels ko join karein:", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(join_buttons))
+        return
+
     await send_welcome_menu(update, context, user)
 
 async def send_welcome_menu(update_or_query, context, user):
@@ -488,8 +536,10 @@ async def send_welcome_menu(update_or_query, context, user):
     menu_keyboard = [
         [KeyboardButton("🔍 Number Info"), KeyboardButton("📍 Pincode Info")],
         [KeyboardButton("🔤 TG To Number"), KeyboardButton("💎 My Premium Status")],
-        [KeyboardButton("💰 My Balance"), KeyboardButton("💬 DM Owner")],
-        [KeyboardButton("💎 Buy Premium / Credits"), KeyboardButton("🛠️ Toggle Menu")]
+        [KeyboardButton("💰 My Balance"), KeyboardButton("💬 Owner | Support")],
+        [KeyboardButton("💰 Refer & Earn"), KeyboardButton("🏆 Leaderboard")],
+        [KeyboardButton("🤖 My Clone Bot"), KeyboardButton("💎 Buy Premium / Credits")],
+        [KeyboardButton("🛠 Toggle Menu")]
     ]
     if is_admin_user(user.id):
         menu_keyboard.append([KeyboardButton("📊 Admin Panel")])
@@ -525,6 +575,16 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         username = user.username or "NoUsername"
         db_execute("UPDATE users SET phone_number = ?, username = ? WHERE user_id = ?", (phone_number, username, user.id), commit=True)
         await update.message.reply_text("✅ *Verification Successful!* You now have 2 free credits.", parse_mode='Markdown', reply_markup=ReplyKeyboardRemove())
+        
+        is_joined, unjoined_channels = await check_multi_force_subscription(context.bot, user.id)
+        if not is_joined:
+            join_buttons = []
+            for ch in unjoined_channels:
+                join_buttons.append([InlineKeyboardButton(f"📢 Join {ch}", url=f"https://t.me/{ch.replace('@', '')}")])
+            join_buttons.append([InlineKeyboardButton("✅ I Have Joined All", callback_data="check_join_btn")])
+            await update.message.reply_text("⚠️ *MULTI-CHANNEL FORCE JOIN REQUIRED*\n\nBot ko use karne ke liye kripya neeche diye gaye sabhi channels ko join karein:", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(join_buttons))
+            return
+
         await send_welcome_menu(update, context, user)
     else:
         await update.message.reply_text("❌ Kripya apna khud ka contact share karein.", reply_markup=ReplyKeyboardRemove())
@@ -545,7 +605,10 @@ async def show_premium_plans(update, context):
         
     text += "\n💳 **How to Buy:**\n1. Pay on UPI ID above.\n2. Send payment screenshot to Admin (" + OWNER_USERNAME + ") with your Telegram ID.\n3. Admin will instantly add credits!"
     
-    await update.message.reply_text(text, parse_mode='Markdown')
+    if hasattr(update, 'message') and update.message:
+        await update.message.reply_text(text, parse_mode='Markdown')
+    elif hasattr(update, 'callback_query') and update.callback_query:
+        await update.callback_query.message.reply_text(text, parse_mode='Markdown')
 
 async def check_user_credit(update, user):
     user_data = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
@@ -625,7 +688,7 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     searches = db_get_all("SELECT phone, timestamp FROM searches WHERE user_id = ? ORDER BY timestamp DESC LIMIT 10", (user.id,))
     if not searches:
-        await update.message.reply_text("📜 Aapne abhi tak koi search nahi ki hai.", parse_mode='Markdown')
+        await update.message.reply_text("📜 Aapne abhi तक koi search nahi ki hai.", parse_mode='Markdown')
         return
     text = "📜 *Aapki Pichli 10 Searches:* \n━━━━━━━━━━━━━━━━━━━━\n"
     for s in searches:
@@ -637,6 +700,27 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ============================================
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    active_live_users.add(user.id)
+
+    # Anti-Flood / Auto-Ban Protection
+    current_time = time.time()
+    if not is_admin_user(user.id):
+        if user.id not in user_flood_tracker:
+            user_flood_tracker[user.id] = {"count": 1, "first_time": current_time}
+        else:
+            data = user_flood_tracker[user.id]
+            if current_time - data["first_time"] < 3:
+                data["count"] += 1
+                if data["count"] > 6:
+                    db_execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (user.id,), commit=True)
+                    await update.message.reply_text("🚫 **AUTO-BANNED FOR SPAMMING!**\nAapne bahut tezi se messages bheje, isliye system ne aapko block kar diya hai.")
+                    return
+                elif data["count"] > 3:
+                    await update.message.reply_text("⚠️ **Anti-Flood Warning:** Thoda dheere type karein, warna ban ho sakte hain!")
+                    return
+            else:
+                user_flood_tracker[user.id] = {"count": 1, "first_time": current_time}
+
     text = update.message.text.strip() if update.message.text else ""
 
     if is_admin_user(user.id) and context.user_data.get('waiting_for_banner'):
@@ -662,22 +746,79 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Kripya gallery se koi valid GIF, Video ya Photo bhejein.")
             return
 
-    current_time = time.time()
-    if user.id in user_cooldowns and not is_admin_user(user.id):
-        if current_time - user_cooldowns[user.id] < 3:
-            await update.message.reply_text("⚠️ Thoda dheere type karein! Spam protection active hai.")
-            return
-    user_cooldowns[user.id] = current_time
+    if is_admin_user(user.id) and context.user_data.get('waiting_for_maint_msg'):
+        new_maint_msg = text
+        db_execute("UPDATE settings SET value = ? WHERE key = 'maint_msg'", (new_maint_msg,), commit=True)
+        context.user_data['waiting_for_maint_msg'] = False
+        await update.message.reply_text("✅ *Custom Maintenance Message Successfully Updated!*\n\nNew Message:\n`" + new_maint_msg + "`", parse_mode='Markdown')
+        return
+
+    if is_admin_user(user.id) and context.user_data.get('waiting_for_force_channels'):
+        new_channels = text.strip()
+        db_execute("UPDATE settings SET value = ? WHERE key = 'force_channels'", (new_channels,), commit=True)
+        context.user_data['waiting_for_force_channels'] = False
+        await update.message.reply_text(f"✅ Multi-Channel Force Join successfully set to: `{new_channels}`", parse_mode='Markdown')
+        return
+
+    if is_admin_user(user.id) and context.user_data.get('waiting_for_broadcast'):
+        broadcast_text = text
+        context.user_data['waiting_for_broadcast'] = False
+        
+        # Parse inline buttons if format: text | ButtonName - https://t.me/...
+        inline_keyboard = []
+        if "|" in broadcast_text and "-" in broadcast_text:
+            parts = broadcast_text.split("|")
+            main_msg = parts[0].strip()
+            btn_part = parts[1].strip()
+            if "-" in btn_part:
+                btn_name, btn_url = btn_part.split("-", 1)
+                inline_keyboard.append([InlineKeyboardButton(btn_name.strip(), url=btn_url.strip())])
+        
+        users = db_get_all("SELECT user_id FROM users")
+        sent = 0
+        for u in users:
+            try:
+                if inline_keyboard:
+                    await context.bot.send_message(chat_id=u['user_id'], text=main_msg if 'main_msg' in locals() else broadcast_text, reply_markup=InlineKeyboardMarkup(inline_keyboard), parse_mode='Markdown')
+                else:
+                    await context.bot.send_message(chat_id=u['user_id'], text=broadcast_text, parse_mode='Markdown')
+                sent += 1
+            except: pass
+        await update.message.reply_text(f"📢 Broadcast with inline buttons sent to {sent} users.")
+        return
+
+    if is_admin_user(user.id) and context.user_data.get('waiting_for_clone_token'):
+        token_str = text.strip()
+        bot_username_val = "@CloneBot"
+        db_execute("INSERT INTO clones (owner_id, bot_token, bot_username, status) VALUES (?, ?, ?, ?)", (user.id, token_str, bot_username_val, 'Active'), commit=True)
+        context.user_data['waiting_for_clone_token'] = False
+        await update.message.reply_text("✅ *Aapka Clone Bot Successfully Register Ho Chuka Hai!*\nAb yeh admin panel ke Clone Manager mein dikhega.", parse_mode='Markdown')
+        return
+
+    maint_status = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
+    if maint_status == 'on' and not is_admin_user(user.id):
+        custom_msg = db_get_one("SELECT value FROM settings WHERE key='maint_msg'")['value']
+        await update.message.reply_text("🚧 " + custom_msg, parse_mode='Markdown')
+        return
 
     if text == "🔍 Number Info":
         context.user_data['mode'] = 'phone'
+        db_execute("UPDATE analytics SET count = count + 1 WHERE feature_name = 'Number Info'", commit=True)
         await update.message.reply_text("📱 *Number Info Mode Active*\nKripya ab koi bhi 10-digit mobile number bhejein:", parse_mode='Markdown')
         return
     elif text == "📍 Pincode Info":
+        if context.bot.username != BOT_USERNAME and not is_admin_user(user.id):
+            await update.message.reply_text("❌ Clone bots par kewal **Number Info** search ki permission hai!", parse_mode='Markdown')
+            return
         context.user_data['mode'] = 'pincode'
+        db_execute("UPDATE analytics SET count = count + 1 WHERE feature_name = 'Pincode Info'", commit=True)
         await update.message.reply_text("📍 *Pincode Lookup Mode Active*\nKripya ab koi bhi valid 6-digit Indian PIN code bhejein (jaise `411001`):", parse_mode='Markdown')
         return
     elif text == "🔤 TG To Number":
+        if context.bot.username != BOT_USERNAME and not is_admin_user(user.id):
+            await update.message.reply_text("❌ Clone bots par kewal **Number Info** search ki permission hai!", parse_mode='Markdown')
+            return
+        db_execute("UPDATE analytics SET count = count + 1 WHERE feature_name = 'TG To Number'", commit=True)
         tg_keyboard = [
             [KeyboardButton("👤 Telegram to Username"), KeyboardButton("🆔 Telegram to UserID")],
             [KeyboardButton("🔙 Back to Main Menu")]
@@ -704,9 +845,43 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         credits = user_info['credits'] if user_info else 0
         await update.message.reply_text("💰 *Aapka Current Balance:*\n\n💎 Remaining Credits: `" + str(credits) + " Credits`", parse_mode='Markdown')
         return
-    elif text == "💬 DM Owner":
-        dm_keyboard = [[InlineKeyboardButton("💬 Chat with Owner", url="https://t.me/Harsx1618")]]
-        await update.message.reply_text("💬 **Direct Message Owner**\n\nKisi bhi query ya premium purchase ke liye seedhe owner se chat karein:", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(dm_keyboard))
+    elif text == "💬 Owner | Support":
+        support_text = "💬 *IF YOU FACE ANY ISSUES CONTACT OUR ADMIN*\n\n📲 **Owner / Support Username:** `" + OWNER_USERNAME + "`\n\nKisi bhi madad ke liye seedhe contact karein!"
+        support_keyboard = [[InlineKeyboardButton("💬 Chat with Support Owner", url="https://t.me/" + OWNER_USERNAME.replace('@', ''))]]
+        await update.message.reply_text(support_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(support_keyboard))
+        return
+    elif text == "💰 Refer & Earn":
+        db_execute("UPDATE analytics SET count = count + 1 WHERE feature_name = 'Refer & Earn'", commit=True)
+        total_refs = db_get_all("SELECT COUNT(*) as cnt FROM users WHERE referred_by = ?", (user.id,))[0]['cnt']
+        total_earn = total_refs * 2
+        bot_uname = context.bot.username
+        ref_link = "https://t.me/" + str(bot_uname) + "?start=" + str(user.id)
+        
+        refer_msg = "➿➿➿➿➿➿➿➿➿➿➿\n💰 𝗥𝗲𝗳𝗲𝗿 & 𝗲𝗮𝗿𝗻 ⛓\n➿➿➿➿➿➿➿➿➿➿➿\n\n📲 ᴛᴏᴛᴀʟ ʀᴇꜰᴇʀꜱ : " + str(total_refs) + " Fʀɪᴇɴᴅꜱ\n💰 Tᴏᴛᴀʟ Eᴀʀɴ :- " + str(total_earn) + " Cʀᴇ𝗱ɪᴛ\n\n➿➿➿➿➿➿\n🔗 ʏᴏᴜʀ ʀᴇꜰᴇʀʀᴀʟ ʟɪɴᴋ:\n`" + ref_link + "`\n\n➿➿➿➿➿➿\n👇 Tᴀᴩ ᴛ𝐨 R𝐞𝐟𝐞𝐫 𝐭𝐨 F𝐫𝐢𝐞𝐧𝐝 ✅:"
+        refer_keyboard = [
+            [InlineKeyboardButton("📤 Share Friend", url="https://t.me/share/url?url=" + ref_link + "&text=Join%20this%20awesome%20OSINT%20bot%20and%20get%20free%20credits!")],
+            [InlineKeyboardButton("💳 Buy Credits", callback_data="buy_credits_btn")]
+        ]
+        await update.message.reply_text(refer_msg, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(refer_keyboard))
+        return
+    elif text == "🏆 Leaderboard":
+        top_users = db_get_all("SELECT first_name, credits, searches FROM users ORDER BY searches DESC LIMIT 10")
+        lb_text = "🏆 **TOP SEARCHERS LEADERBOARD**\n━━━━━━━━━━━━━━━━━━━━\n"
+        for idx, u in enumerate(top_users, 1):
+            lb_text += f"{idx}. **{u['first_name']}** — 🔍 Lookups: `{u['searches']}` | 💎 Credits: `{u['credits']}`\n"
+        await update.message.reply_text(lb_text, parse_mode='Markdown')
+        return
+    elif text == "🤖 My Clone Bot":
+        req_ref_setting = db_get_one("SELECT value FROM settings WHERE key='clone_req_ref'")
+        req_refs = int(req_ref_setting['value']) if req_ref_setting else 2
+        user_refs = db_get_all("SELECT COUNT(*) as cnt FROM users WHERE referred_by = ?", (user.id,))[0]['cnt']
+        
+        if user_refs < req_refs and not is_admin_user(user.id):
+            await update.message.reply_text(f"🤖 Kripya pehle apne `{req_refs}` referrals complete karein (Aapke abhi `{user_refs}/{req_refs}` hain) taaki aap apna khud ka clone bot bana sakein!", parse_mode='Markdown')
+            return
+            
+        clone_keyboard = [[InlineKeyboardButton("➕ Create New Clone Bot", callback_data="create_clone_prompt")]]
+        await update.message.reply_text("🤖 **MY CLONE BOT MANAGER**\n\nAapne apne referrals complete kar liye hain! Neeche diye gaye button par click karke apna bot clone setup karein:", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(clone_keyboard))
         return
     elif text == "🔙 Back to Main Menu":
         context.user_data['mode'] = None
@@ -715,7 +890,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "💎 Buy Premium / Credits":
         await show_premium_plans(update, context)
         return
-    elif text == "🛠️ Toggle Menu":
+    elif text == "🛠 Toggle Menu":
         await update.message.reply_text("📉 Menu hide kar diya gaya hai. Wapas lane ke liye /start dabayein.", reply_markup=ReplyKeyboardRemove())
         return
     elif text == "📊 Admin Panel" and is_admin_user(user.id):
@@ -728,9 +903,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
-            [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
-            [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
+            [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
+            [InlineKeyboardButton("📢 ⚙️ Multi-Channel", callback_data="admin_forcechan_prompt"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
+            [InlineKeyboardButton("⚙️ 💬 Set Maint Msg", callback_data="admin_maintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return
@@ -741,8 +918,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cleaned = re.sub(r'\D', '', text)
 
     if mode == 'tg_username':
+        if context.bot.username != BOT_USERNAME and not is_admin_user(user.id):
+            await update.message.reply_text("❌ Clone bots par kewal **Number Info** search ki permission hai!", parse_mode='Markdown')
+            return
         query_str = text if text.startswith('@') else '@' + text
-        msg = await update.message.reply_text("🕵️️‍♂️ *TELEGRAM USERNAME INTEL BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERNAME INTEL BREACH*\nInitializing...", parse_mode='Markdown')
         data = await get_tg_username_info(query_str)
         await show_hacking_animation(msg, query_str, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_USER:" + query_str, json.dumps(data)), commit=True)
@@ -752,6 +932,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except: await msg.edit_text(formatted, parse_mode=None)
         context.user_data['mode'] = None
     elif mode == 'tg_userid':
+        if context.bot.username != BOT_USERNAME and not is_admin_user(user.id):
+            await update.message.reply_text("❌ Clone bots par kewal **Number Info** search ki permission hai!", parse_mode='Markdown')
+            return
         userid_str = cleaned
         msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERID INTEL BREACH*\nInitializing...", parse_mode='Markdown')
         data = await get_tg_userid_info(userid_str)
@@ -763,6 +946,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except: await msg.edit_text(formatted, parse_mode=None)
         context.user_data['mode'] = None
     elif mode == 'pincode' or (len(cleaned) == 6 and len(text) == 6 and not mode):
+        if context.bot.username != BOT_USERNAME and not is_admin_user(user.id):
+            await update.message.reply_text("❌ Clone bots par kewal **Number Info** search ki permission hai!", parse_mode='Markdown')
+            return
         pincode = cleaned
         msg = await update.message.reply_text("📍 *PINCODE INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
         data = await get_pincode_info(pincode)
@@ -795,6 +981,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
     
+    if data == "buy_credits_btn":
+        await show_premium_plans(query, context)
+        return
+    elif data == "check_join_btn":
+        is_joined, _ = await check_multi_force_subscription(context.bot, query.from_user.id)
+        if is_joined:
+            await query.message.delete()
+            await send_welcome_menu(query, context, query.from_user)
+        else:
+            await query.answer("❌ Aapne abhi tak saare channels join nahi kiye hain!", show_alert=True)
+        return
+    elif data == "create_clone_prompt":
+        context.user_data['waiting_for_clone_token'] = True
+        await context.bot.send_message(chat_id=query.from_user.id, text="🤖 **BOT CLONE SETUP**\n\nKripya apne naye bot ka **Bot Token** (@BotFather se liya hua) yahan bhej dein:", parse_mode='Markdown')
+        return
+
     if not is_admin_user(query.from_user.id):
         return
 
@@ -808,13 +1010,57 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🖼️ ⚙️ Set Banner Media", callback_data="admin_banner_prompt"), InlineKeyboardButton("🎟️ ➕ Create Coupon", callback_data="admin_coupon_prompt")],
-            [InlineKeyboardButton("📈 📊 Bot Stats", callback_data="admin_stats"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
-            [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
+            [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
+            [InlineKeyboardButton("📢 ⚙️ Multi-Channel", callback_data="admin_forcechan_prompt"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
+            [InlineKeyboardButton("⚙️ 💬 Set Maint Msg", callback_data="admin_maintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         try: await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: pass
         
+    elif data == "admin_live_analytics":
+        live_count = len(active_live_users)
+        analytics = db_get_all("SELECT feature_name, count FROM analytics")
+        text = f"📈 *LIVE BOT ANALYTICS & TRACKING*\n━━━━━━━━━━━━━━━━━━━━\n🟢 Currently Active Live Users: `{live_count}`\n\n📊 **Feature Usage Stats:**\n"
+        for an in analytics:
+            text += f"• `{an['feature_name']}`: `{an['count']}` uses\n"
+        keyboard = [[InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")]]
+        try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        except: pass
+
+    elif data == "admin_clones":
+        clones = db_get_all("SELECT * FROM clones")
+        text = "🤖 *USER CLONE BOTS MANAGER*\n━━━━━━━━━━━━━━━━━━━━\n"
+        if not clones:
+            text += "Koi bhi clone bot abhi registered nahi hai."
+            keyboard = [[InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")]]
+        else:
+            keyboard = []
+            for cl in clones:
+                text += f"🆔 Clone ID: `{cl['id']}` | Owner: `{cl['owner_id']}`\nStatus: `{cl['status']}`\n--------------------\n"
+                keyboard.append([InlineKeyboardButton(f"🛑 Stop Clone #{cl['id']}", callback_data=f"stop_clone_{cl['id']}"), InlineKeyboardButton(f"📋 View Searches #{cl['id']}", callback_data=f"view_clone_searches_{cl['owner_id']}")])
+            keyboard.append([InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")])
+        try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        except: pass
+
+    elif data.startswith("stop_clone_"):
+        clone_id = data.split("_")[-1]
+        db_execute("UPDATE clones SET status = 'Stopped' WHERE id = ?", (clone_id,), commit=True)
+        await query.message.reply_text(f"🛑 Clone Bot ID `{clone_id}` successfully stopped!", parse_mode='Markdown')
+        query.data = "admin_clones"
+        await button_callback(update, context)
+
+    elif data.startswith("view_clone_searches_"):
+        owner_id = data.split("_")[-1]
+        searches = db_get_all("SELECT phone, timestamp FROM searches WHERE user_id = ? ORDER BY timestamp DESC LIMIT 10", (owner_id,))
+        text = f"📜 *Searches for Clone Owner ID `{owner_id}`:*\n"
+        if not searches:
+            text += "Koi search history nahi mili."
+        for s in searches:
+            text += f"• `{s['phone']}` — _{s['timestamp']}_\n"
+        await query.message.reply_text(text, parse_mode='Markdown')
+
     elif data == "admin_stats":
         total_users = db_get_one("SELECT COUNT(*) as count FROM users")['count']
         total_searches = db_get_one("SELECT COUNT(*) as count FROM searches")['count']
@@ -839,7 +1085,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = "📦 *Manage Subscription Plans*\n━━━━━━━━━━━━━━━━━━━━\n"
         for p in plans:
             text += "🆔 ID: `" + str(p['id']) + "` | **" + p['name'] + "**\n💰 Price: `" + str(p['price']) + "` | 💎 Credits: `" + str(p['credits']) + "`\n--------------------\n"
-        text += "\n💡 To add a new plan, use command:\n`/addplan <name> <price> <credits>`\n(Example: `/addplan Ultra ₹299 100`)"
+        text += "\n💡 To add a new plan, use command:\n`/addplan <name> <price> <credits>`"
         keyboard = [
             [InlineKeyboardButton("➕ Add Plan Prompt", callback_data="admin_addplan_prompt")],
             [InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")]
@@ -847,8 +1093,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: pass
 
+    elif data == "admin_forcechan_prompt":
+        context.user_data['waiting_for_force_channels'] = True
+        curr_chan = db_get_one("SELECT value FROM settings WHERE key='force_channels'")['value']
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"📢 **Multi-Channel Force Join Setup**\n\nCurrent Channels: `{curr_chan or 'None'}`\n\nAb apne channels comma se alag karke bhejein (jaise `@channel1, @channel2`):", parse_mode='Markdown')
+
+    elif data == "admin_broadcast_prompt":
+        context.user_data['waiting_for_broadcast'] = True
+        await context.bot.send_message(chat_id=query.from_user.id, text="📢 **Broadcast Media with Inline Button**\n\nKripya message format is tarah bhejein:\n`Aapka message text | Button Name - https://t.me/yourlink`", parse_mode='Markdown')
+
     elif data == "admin_addplan_prompt":
         await context.bot.send_message(chat_id=query.from_user.id, text="💡 To add a plan, use command:\n`/addplan <name> <price> <credits>`", parse_mode='Markdown')
+
+    elif data == "admin_maintmsg_prompt":
+        context.user_data['waiting_for_maint_msg'] = True
+        current_maint = db_get_one("SELECT value FROM settings WHERE key='maint_msg'")['value']
+        await context.bot.send_message(chat_id=query.from_user.id, text="💬 **Custom Maintenance Message Setup**\n\nCurrent Message:\n`" + current_maint + "`\n\nAb agla message jo aap bhejenge, woh naya maintenance message ban jayega!", parse_mode='Markdown')
 
     elif data == "admin_setupi_prompt":
         if query.from_user.id != ADMIN_ID: return
@@ -872,8 +1132,23 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
         new_val = 'off' if current == 'on' else 'on'
         db_execute("UPDATE settings SET value = ? WHERE key = 'maintenance'", (new_val,), commit=True)
-        query.data = "admin_panel"
-        await button_callback(update, context)
+        
+        total_users = db_get_one("SELECT COUNT(*) as count FROM users")['count']
+        total_searches = db_get_one("SELECT COUNT(*) as count FROM searches")['count']
+        upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
+        
+        panel_text = "\n📊 *ADVANCED ADMIN PANEL* (" + OWNER_USERNAME + ")\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `" + str(total_users) + "`\n🔍 Total Lookups: `" + str(total_searches) + "`\n💳 Current UPI: `" + str(upi_record['value'] if upi_record else 'Not Set') + "`\n🚧 Maintenance Mode: `" + new_val.upper() + "`\n⚡ API Status: `🟢 Online`\n        "
+        keyboard = [
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
+            [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
+            [InlineKeyboardButton("📢 ⚙️️ Multi-Channel", callback_data="admin_forcechan_prompt"), InlineKeyboardButton("📢 📤 Broadcast Media", callback_data="admin_broadcast_prompt")],
+            [InlineKeyboardButton("⚙️ 💬 Set Maint Msg", callback_data="admin_maintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
+        ]
+        try: await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        except: pass
 
     elif data == "close_panel":
         try: await query.message.delete()
@@ -894,16 +1169,11 @@ async def setupi_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def maint_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin_user(update.effective_user.id): return
     if not context.args or context.args[0].lower() not in ['on', 'off']:
-        await update.message.reply_text("❌ Usage: `/maint on <reason>` or `/maint off`", parse_mode='Markdown')
+        await update.message.reply_text("❌ Usage: `/maint on` or `/maint off`", parse_mode='Markdown')
         return
     status = context.args[0].lower()
     db_execute("UPDATE settings SET value = ? WHERE key = 'maintenance'", (status,), commit=True)
-    if status == 'on' and len(context.args) > 1:
-        reason = ' '.join(context.args[1:])
-        db_execute("UPDATE settings SET value = ? WHERE key = 'maint_msg'", (reason,), commit=True)
-        await update.message.reply_text("🚧 Maintenance Mode **ON**\nReason: `" + reason + "`", parse_mode='Markdown')
-    else:
-        await update.message.reply_text("🚧 Maintenance Mode set to `" + status.upper() + "`", parse_mode='Markdown')
+    await update.message.reply_text("🚧 Maintenance Mode set to `" + status.upper() + "`", parse_mode='Markdown')
 
 async def addplan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin_user(update.effective_user.id): return
@@ -1003,7 +1273,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (ALL FIXES APPLIED)...")
+    print("🚀 HARSH OSINT BOT STARTING (MULTI-CHANNEL, BROADCAST INLINE & ANTI-FLOOD ACTIVE)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
