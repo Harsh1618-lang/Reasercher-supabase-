@@ -2,7 +2,7 @@
 # OSINT & Pincode Bot - Ultimate Multi-Tool Edition
 """
 Developer: HARSH
-Description: Advanced Telegram OSINT Bot with Phone, Pincode, TG Username & UserID Lookup, Credits & Zero-Lag Admin Panel
+Description: Advanced Telegram OSINT Bot with Headers Fix for Render APIs, Phone, Pincode, TG Lookups & Admin Panel
 """
 
 import os
@@ -48,11 +48,16 @@ except ImportError:
 
 BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Bot Token
 ADMIN_ID = 1420016904                                           # Main Admin ID
-OWNER_USERNAME = "@Endgame55"                                   # Owner Username
+OWNER_USERNAME = "@Harsx1618"                                   # Owner Username
 API_URL = "https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={number}"
 PINCODE_API_URL = "https://rack-pincodeapi.vercel.app/api?search={pincode}"
 TG_USERNAME_API_URL = "https://felix-info-x-bot.onrender.com/key=felix67&tg={username}"
 TG_USERID_API_URL = "https://felix-info-x-bot.onrender.com/key=felix67&tg={userid}"
+
+# Browser headers to bypass Render/Cloudflare bot protection
+HTTP_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+}
 
 # ============================================
 # DATABASE SETUP
@@ -151,13 +156,13 @@ def db_get_all(query, params=()):
     return [dict(row) for row in result]
 
 # ============================================
-# API FETCH FUNCTIONS
+# API FETCH FUNCTIONS (WITH HEADERS)
 # ============================================
 async def get_phone_info(phone):
     try:
         clean_phone = re.sub(r'\D', '', phone)
         url = API_URL.format(number=clean_phone)
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
         if response.status_code == 200:
             return response.json()
         else:
@@ -169,7 +174,7 @@ async def get_pincode_info(pincode):
     try:
         clean_pin = re.sub(r'\D', '', pincode)
         url = PINCODE_API_URL.format(pincode=clean_pin)
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
         if response.status_code == 200:
             return response.json()
         else:
@@ -182,7 +187,7 @@ async def get_tg_username_info(username):
         if not username.startswith('@'):
             username = '@' + username
         url = TG_USERNAME_API_URL.format(username=username)
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
         if response.status_code == 200:
             return response.json()
         else:
@@ -193,7 +198,7 @@ async def get_tg_username_info(username):
 async def get_tg_userid_info(userid):
     try:
         url = TG_USERID_API_URL.format(userid=userid)
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=10)
         if response.status_code == 200:
             return response.json()
         else:
@@ -203,7 +208,7 @@ async def get_tg_userid_info(userid):
 
 def check_api_health():
     try:
-        response = requests.get(API_URL.format(number="0000000000"), timeout=3)
+        response = requests.get(API_URL.format(number="0000000000"), headers=HTTP_HEADERS, timeout=3)
         return "🟢 Online" if response.status_code < 500 else "🟡 Degraded"
     except:
         return "🔴 Offline"
@@ -356,8 +361,8 @@ def format_pincode_response(data, pincode):
             "pincode": str(pincode),
             "total_records_shown": len(formatted_records),
             "records": formatted_records,
-            "Dev": "@RAJFFLIVE",
-            "Bot": "@RAJFFLIVEBOT"
+            "Dev": "@Harsx1618",
+            "Bot": "@Reasercherinfobot"
         }
 
         json_str = json.dumps(json_output, indent=2, ensure_ascii=False)
@@ -367,8 +372,9 @@ def format_pincode_response(data, pincode):
 
 def format_tg_response(data, query_str):
     try:
-        if not data:
-            return "❌ Error: No response from Telegram API."
+        if not data or (isinstance(data, dict) and data.get('status') == False and 'error' in data):
+            error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
+            return f"❌ Error: {error_msg}"
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
         if len(json_str) > 4000:
             json_str = json_str[:4000] + "\n... (Truncated)"
@@ -526,7 +532,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     elif text == "🆔 Telegram to UserID":
         context.user_data['mode'] = 'tg_userid'
-        await update.message.reply_text("🆔 *Telegram to UserID Mode Active*\nKripya ab Telegram numeric UserID bhejein (jaise `75438060`):", parse_mode='Markdown')
+        await update.message.reply_text("🆔 *Telegram to UserID Mode Active*\nKripya ab Telegram numeric UserID bhejein (jaise `1420016904`):", parse_mode='Markdown')
         return
     elif text == "🔙 Back to Main Menu":
         context.user_data['mode'] = None
@@ -556,7 +562,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-            [InlineKeyboardButton("🛡️️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 🔙 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -819,7 +825,7 @@ def main():
     flask_thread.start()
     
     print("=" * 50)
-    print("🚀 HARSH OSINT BOT STARTING (BOTH TG APIS CONFIGURED)...")
+    print("🚀 HARSH OSINT BOT STARTING (HEADERS & TG APIS FIXED)...")
     print("=" * 50)
     
     application = Application.builder().token(BOT_TOKEN).build()
