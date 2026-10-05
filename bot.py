@@ -1,5 +1,5 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Full Un-truncated Edition
+# OSINT & Pincode Bot - Ultimate Full Working Edition
 """
 Developer: @Harsx1618
 Description: Advanced Telegram OSINT Bot with Complete Features, 10 Report Styles, Pagination & All Admin Controls
@@ -285,7 +285,7 @@ async def show_hacking_animation(msg_obj, target_str, title_type="PHONE"):
     if title_type == "PINCODE":
         title = "📍 PINCODE INTELLIGENCE BREACH"
     elif title_type == "TG":
-        title = "🕵️‍♂️ TELEGRAM INTEL BREACH"
+        title = "🕵️️‍♂️ TELEGRAM INTEL BREACH"
     elif title_type == "IP":
         title = "🌐 IP INTELLIGENCE BREACH"
     elif title_type == "AADHAAR":
@@ -571,7 +571,7 @@ def format_pincode_response(data, pincode):
 
 def format_tg_response(data, query_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status') == False and 'error' in data):
+        if not data or (isinstance(data, dict) and data.get('status'] == False and 'error' in data):
             return "❌ Error: " + data.get('error', 'No data found')
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
         if len(json_str) > 4000: json_str = json_str[:4000] + "\n... (Truncated)"
@@ -693,6 +693,21 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("📜 Aapne abhi tak koi search nahi ki hai.", parse_mode='Markdown')
         return
     text = "📜 *Aapki Pichli 10 Searches:* \n━━━━━━━━━━━━━━━━━━━━\n"
+    for s in searches:
+        text += "• `" + str(s['phone']) + "` — _" + str(s['timestamp']) + "_\n"
+    await update.message.reply_text(text, parse_mode='Markdown')
+
+async def userhistory_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin_user(update.effective_user.id): return
+    if not context.args or not context.args[0].isdigit():
+        await update.message.reply_text("❌ Usage: `/userhistory <user_id>`", parse_mode='Markdown')
+        return
+    target_id = int(context.args[0])
+    searches = db_get_all("SELECT phone, timestamp FROM searches WHERE user_id = ? ORDER BY timestamp DESC LIMIT 15", (target_id,))
+    if not searches:
+        await update.message.reply_text("❌ User ID `" + str(target_id) + "` ki koi search history nahi mili.", parse_mode='Markdown')
+        return
+    text = "📜 *Search History for User ID `" + str(target_id) + "`:*\n━━━━━━━━━━━━━━━━━━━━\n"
     for s in searches:
         text += "• `" + str(s['phone']) + "` — _" + str(s['timestamp']) + "_\n"
     await update.message.reply_text(text, parse_mode='Markdown')
