@@ -47,11 +47,11 @@ except ImportError:
 # ========== CONFIGURATION - YOUR DETAILS ==========
 # ============================================
 
-USER_BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Users Bot Token
-ADMIN_BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4" # Admin Control Bot Token (Can be same or separate)
-ADMIN_ID = 1420016904                                           # Main Admin ID
-OWNER_USERNAME = "@Harsx1618"                                   # Owner Username
-BOT_USERNAME = "@Reasercherinfobot"                             # Bot Username
+USER_BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Users Bot Token[span_2](start_span)[span_2](end_span)
+ADMIN_BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4" # Admin Control Bot Token[span_3](start_span)[span_3](end_span)
+ADMIN_ID = 1420016904                                           # Main Admin ID[span_4](start_span)[span_4](end_span)
+OWNER_USERNAME = "@Harsx1618"                                   # Owner Username[span_5](start_span)[span_5](end_span)
+BOT_USERNAME = "@Reasercherinfobot"                             # Bot Username[span_6](start_span)[span_6](end_span)
 
 HTTP_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -185,7 +185,7 @@ def init_database():
 init_database()
 
 def log_activity(user_id, action):
-    db_execute("INSERT INTO logs (user_id, action) VALUES (?, ?)", (user_id, action), commit=True)
+    db_execute("INSERT INTO logs (user_id, action) VALUES (?, ?)", (user_id, action), commit=True)[span_7](start_span)[span_7](end_span)
 
 def get_user_rank(searches):
     if searches >= 100: return "🏆 OSINT Master"
@@ -193,6 +193,15 @@ def get_user_rank(searches):
     elif searches >= 20: return "🥈 Senior Investigator"
     elif searches >= 10: return "🥉 Junior Analyst"
     return "🌱 Beginner"
+
+def background_periodic_worker():
+    while True:
+        try:
+            time.sleep(3600)
+            conn = sqlite3.connect(DB_FILE)
+            conn.close()
+        except:
+            pass
 
 def is_admin_user(user_id):
     if user_id == ADMIN_ID:
@@ -284,20 +293,6 @@ async def fetch_dynamic_api(api_key, query_val, timeout_sec=20):
             return {"status": False, "error": "API returned status " + str(response.status_code)}
     except Exception as e:
         return {"status": False, "error": str(e)}
-
-# ============================================
-# BACKGROUND PERIODIC TASK THREAD
-# ============================================
-def background_periodic_worker():
-    while True:
-        try:
-            # Periodic check every 1 hour for subscriptions or cleanups
-            time.sleep(3600)
-            conn = sqlite3.connect(DB_FILE)
-            # Add any automated subscription/credit maintenance logic here if needed
-            conn.close()
-        except:
-            pass
 
 # ============================================
 # AUTO-DELETE BACKGROUND TASK
@@ -489,7 +484,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
         text = f"▪️ **INTEL // {phone} ({page + 1}/{total_pages})**\n\n"
         for idx, rec in enumerate(chunk, start=start_idx + 1):
             text += f"`{idx}` {rec['name']} | {rec['mobile']} | {rec['circle']}\n"
-        text += f"\n▪️ Auth: {OWNER_USERNAME}"
+        text += f"\n▪️️ Auth: {OWNER_USERNAME}"
 
     elif r_style == 'vip':
         text = f"⭐ 👑 **VIP EXCLUSIVE OSINT REPORT** 👑 ⭐\n"
@@ -707,7 +702,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_db_check.get('phone_number') or not user_db_check['phone_number']:
         contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
-        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     is_joined, unjoined_channels = await check_multi_force_subscription(context.bot, user.id)
@@ -794,7 +789,7 @@ async def show_premium_plans(update, context):
     upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
     upi_qr_record = db_get_one("SELECT value FROM settings WHERE key='upi_qr'")
     upi_id = upi_record['value'] if upi_record else "harshhacker@upi"
-    upi_qr = upi_qr_record['value'] if UPI_QR_RECORD else ""
+    upi_qr = upi_qr_record['value'] if upi_qr_record else ""
     plans = db_get_all("SELECT * FROM plans")
     text = f"💎 **BUY PREMIUM & ADD CREDITS**\n━━━━━━━━━━━━━━━━━━━━━━\n📲 **Admin UPI ID:** `{upi_id}`\n\n📦 **Available Plans:**\n"
     for p in plans:
@@ -1066,7 +1061,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if existing:
                     db_execute("DELETE FROM dynamic_apis WHERE api_key = ? OR LOWER(api_name) = ?", (del_key, del_key), commit=True)
                     log_activity(user.id, f"Admin deleted API {del_key}")
-                    await update.message.reply_text("🗑️️ API & Button successfully deleted!", parse_mode='Markdown')
+                    await update.message.reply_text("🗑️ API & Button successfully deleted!", parse_mode='Markdown')
                 else:
                     await update.message.reply_text("❌ Aisi koi API nahi mili!", parse_mode='Markdown')
             context.user_data['waiting_for_delete_api_key'] = False
@@ -1388,7 +1383,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🔨 Ban User", callback_data="admin_ban_prompt"), InlineKeyboardButton("🔓 Unban User", callback_data="admin_unban_prompt")],
             [InlineKeyboardButton("📢 Force Channels", callback_data="admin_force_channels_prompt"), InlineKeyboardButton("🤖 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️ Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️ Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️️ Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ Set Banner", callback_data="admin_banner_prompt")],
@@ -1446,7 +1441,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = []
         for p in plans:
             text += f"• **{p['name']}** — `{p['price']}` ({p['credits']} Credits)\n"
-            keyboard.append([InlineKeyboardButton(f"🗑️️ Delete: {p['name']}", callback_data=f"del_plan_{p['id']}")])
+            keyboard.append([InlineKeyboardButton(f"🗑️ Delete: {p['name']}", callback_data=f"del_plan_{p['id']}")])
         keyboard.append([InlineKeyboardButton("➕ Add New Plan", callback_data="admin_add_plan_prompt")])
         keyboard.append([InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")])
         try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
