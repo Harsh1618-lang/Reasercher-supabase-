@@ -712,8 +712,26 @@ async def userhistory_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         text += "• `" + str(s['phone']) + "` — _" + str(s['timestamp']) + "_\n"
     await update.message.reply_text(text, parse_mode='Markdown')
 
+async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin_user(update.effective_user.id): return
+    if not context.args or not context.args[0].isdigit():
+        await update.message.reply_text("❌ Usage: `/ban <user_id>`", parse_mode='Markdown')
+        return
+    target_id = int(context.args[0])
+    db_execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (target_id,), commit=True)
+    await update.message.reply_text(f"🚫 User ID `{target_id}` successfully banned.", parse_mode='Markdown')
+
+async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin_user(update.effective_user.id): return
+    if not context.args or not context.args[0].isdigit():
+        await update.message.reply_text("❌ Usage: `/unban <user_id>`", parse_mode='Markdown')
+        return
+    target_id = int(context.args[0])
+    db_execute("UPDATE users SET is_banned = 0 WHERE user_id = ?", (target_id,), commit=True)
+    await update.message.reply_text(f"✅ User ID `{target_id}` successfully unbanned.", parse_mode='Markdown')
+
 # ============================================
-# TELEGRAM HANDLERS
+# TELEGRAM HANDLERS & START FUNCTION
 # ============================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -753,7 +771,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_db_check.get('phone_number') or not user_db_check['phone_number']:
         contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
-        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     is_joined, unjoined_channels = await check_multi_force_subscription(context.bot, user.id)
