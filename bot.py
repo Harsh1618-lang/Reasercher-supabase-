@@ -489,7 +489,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
     buttons = []
     nav_row = []
     if page > 0:
-        nav_row.append(InlineKeyboardButton("⬅️️ Previous", callback_data=f"phone_page_{page - 1}"))
+        nav_row.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"phone_page_{page - 1}"))
     if page < total_pages - 1:
         nav_row.append(InlineKeyboardButton("Next ➡️", callback_data=f"phone_page_{page + 1}"))
     if nav_row:
@@ -828,6 +828,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context.user_data['waiting_for_upi'] = False
                 await update.message.reply_text("✅ UPI QR Code successfully updated!", parse_mode='Markdown')
                 return
+            elif update.message.document:
+                qr_id = update.message.document.file_id
+                db_execute("UPDATE settings SET value = ? WHERE key = 'upi_qr'", (qr_id,), commit=True)
+                context.user_data['waiting_for_upi'] = False
+                await update.message.reply_text("✅ UPI QR Code successfully updated!", parse_mode='Markdown')
+                return
             elif text:
                 db_execute("UPDATE settings SET value = ? WHERE key = 'upi_id'", (text,), commit=True)
                 context.user_data['waiting_for_upi'] = False
@@ -1157,7 +1163,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = None
     elif mode == 'tg_username':
         query_str = text if text.startswith('@') else '@' + text
-        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERNAME BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("🕵️‍♂️️ *TELEGRAM USERNAME BREACH*\nInitializing...", parse_mode='Markdown')
         data = await fetch_dynamic_api('tg_username', query_str)
         await show_hacking_animation(msg, query_str, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_USER:" + query_str, json.dumps(data)), commit=True)
