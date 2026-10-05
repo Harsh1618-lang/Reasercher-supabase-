@@ -455,7 +455,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
         text = f"▪️ **INTEL // {phone} ({page + 1}/{total_pages})**\n\n"
         for idx, rec in enumerate(chunk, start=start_idx + 1):
             text += f"`{idx}` {rec['name']} | {rec['mobile']} | {rec['circle']}\n"
-        text += f"\n▪️ Auth: {OWNER_USERNAME}"
+        text += f"\n▪️️ Auth: {OWNER_USERNAME}"
 
     elif r_style == 'vip':
         text = f"⭐ 👑 **VIP EXCLUSIVE OSINT REPORT** 👑 ⭐\n"
@@ -914,6 +914,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"✅ Button name successfully updated to `{text.strip()}`!", parse_mode='Markdown')
             return
 
+        if context.user_data.get('waiting_for_api_url'):
+            target_key = context.user_data.get('target_api_key')
+            db_execute("UPDATE dynamic_apis SET api_url = ? WHERE api_key = ?", (text.strip(), target_key), commit=True)
+            context.user_data['waiting_for_api_url'] = False
+            context.user_data['target_api_key'] = None
+            await update.message.reply_text("✅ API URL successfully updated!", parse_mode='Markdown')
+            return
+
+        if context.user_data.get('waiting_for_api_old'):
+            context.user_data['temp_old_credit'] = text.strip()
+            context.user_data['waiting_for_api_old'] = False
+            context.user_data['waiting_for_api_new'] = True
+            await update.message.reply_text("✍️ Ab **New Watermark / Credit Replacement** text bhejein:", parse_mode='Markdown')
+            return
+
+        if context.user_data.get('waiting_for_api_new'):
+            target_key = context.user_data.get('target_api_key')
+            old_c = context.user_data.get('temp_old_credit')
+            new_c = text.strip()
+            db_execute("UPDATE dynamic_apis SET old_credit = ?, new_credit = ? WHERE api_key = ?", (old_c, new_c, target_key), commit=True)
+            context.user_data['waiting_for_api_new'] = False
+            context.user_data['target_api_key'] = None
+            context.user_data['temp_old_credit'] = None
+            await update.message.reply_text("✅ API Watermark replacement successfully updated!", parse_mode='Markdown')
+            return
+
     # Check Maintenance
     maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
     if maint == 'on' and not is_admin_user(user.id):
@@ -1016,7 +1042,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
@@ -1267,7 +1293,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         try: await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1398,12 +1424,6 @@ def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("support", support_command))
     application.add_handler(CommandHandler("balance", balance_command))
-    application.add_handler(CommandHandler("report", report_command))
-    application.add_handler(CommandHandler("daily", daily_command))
-    application.add_handler(CommandHandler("ref", ref_command))
-    application.add_handler(CommandHandler("status", status_command))
-    application.add_handler(CommandHandler("redeem", redeem_command))
-    application.add_handler(CommandHandler("history", history_command))
     application.add_handler(CommandHandler("setupi", setupi_command))
     application.add_handler(CommandHandler("maint", maint_command))
     application.add_handler(CommandHandler("addcredits", addcredits_command))
