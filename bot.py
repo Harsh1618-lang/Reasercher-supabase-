@@ -145,7 +145,7 @@ def init_database():
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ref_reward_credits', '2')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('force_channels', '')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('report_style', 'cyber')")
-    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('custom_style_template', '🔥 REPORT: {type}\\n🎯 Target: {target}\\n-----------------\\n{data}')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('custom_style_template', '📋 MOBILE NUMBER INFO\\n\\n📞 NUMBER: {target}\\n\\n👤 RECORD\\n├── 📱 MOBILE: {mobile}\\n├── 👤 NAME: {name}\\n├── 👨‍👧 FATHER: {father}\\n├── 🏠 ADDRESS: {address}\\n├── 📱 ALT MOBILE: {alt}\\n└── 📡 CIRCLE: {circle}\\n\\n👑 Developed by: @Harsx1618')")
     
     default_apis = [
         ('phone', 'Number Info', 'https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={query}', '@FizzaGirl', '@Harsx1618'),
@@ -314,10 +314,61 @@ async def show_smooth_progress_animation(msg_obj, target_str, title_type="PHONE"
         except:
             pass
 
+def parse_phone_records(data, phone):
+    try:
+        if not data or (isinstance(data, dict) and data.get('status') == False):
+            error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
+            return [], "❌ Error: " + error_msg
+        
+        actual_results = []
+        if isinstance(data, dict):
+            res_layer1 = data.get('result', data)
+            if isinstance(res_layer1, dict):
+                res_layer2 = res_layer1.get('result', res_layer1)
+                if isinstance(res_layer2, dict):
+                    val = res_layer2.get('result')
+                    if isinstance(val, list): actual_results.extend(val)
+                    elif isinstance(val, dict): actual_results.append(val)
+                elif isinstance(res_layer2, list): actual_results.extend(res_layer2)
+            elif isinstance(res_layer1, list): actual_results.extend(res_layer1)
+
+        if not actual_results:
+            if isinstance(data, dict):
+                for key in ['result', 'results', 'data', 'payload', 'response']:
+                    val = data.get(key)
+                    if isinstance(val, list): actual_results.extend(val)
+                    elif isinstance(val, dict):
+                        for sub_key in ['result', 'results', 'data', 'records']:
+                            sub_val = val.get(sub_key)
+                            if isinstance(sub_val, list): actual_results.extend(sub_val)
+                            elif isinstance(sub_val, dict): actual_results.append(sub_val)
+                        if not actual_results: actual_results.append(val)
+                if not actual_results: actual_results = [data]
+            elif isinstance(data, list): actual_results = data
+
+        if not actual_results: actual_results = [data]
+
+        parsed_list = []
+        for rec in actual_results:
+            if not isinstance(rec, dict): rec = {}
+            parsed_list.append({
+                "name": str(rec.get('name') or rec.get('FullName') or 'Unknown'),
+                "father": str(rec.get('fname') or rec.get('father_name') or 'N/A'),
+                "mobile": str(rec.get('mobile', rec.get('phone', phone))),
+                "alt": str(rec.get('alt') or rec.get('alt_num') or 'N/A'),
+                "circle": str(rec.get('circle') or rec.get('operator') or 'N/A'),
+                "email": str(rec.get('email') or rec.get('Email') or 'N/A'),
+                "aadhaar": str(rec.get('aadhar') or rec.get('id') or 'N/A'),
+                "address": str(rec.get('address') or rec.get('Address') or 'N/A')
+            })
+        return parsed_list, None
+    except Exception as e:
+        return [], "❌ Parsing Error: " + str(e)
+
 # ============================================
 # UNIVERSAL REPORT STYLE FORMATTER (WITH CUSTOM STYLE SUPPORT)
 # ============================================
-async def format_and_send_report(msg_obj, data, target_str, update, context, api_type="general"):
+async def format_and_send_report(msg_obj, data, target_str, update, context, api_type="general", phone_records=None):
     report_style_setting = db_get_one("SELECT value FROM settings WHERE key='report_style'")
     r_style = report_style_setting['value'] if report_style_setting else 'cyber'
 
@@ -326,23 +377,41 @@ async def format_and_send_report(msg_obj, data, target_str, update, context, api
         template = template_setting['value'] if template_setting else "🎯 Target: {target}\n🔍 Type: {type}\n-----------------\n{data}"
         
         data_str = ""
-        if isinstance(data, dict):
-            for k, v in data.items():
-                data_str += f"• 🔹 {k}: {v}\n"
-        elif isinstance(data, list):
-            for idx, rec in enumerate(data, 1):
-                data_str += f"👤 [RECORD #{idx}]\n"
+        records_to_use = phone_records if phone_records is not None else ([data] if isinstance(data, dict) else [])
+        
+        if records_to_use:
+            for idx, rec in enumerate(records_to_use, 1):
                 if isinstance(rec, dict):
-                    for k, v in rec.items():
-                        data_str += f"  • {k}: {v}\n"
+                    r_name = rec.get('name', 'Unknown')
+                    r_father = rec.get('father', 'N/A')
+                    r_mobile = rec.get('mobile', target_str)
+                    r_alt = rec.get('alt', 'N/A')
+                    r_circle = rec.get('circle', 'N/A')
+                    r_aadhaar = rec.get('aadhaar', 'N/A')
+                    r_address = rec.get('address', 'N/A')
+                    
+                    filled_template = template.replace("{target}", str(target_str))\
+                                              .replace("{type}", str(api_type))\
+                                              .replace("{name}", str(r_name))\
+                                              .replace("{father}", str(r_father))\
+                                              .replace("{mobile}", str(r_mobile))\
+                                              .replace("{alt}", str(r_alt))\
+                                              .replace("{circle}", str(r_circle))\
+                                              .replace("{aadhaar}", str(r_aadhaar))\
+                                              .replace("{address}", str(r_address))
+                    data_str += filled_template + "\n\n"
                 else:
-                    data_str += f"  • {str(rec)}\n"
-                data_str += "\n"
+                    data_str += f"• {str(rec)}\n"
         else:
-            data_str = str(data)
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    data_str += f"• 🔹 {k}: {v}\n"
+            else:
+                data_str = str(data)
+            data_str = template.replace("{target}", str(target_str)).replace("{type}", str(api_type)).replace("{data}", data_str)
             
-        text = template.replace("{target}", str(target_str)).replace("{type}", str(api_type)).replace("{data}", data_str)
-        text += f"\n\n⚡ Secured by {OWNER_USERNAME}"
+        text = data_str if records_to_use else data_str
+        text += f"\n⚡ Secured by {OWNER_USERNAME}"
     elif isinstance(data, dict):
         if r_style == 'json':
             text = "```json\n" + json.dumps(data, indent=2, ensure_ascii=False) + "\n```"
@@ -679,7 +748,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text_input = update.message.text.strip() if update.message.text else ""
             db_execute("UPDATE settings SET value = ? WHERE key = 'custom_style_template'", (text_input,), commit=True)
             context.user_data['waiting_for_custom_template'] = False
-            await update.message.reply_text("✅ Custom Report Style Template successfully updated!\n\nUse `{target}`, `{type}`, and `{data}` as placeholders.", parse_mode='Markdown')
+            await update.message.reply_text("✅ Custom Report Style Template successfully updated!\n\nUse placeholders like `{target}`, `{type}`, `{name}`, `{father}`, `{mobile}`, `{aadhaar}`, `{address}`, `{circle}`, etc.", parse_mode='Markdown')
             return
 
         text = update.message.text.strip() if update.message.text else ""
@@ -1002,12 +1071,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else: 
             r_style = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
             if r_style == 'custom':
-                template = db_get_one("SELECT value FROM settings WHERE key='custom_style_template'")['value']
-                rec_str = ""
-                for idx, r in enumerate(records, 1):
-                    rec_str += f"👤 [RECORD #{idx}]\n• 🏷️ Name: {r['name']}\n• 👨‍👧 Father: {r['father']}\n• 📱 Mobile: {r['mobile']}\n• 📡 Circle: {r['circle']}\n• 🏠 Address: {r['address']}\n\n"
-                custom_text = template.replace("{target}", cleaned).replace("{type}", "Number Info").replace("{data}", rec_str)
-                await msg.edit_text(custom_text, parse_mode='Markdown')
+                await format_and_send_report(msg, data, cleaned, update, context, api_type="Number Info", phone_records=records)
             else:
                 context.user_data['last_phone_records'] = records
                 context.user_data['last_phone_target'] = cleaned
@@ -1069,9 +1133,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
             [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
-            [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️️ Set Ref Reward", callback_data="admin_refreward_prompt")],
-            [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛠️️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
+            [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
+            [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🛠️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
@@ -1102,7 +1166,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "admin_custom_style_prompt":
         context.user_data['waiting_for_custom_template'] = True
-        await context.bot.send_message(chat_id=query.from_user.id, text="🛠️ **Set Custom Report Style Template**\n\nAap placeholders `{target}`, `{type}`, aur `{data}` ka use kar sakte hain.\nNaya template text bhejein:", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text="🛠️ **Set Custom Report Style Template**\n\nAap placeholders `{target}`, `{type}`, `{name}`, `{father}`, `{mobile}`, `{aadhaar}`, `{address}`, `{circle}` ka use kar sakte hain.\nNaya template text bhejein:", parse_mode='Markdown')
         return
 
     elif data == "admin_addsub_prompt":
@@ -1201,7 +1265,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
@@ -1369,9 +1433,6 @@ def main():
     application.add_handler(CallbackQueryHandler(button_callback))
     
     application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
-
-if __name__ == 'main':
-    main()
 
 if __name__ == '__main__':
     main()
