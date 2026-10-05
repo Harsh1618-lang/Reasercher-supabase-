@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate 10 Report Styles & Fully Fixed Admin Edition
+# OSINT & Pincode Bot - Ultimate Report Styles & Fully Fixed Admin Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with 10 Hacker/JSON/Cyber Report Styles, Fixed Admin Panel & All Features Intact
+Description: Advanced Telegram OSINT Bot with Enhanced Report Styles, Fixed Admin Panel & All Features Intact
 """
 
 import os
@@ -145,7 +145,6 @@ def init_database():
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ref_reward_credits', '2')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('force_channels', '')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('report_style', 'cyber')")
-    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('custom_style_template', '📋 MOBILE NUMBER INFO\\n\\n📞 NUMBER: {target}\\n\\n👤 RECORD\\n├── 📱 MOBILE: {mobile}\\n├── 👤 NAME: {name}\\n├── 👨‍👧 FATHER: {father}\\n├── 🏠 ADDRESS: {address}\\n├── 📱 ALT MOBILE: {alt}\\n└── 📡 CIRCLE: {circle}\\n\\n👑 Developed by: @Harsx1618')")
     
     default_apis = [
         ('phone', 'Number Info', 'https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={query}', '@FizzaGirl', '@Harsx1618'),
@@ -284,7 +283,7 @@ async def schedule_message_deletion(context, chat_id, message_ids, doc_message_i
             pass
 
 # ============================================
-# THIN & SLEEK PROGRESS BAR ANIMATION (3 BLOCKS)
+# LONG & SLEEK PROGRESS BAR ANIMATION
 # ============================================
 async def show_smooth_progress_animation(msg_obj, target_str, title_type="PHONE"):
     if title_type == "PINCODE":
@@ -299,18 +298,21 @@ async def show_smooth_progress_animation(msg_obj, target_str, title_type="PHONE"
         title = "💻 SYSTEM BREACH IN PROGRESS"
 
     steps = [
-        ("░░░", "33%"),
-        ("█░░", "66%"),
-        ("███", "100%")
+        ("--- -- -- -- -- -- -- -- -- --", "10%"),
+        ("=== --- -- -- -- -- -- -- -- --", "30%"),
+        ("=== === === -- -- -- -- -- -- --", "50%"),
+        ("=== === === === === -- -- -- --", "70%"),
+        ("=== === === === === === === -- --", "90%"),
+        ("=== === === === === === === === ===", "100%")
     ]
 
     for bar, pct in steps:
         try:
             await msg_obj.edit_text(
-                f"{title}\nTarget: `{target_str}`\n\n⚡ Fetching data...\n`[{bar}] {pct}`",
+                f"{title}\nTarget: `{target_str}`\n\n⚡ COLLECTING INFO...\n`{bar} {pct}`",
                 parse_mode='Markdown'
             )
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.15)
         except:
             pass
 
@@ -355,10 +357,10 @@ def parse_phone_records(data, phone):
                 "name": str(rec.get('name') or rec.get('FullName') or 'Unknown'),
                 "father": str(rec.get('fname') or rec.get('father_name') or 'N/A'),
                 "mobile": str(rec.get('mobile', rec.get('phone', phone))),
-                "alt": str(rec.get('alt') or rec.get('alt_num') or 'N/A'),
+                "alt_num": str(rec.get('alt') or rec.get('alt_num') or 'N/A'),
                 "circle": str(rec.get('circle') or rec.get('operator') or 'N/A'),
                 "email": str(rec.get('email') or rec.get('Email') or 'N/A'),
-                "aadhaar": str(rec.get('aadhar') or rec.get('id') or 'N/A'),
+                "caf_id": str(rec.get('aadhar') or rec.get('id') or 'N/A'),
                 "address": str(rec.get('address') or rec.get('Address') or 'N/A')
             })
         return parsed_list, None
@@ -366,114 +368,239 @@ def parse_phone_records(data, phone):
         return [], "❌ Parsing Error: " + str(e)
 
 # ============================================
-# UNIVERSAL REPORT STYLE FORMATTER (WITH CUSTOM STYLE SUPPORT)
+# EXPANDED REPORT STYLES FORMATTER (NO OWNER/CREDIT LEAK)
 # ============================================
-async def format_and_send_report(msg_obj, data, target_str, update, context, api_type="general", phone_records=None):
+async def send_paginated_phone_response(msg_obj, records, phone, update, context, page=0, is_edit=True):
+    total = len(records)
+    if total == 0:
+        await msg_obj.edit_text("❌ Koi record nahi mila.")
+        return
+
     report_style_setting = db_get_one("SELECT value FROM settings WHERE key='report_style'")
     r_style = report_style_setting['value'] if report_style_setting else 'cyber'
 
-    if r_style == 'custom':
-        template_setting = db_get_one("SELECT value FROM settings WHERE key='custom_style_template'")
-        template = template_setting['value'] if template_setting else "🎯 Target: {target}\n🔍 Type: {type}\n-----------------\n{data}"
-        
-        data_str = ""
-        records_to_use = phone_records if phone_records is not None else ([data] if isinstance(data, dict) else [])
-        
-        if records_to_use:
-            for idx, rec in enumerate(records_to_use, 1):
-                if isinstance(rec, dict):
-                    r_name = rec.get('name', 'Unknown')
-                    r_father = rec.get('father', 'N/A')
-                    r_mobile = rec.get('mobile', target_str)
-                    r_alt = rec.get('alt', 'N/A')
-                    r_circle = rec.get('circle', 'N/A')
-                    r_aadhaar = rec.get('aadhaar', 'N/A')
-                    r_address = rec.get('address', 'N/A')
-                    
-                    filled_template = template.replace("{target}", str(target_str))\
-                                              .replace("{type}", str(api_type))\
-                                              .replace("{name}", str(r_name))\
-                                              .replace("{father}", str(r_father))\
-                                              .replace("{mobile}", str(r_mobile))\
-                                              .replace("{alt}", str(r_alt))\
-                                              .replace("{circle}", str(r_circle))\
-                                              .replace("{aadhaar}", str(r_aadhaar))\
-                                              .replace("{address}", str(r_address))
-                    data_str += filled_template + "\n\n"
-                else:
-                    data_str += f"• {str(rec)}\n"
-        else:
-            if isinstance(data, dict):
-                for k, v in data.items():
-                    data_str += f"• 🔹 {k}: {v}\n"
-            else:
-                data_str = str(data)
-            data_str = template.replace("{target}", str(target_str)).replace("{type}", str(api_type)).replace("{data}", data_str)
-            
-        text = data_str if records_to_use else data_str
-        text += f"\n⚡ Secured by {OWNER_USERNAME}"
-    elif isinstance(data, dict):
-        if r_style == 'json':
-            text = "```json\n" + json.dumps(data, indent=2, ensure_ascii=False) + "\n```"
-        elif r_style == 'hacker':
-            text = f"💀 [ ROOT ACCESS GRANTED ] 💀\n🎯 TARGET: `{target_str}`\nTYPE: `{api_type.upper()}`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            for k, v in data.items():
-                text += f"• `{k.upper()}` : `{v}`\n"
-            text += f"\n━━━━━━━━━━━━━━━━━━━━━━\n⚡ HACKED BY {OWNER_USERNAME}"
-        elif r_style == 'matrix':
-            text = f"🟩 010101 MATRIX INTEL ({api_type.upper()}) 010101 🟩\nTarget: `{target_str}`\n════════════════════════════════\n\n"
-            for k, v in data.items():
-                text += f"├ {k}: `{v}`\n"
-            text += f"\nSystem Core: {OWNER_USERNAME}"
-        elif r_style == 'neon':
-            text = f"🟣 🪩 NEON GLOW INTEL 🪩 🟣\n🎯 Target: `{target_str}`\n──────────────────────────────\n\n"
-            for k, v in data.items():
-                text += f"✨ `[{k.upper()}]` : {v}\n"
-            text += f"\n──────────────────────────────\n⚡ Secured by {OWNER_USERNAME}"
-        elif r_style == 'card':
-            text = f"🪪 **VIP CARD REPORT // {api_type.upper()}**\n🎯 Target: `{target_str}`\n════════════════════════\n\n"
-            for k, v in data.items():
-                text += f"├ 🔹 **{k}:** `{v}`\n"
-            text += f"\n════════════════════════\n👑 {OWNER_USERNAME}"
-        elif r_style == 'compact':
-            text = f"⚡ **COMPACT INTEL [{target_str}]**\n────────────────────────\n"
-            for k, v in data.items():
-                text += f"• **{k}**: `{v}`\n"
-            text += f"────────────────────────\n"
-        elif r_style == 'minimal':
-            text = f"▪️ **INTEL // {target_str}**\n\n"
-            for k, v in data.items():
-                text += f"`{k}`: {v}\n"
-            text += f"\n▪️ Auth: {OWNER_USERNAME}"
-        elif r_style == 'vip':
-            text = f"⭐ 👑 **VIP EXCLUSIVE REPORT** 👑 ⭐\n🎯 Target: `{target_str}`\n──────────────────────────────\n\n"
-            for k, v in data.items():
-                text += f"• **{k}** : _{v}_\n"
-            text += f"\n──────────────────────────────\n🌟 {OWNER_USERNAME}"
-        else: # Cyber / Standard
-            text = f"🌐 **{api_type.upper()} INTELLIGENCE REPORT**\n🎯 Target: `{target_str}`\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            for k, v in data.items():
-                text += f"🔹 **{k}**: `{v}`\n"
-            text += f"\n━━━━━━━━━━━━━━━━━━━━━━\n⚡ Secured by {OWNER_USERNAME}"
-    else:
-        text = f"```json\n{str(data)}\n```"
+    per_page = 5
+    total_pages = (total + per_page - 1) // per_page
+    page = max(0, min(page, total_pages - 1))
+    
+    start_idx = page * per_page
+    end_idx = min(start_idx + per_page, total)
+    chunk = records[start_idx:end_idx]
 
-    if len(text) > 4000:
-        text = text[:4000] + "\n... (Truncated)"
+    if r_style == 'json':
+        json_output = {
+            "status": True,
+            "target": str(phone),
+            "total_records": total,
+            "current_page": page + 1,
+            "total_pages": total_pages,
+            "records": chunk
+        }
+        text = "```json\n" + json.dumps(json_output, indent=2, ensure_ascii=False) + "\n```"
 
-    try:
-        await msg_obj.edit_text(text, parse_mode='Markdown')
-    except:
+    elif r_style == 'hacker':
+        text = f"💀 [ ROOT ACCESS GRANTED ] 💀\n"
+        text += f"🎯 TARGET_IP/NUM: `{phone}`\n"
+        text += f"📊 PACKETS: {total} | PAGE: {page + 1}/{total_pages}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"⚡ [TARGET #{idx}] ⚡\n"
+            text += f"• IDENT: `{rec['name']}`\n"
+            text += f"• PARENT: `{rec['father']}`\n"
+            text += f"• COMMS: `{rec['mobile']}` | `{rec['alt_num']}`\n"
+            text += f"• NODE: `{rec['circle']}`\n"
+            text += f"• MAIL: `{rec['email']}`\n"
+            text += f"• REG_ID: `{rec['caf_id']}`\n"
+            text += f"• LOC: `{rec['address']}`\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+    elif r_style == 'matrix':
+        text = f"🟩 010101 MATRIX INTEL 010101 🟩\n"
+        text += f"Target: `{phone}` | Page: {page + 1}/{total_pages}\n════════════════════════════════\n\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"🟢 MATRIX_REC_{idx}:\n"
+            text += f"├ Name: `{rec['name']}`\n"
+            text += f"├ Mobile: `{rec['mobile']}`\n"
+            text += f"├ Circle: `{rec['circle']}`\n"
+            text += f"└ Addr: `{rec['address']}`\n\n"
+
+    elif r_style == 'cyber':
+        text = f"🌐 𝕮𝕴𝕭𝕰𝕽 𝕴𝕹𝕿𝕰𝕃𝕃𝕴𝕲𝕰𝕹𝕮𝕰 🌐\n"
+        text += f"🎯 Target: `{phone}`\n"
+        text += f"📊 Records: {total} | Page: {page + 1}/{total_pages}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"🔹 **CYBER_NODE #{idx}**\n"
+            text += f"👤 Subject: `{rec['name']}`\n"
+            text += f"👨‍👧 Guardian: `{rec['father']}`\n"
+            text += f"📱 Phone: `{rec['mobile']}`\n"
+            text += f"📞 Alt: `{rec['alt_num']}`\n"
+            text += f"📡 Telecom: `{rec['circle']}`\n"
+            text += f"📧 Mail: `{rec['email']}`\n"
+            text += f"🆔 UID: `{rec['caf_id']}`\n"
+            text += f"🏠 Sector:\n`{rec['address']}`\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+    elif r_style == 'neon':
+        text = f"🟣 🪩 NEON GLOW INTEL 🪩 🟣\n"
+        text += f"🎯 Target: `{phone}` (Page {page + 1}/{total_pages})\n──────────────────────────────\n\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"✨ **[RECORD {idx}]**\n"
+            text += f"👤 `[NAME]` : {rec['name']}\n"
+            text += f"📱 `[CELL]` : {rec['mobile']}\n"
+            text += f"🌐 `[AREA]` : {rec['circle']}\n"
+            text += f"🏠 `[HOME]` : {rec['address']}\n\n──────────────────────────────\n"
+
+    elif r_style == 'card':
+        text = f"🪪 **VIP CARD INTELLIGENCE REPORT**\n"
+        text += f"🎯 Target Number: `{phone}`\n"
+        text += f"📊 Records: {total} | Page: {page + 1}/{total_pages}\n════════════════════════\n\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"┌ 👑 **IDENTITY CARD #{idx}**\n"
+            text += f"├ 👤 **Name:** `{rec['name']}`\n"
+            text += f"├ 👨‍👧 **Father:** `{rec['father']}`\n"
+            text += f"├ 📱 **Mobile:** `{rec['mobile']}`\n"
+            text += f"├ 🌐 **Circle:** `{rec['circle']}`\n"
+            text += f"└ 🏠 **Address:** `{rec['address']}`\n\n════════════════════════\n"
+
+    elif r_style == 'compact':
+        text = f"⚡ **COMPACT INTEL REPORT ({phone}) [Page {page + 1}/{total_pages}]**\n────────────────────────\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"`{idx}.` **{rec['name']}** | `{rec['mobile']}` | `{rec['circle']}`\n   🏠 `{rec['address']}`\n"
+        text += f"────────────────────────\n"
+
+    elif r_style == 'minimal':
+        text = f"▪️ **INTEL // {phone} ({page + 1}/{total_pages})**\n\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"`{idx}` {rec['name']} | {rec['mobile']} | {rec['circle']}\n"
+
+    elif r_style == 'vip':
+        text = f"⭐ 👑 **VIP EXCLUSIVE OSINT REPORT** 👑 ⭐\n"
+        text += f"🎯 Target: `{phone}` | Page: {page + 1}/{total_pages}\n──────────────────────────────\n\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"🌟 **VIP PROFILE #{idx}**\n"
+            text += f"• Full Name : **{rec['name']}**\n"
+            text += f"• Father    : **{rec['father']}**\n"
+            text += f"• Contact   : `{rec['mobile']}`\n"
+            text += f"• Region    : {rec['circle']}\n"
+            text += f"• Location  : _{rec['address']}_\n\n──────────────────────────────\n"
+
+    elif r_style == 'terminal':
+        text = f"root@osint-core:~# lookup --target {phone}\n"
+        text += f"[+] Status: SUCCESS | Records Found: {total}\n"
+        text += f"----------------------------------------\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"[{idx}] NAME   : {rec['name']}\n"
+            text += f"    FATHER : {rec['father']}\n"
+            text += f"    MOBILE : {rec['mobile']}\n"
+            text += f"    CIRCLE : {rec['circle']}\n"
+            text += f"    ADDR   : {rec['address']}\n\n"
+
+    elif r_style == 'stealth':
+        text = f"🕶️ [STEALTH ENCRYPTED INTEL]\n"
+        text += f"Target: ||{phone}||\n"
+        text += f"Total Nodes: {total} (Page {page + 1}/{total_pages})\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"🔒 Node #{idx}:\n"
+            text += f"• Subject: ||{rec['name']}||\n"
+            text += f"• Contact: ||{rec['mobile']}||\n"
+            text += f"• Region : {rec['circle']}\n"
+            text += f"• Sector : {rec['address']}\n\n"
+
+    elif r_style == 'pulse':
+        text = f"⚡ PULSE GRID INTEL // {phone}\n"
+        text += f"📡 Page {page + 1} of {total_pages}\n════════════════════════════\n\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"🔋 [UNIT {idx}]\n"
+            text += f"👤 ➔ {rec['name']}\n"
+            text += f"📱 ➔ {rec['mobile']}\n"
+            text += f"📍 ➔ {rec['circle']}\n"
+            text += f"🏠 ➔ {rec['address']}\n\n"
+
+    elif r_style == 'matrix_v2':
+        text = f"💚 𝕸𝕬𝕿𝕽𝕴𝖃 𝕯𝕬𝕿𝕬𝕭𝕬𝕾𝕰 💚\n"
+        text += f"Target: `{phone}` | Page {page + 1}/{total_pages}\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"🟩 [REC #{idx}]\n"
+            text += f"╠═👤 Name: {rec['name']}\n"
+            text += f"╠═📱 Phone: {rec['mobile']}\n"
+            text += f"╠═🌐 Circle: {rec['circle']}\n"
+            text += f"╚═🏠 Addr: {rec['address']}\n\n"
+
+    else:  # Standard
+        text = f"📱 **NUMBER INTELLIGENCE REPORT**\n"
+        text += f"🎯 Target: `{phone}`\n"
+        text += f"📊 Total Records: {total} | Page: {page + 1}/{total_pages}\n━━━━━━━━━━━━━━━━━━━━\n\n"
+        for idx, rec in enumerate(chunk, start=start_idx + 1):
+            text += f"🔹 **RECORD #{idx}**\n"
+            text += f"👤 Name: `{rec['name']}`\n"
+            text += f"👨‍👧 Father: `{rec['father']}`\n"
+            text += f"📱 Mobile: `{rec['mobile']}`\n"
+            text += f"📞 Alt Num: `{rec['alt_num']}`\n"
+            text += f"🌐 Circle: `{rec['circle']}`\n"
+            text += f"📧 Email: `{rec['email']}`\n"
+            text += f"🆔 CAF / ID: `{rec['caf_id']}`\n"
+            text += f"🏠 Address:\n`{rec['address']}`\n\n━━━━━━━━━━━━━━━━━━━━\n"
+
+    buttons = []
+    nav_row = []
+    if page > 0:
+        nav_row.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"phone_page_{page - 1}"))
+    if page < total_pages - 1:
+        nav_row.append(InlineKeyboardButton("Next ➡️", callback_data=f"phone_page_{page + 1}"))
+    if nav_row:
+        buttons.append(nav_row)
+
+    reply_markup = InlineKeyboardMarkup(buttons) if buttons else None
+
+    if is_edit:
         try:
-            await msg_obj.edit_text(text, parse_mode=None)
+            await msg_obj.edit_text(text, parse_mode='Markdown', reply_markup=reply_markup)
         except:
             pass
+    else:
+        reply_msg = await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        msg_obj = reply_msg
+
+    if page == 0:
+        sent_message_ids = [msg_obj.message_id]
+        doc_msg_id = None
+        try:
+            file_content = "=========================================\n"
+            file_content += "      OSINT NUMBER INTELLIGENCE REPORT\n"
+            file_content += "      Query Number: " + str(phone) + "\n"
+            file_content += "      Total Records: " + str(total) + "\n"
+            file_content += "=========================================\n\n"
+
+            for idx, rec in enumerate(records, start=1):
+                file_content += f"--- RECORD #{idx} ---\n"
+                file_content += f"NAME: {rec['name']}\n"
+                file_content += f"FATHER: {rec['father']}\n"
+                file_content += f"MOBILE: {rec['mobile']}\n"
+                file_content += f"ALT NUM: {rec['alt_num']}\n"
+                file_content += f"CIRCLE: {rec['circle']}\n"
+                file_content += f"EMAIL: {rec['email']}\n"
+                file_content += f"CAF / ID: {rec['caf_id']}\n"
+                file_content += f"ADDRESS: {rec['address']}\n\n"
+
+            file_name = "report_" + str(phone) + ".txt"
+            with open(file_name, "w", encoding="utf-8") as f:
+                f.write(file_content)
+
+            with open(file_name, "rb") as f:
+                doc_msg = await update.message.reply_document(
+                    document=InputFile(f, filename=file_name),
+                    caption="📁 **Downloadable Report File (Auto-deletes in 30s)**\nTarget: `" + str(phone) + "`",
+                    parse_mode='Markdown'
+                )
+                doc_msg_id = doc_msg.message_id
+            os.remove(file_name)
+        except Exception as e:
+            print("Error sending file: " + str(e))
+
+        asyncio.create_task(schedule_message_deletion(context, update.effective_chat.id, sent_message_ids, doc_msg_id))
 
 # ============================================
 # COMMAND HANDLERS
 # ============================================
 async def support_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    support_text = "💬 *IF YOU FACE ANY ISSUES CONTACT OUR ADMIN*\n\n📲 **Owner / Support Username:** `" + OWNER_USERNAME + "`\n\nKisi bhi madad ke liye seedhe contact karein!"
+    support_text = "💬 *IF YOU FACE ANY ISSUES CONTACT OUR ADMIN*\n\n📲 **Support Available**\n\nKisi bhi madad ke liye seedhe contact karein!"
     support_keyboard = [[InlineKeyboardButton("💬 Chat with Support Owner", url="https://t.me/" + OWNER_USERNAME.replace('@', ''))]]
     await update.message.reply_text(support_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(support_keyboard))
 
@@ -486,7 +613,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     report_style_setting = db_get_one("SELECT value FROM settings WHERE key='report_style'")
     r_style = report_style_setting['value'] if report_style_setting else 'cyber'
-    await update.message.reply_text(f"🎨 **Current Report Style:** `{r_style.upper()}`\n\nAap admin panel se isey change ya custom template set kar sakte hain.", parse_mode='Markdown')
+    await update.message.reply_text(f"🎨 **Current Report Style:** `{r_style.upper()}`\n\nAap admin panel se isey change kar sakte hain.", parse_mode='Markdown')
 
 async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -513,7 +640,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Aapka account database mein nahi mila. Kripya /start dabayein.")
         return
     status = "👑 Admin / Unlimited" if (is_admin_user(user.id) or user_info['credits'] > 5000) else ("💎 Premium User" if user_info['credits'] > 10 else "🆓 Free User")
-    text = f"📊 **YOUR ACCOUNT STATUS**\n\n👤 Name: {user.first_name}\n🏷️ Status: `{status}`\n💎 Credits: `{user_info['credits']}`\n🔍 Total Searches: `{user_info['searches']}`\n📅 Joined: `{user_info['joined_date']}`"
+    text = f"📊 **YOUR ACCOUNT STATUS**\n\n👤 Name: {user.first_name}\n🏷️️ Status: `{status}`\n💎 Credits: `{user_info['credits']}`\n🔍 Total Searches: `{user_info['searches']}`\n📅 Joined: `{user_info['joined_date']}`"
     await update.message.reply_text(text, parse_mode='Markdown')
 
 async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -601,7 +728,7 @@ async def send_welcome_menu(update_or_query, context, user):
     user_info = db_get_one("SELECT credits FROM users WHERE user_id = ?", (user.id,))
     credits = user_info['credits'] if user_info else 0
     
-    welcome = "\n👋 *Welcome to OSINT & Pincode Lookup Bot!*\n\n💎 Remaining Credits: `" + str(credits) + "`\nNeeche diye gaye menu se option select karein!\n🎁 *Daily Bonus:* `/daily`\n🔗 *Referral Link:* `/ref`\n📜 *Search History:* `/history`\n\n🚀 *Developed by " + OWNER_USERNAME + "*\n    "
+    welcome = "\n👋 *Welcome to OSINT & Pincode Lookup Bot!*\n\n💎 Remaining Credits: `" + str(credits) + "`\nNeeche diye gaye menu se option select karein!\n🎁 *Daily Bonus:* `/daily`\n🔗 *Referral Link:* `/ref`\n📜 *Search History:* `/history`\n\n🚀 *Secure System Online*\n    "
     
     apis = db_get_all("SELECT api_name FROM dynamic_apis")
     menu_keyboard = []
@@ -743,13 +870,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 await update.message.reply_text("❌ Kripya UPI QR Code ki ek valid photo bhejein.")
                 return
-
-        if context.user_data.get('waiting_for_custom_template'):
-            text_input = update.message.text.strip() if update.message.text else ""
-            db_execute("UPDATE settings SET value = ? WHERE key = 'custom_style_template'", (text_input,), commit=True)
-            context.user_data['waiting_for_custom_template'] = False
-            await update.message.reply_text("✅ Custom Report Style Template successfully updated!\n\nUse placeholders like `{target}`, `{type}`, `{name}`, `{father}`, `{mobile}`, `{aadhaar}`, `{address}`, `{circle}`, etc.", parse_mode='Markdown')
-            return
 
         text = update.message.text.strip() if update.message.text else ""
 
@@ -973,7 +1093,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ref_reward_val = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")['value']
         report_style_val = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
         
-        panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
+        panel_text = f"\n📊 *ADVANCED ADMIN PANEL*\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📷 ⚙ Set UPI QR", callback_data="admin_setupi_qr_prompt")],
@@ -984,12 +1104,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛠️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
-            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
-        await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        try: await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        except: await query.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
     user_data = db_get_one("SELECT phone_number, is_banned FROM users WHERE user_id = ?", (user.id,))
@@ -1006,61 +1126,79 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = context.user_data.get('mode', None)
     cleaned = re.sub(r'\D', '', text)
 
-    # Universal Handler for all modes using the 10 Report Styles & Custom Style
+    # Universal Handler with Long Sleek Progress Animation and 10 Report Styles
     if mode and mode.startswith("custom_api_"):
         api_k = mode.replace("custom_api_", "")
-        msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("⚡ COLLECTING INFO...\n`--- -- -- -- -- -- -- -- -- -- 10%`", parse_mode='Markdown')
         await show_smooth_progress_animation(msg, text, title_type="PHONE")
         data = await fetch_dynamic_api(api_k, text)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"{api_k}:{text}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
-        await format_and_send_report(msg, data, text, update, context, api_type=api_k)
+        
+        recs, _ = parse_phone_records(data, text)
+        if not recs: recs = [{"name": "Result", "mobile": text, "circle": "API", "address": str(data), "father": "N/A", "alt_num": "N/A", "caf_id": text}]
+        await send_paginated_phone_response(msg, recs, text, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
         return
 
     if mode == 'aadhaar_info':
-        msg = await update.message.reply_text("🆔 *INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("⚡ COLLECTING INFO...\n`--- -- -- -- -- -- -- -- -- -- 10%`", parse_mode='Markdown')
         await show_smooth_progress_animation(msg, text, title_type="AADHAAR")
         data = await fetch_dynamic_api('aadhaar_info', text)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "AADHAAR:" + text, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
-        await format_and_send_report(msg, data, text, update, context, api_type="Aadhaar Info")
+        
+        recs, _ = parse_phone_records(data, text)
+        if not recs: recs = [{"name": "Aadhaar Result", "mobile": text, "circle": "India", "address": str(data), "father": "N/A", "alt_num": "N/A", "caf_id": text}]
+        await send_paginated_phone_response(msg, recs, text, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
     elif mode == 'ip_info':
-        msg = await update.message.reply_text("🌐 *IP INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("⚡ COLLECTING INFO...\n`--- -- -- -- -- -- -- -- -- -- 10%`", parse_mode='Markdown')
         await show_smooth_progress_animation(msg, text, title_type="IP")
         data = await fetch_dynamic_api('ip_info', text)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "IP:" + text, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
-        await format_and_send_report(msg, data, text, update, context, api_type="IP Info")
+        
+        recs, _ = parse_phone_records(data, text)
+        if not recs: recs = [{"name": "IP Result", "mobile": text, "circle": "Internet", "address": str(data), "father": "N/A", "alt_num": "N/A", "caf_id": text}]
+        await send_paginated_phone_response(msg, recs, text, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
     elif mode == 'tg_username':
         query_str = text if text.startswith('@') else '@' + text
-        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERNAME BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("⚡ COLLECTING INFO...\n`--- -- -- -- -- -- -- -- -- -- 10%`", parse_mode='Markdown')
         await show_smooth_progress_animation(msg, query_str, title_type="TG")
         data = await fetch_dynamic_api('tg_username', query_str)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_USER:" + query_str, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
-        await format_and_send_report(msg, data, query_str, update, context, api_type="Telegram Username")
+        
+        recs, _ = parse_phone_records(data, query_str)
+        if not recs: recs = [{"name": "TG User", "mobile": query_str, "circle": "Telegram", "address": str(data), "father": "N/A", "alt_num": "N/A", "caf_id": query_str}]
+        await send_paginated_phone_response(msg, recs, query_str, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
     elif mode == 'tg_userid':
-        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERID BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("⚡ COLLECTING INFO...\n`--- -- -- -- -- -- -- -- -- -- 10%`", parse_mode='Markdown')
         await show_smooth_progress_animation(msg, cleaned, title_type="TG")
         data = await fetch_dynamic_api('tg_userid', cleaned)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_ID:" + cleaned, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
-        await format_and_send_report(msg, data, cleaned, update, context, api_type="Telegram UserID")
+        
+        recs, _ = parse_phone_records(data, cleaned)
+        if not recs: recs = [{"name": "TG ID", "mobile": cleaned, "circle": "Telegram", "address": str(data), "father": "N/A", "alt_num": "N/A", "caf_id": cleaned}]
+        await send_paginated_phone_response(msg, recs, cleaned, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
     elif mode == 'pincode' or (len(cleaned) == 6 and len(text) == 6 and not mode):
-        msg = await update.message.reply_text("📍 *PINCODE INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("⚡ COLLECTING INFO...\n`--- -- -- -- -- -- -- -- -- -- 10%`", parse_mode='Markdown')
         await show_smooth_progress_animation(msg, cleaned, title_type="PINCODE")
         data = await fetch_dynamic_api('pincode', cleaned)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "PIN:" + cleaned, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
-        await format_and_send_report(msg, data, cleaned, update, context, api_type="Pincode Info")
+        
+        recs, _ = parse_phone_records(data, cleaned)
+        if not recs: recs = [{"name": "Pincode Area", "mobile": cleaned, "circle": "Postal", "address": str(data), "father": "N/A", "alt_num": "N/A", "caf_id": cleaned}]
+        await send_paginated_phone_response(msg, recs, cleaned, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
     elif mode == 'phone' or (10 <= len(cleaned) <= 15):
-        msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("⚡ COLLECTING INFO...\n`--- -- -- -- -- -- -- -- -- -- 10%`", parse_mode='Markdown')
         await show_smooth_progress_animation(msg, cleaned, title_type="PHONE")
         data = await fetch_dynamic_api('phone', cleaned)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, cleaned, json.dumps(data)), commit=True)
@@ -1069,13 +1207,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if err: 
             await msg.edit_text(err)
         else: 
-            r_style = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
-            if r_style == 'custom':
-                await format_and_send_report(msg, data, cleaned, update, context, api_type="Number Info", phone_records=records)
-            else:
-                context.user_data['last_phone_records'] = records
-                context.user_data['last_phone_target'] = cleaned
-                await send_paginated_phone_response(msg, records, cleaned, update, context, page=0, is_edit=True)
+            context.user_data['last_phone_records'] = records
+            context.user_data['last_phone_target'] = cleaned
+            await send_paginated_phone_response(msg, records, cleaned, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
     else:
         await update.message.reply_text("❌ Kripya valid input enter karein.", parse_mode='Markdown')
@@ -1124,7 +1258,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ref_reward_val = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")['value']
         report_style_val = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
         
-        panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
+        panel_text = f"\n📊 *ADVANCED ADMIN PANEL*\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📷 ⚙ Set UPI QR", callback_data="admin_setupi_qr_prompt")],
@@ -1135,7 +1269,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛠️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
@@ -1162,11 +1295,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "admin_banner_prompt":
         context.user_data['waiting_for_banner'] = True
         await context.bot.send_message(chat_id=query.from_user.id, text="🖼️ **Set Welcome Banner**\nKripya koi bhi Photo, GIF ya Video bhejein:", parse_mode='Markdown')
-        return
-
-    elif data == "admin_custom_style_prompt":
-        context.user_data['waiting_for_custom_template'] = True
-        await context.bot.send_message(chat_id=query.from_user.id, text="🛠️ **Set Custom Report Style Template**\n\nAap placeholders `{target}`, `{type}`, `{name}`, `{father}`, `{mobile}`, `{aadhaar}`, `{address}`, `{circle}` ka use kar sakte hain.\nNaya template text bhejein:", parse_mode='Markdown')
         return
 
     elif data == "admin_addsub_prompt":
@@ -1210,7 +1338,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "admin_toggle_style":
         curr = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
-        styles = ['cyber', 'json', 'hacker', 'matrix', 'neon', 'card', 'compact', 'minimal', 'vip', 'standard', 'custom']
+        styles = ['cyber', 'json', 'hacker', 'matrix', 'neon', 'card', 'compact', 'minimal', 'vip', 'standard', 'terminal', 'stealth', 'pulse', 'matrix_v2']
         next_style = styles[(styles.index(curr) + 1) % len(styles)] if curr in styles else 'cyber'
         db_execute("UPDATE settings SET value = ? WHERE key = 'report_style'", (next_style,), commit=True)
         await query.answer(f"🎨 Report Style changed to: {next_style.upper()}!", show_alert=True)
@@ -1223,9 +1351,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         clone_toggle_val = db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")['value']
         ref_reward_val = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")['value']
         
-        panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{next_style.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
+        panel_text = f"\n📊 *ADVANCED ADMIN PANEL*\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{next_style.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📷 ⚙ Set UPI QR", callback_data="admin_setupi_qr_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
@@ -1234,8 +1362,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛠️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
-            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -1258,9 +1385,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ref_reward_val = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")['value']
         report_style_val = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
         
-        panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
+        panel_text = f"\n📊 *ADVANCED ADMIN PANEL*\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📷 ⚙ Set UPI QR", callback_data="admin_setupi_qr_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
@@ -1269,7 +1396,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛠️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
@@ -1434,5 +1560,5 @@ def main():
     
     application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
-if __name__ == '__main__':
+if __name__ == 'main':
     main()
