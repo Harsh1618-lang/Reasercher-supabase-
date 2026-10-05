@@ -34,12 +34,12 @@ def run_flask():
 # TELEGRAM BOT SETUP
 # ============================================
 try:
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile, BotCommand
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
     os.system('pip install python-telegram-bot==20.7 requests flask')
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile, BotCommand
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 
@@ -1316,7 +1316,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
@@ -1350,7 +1350,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
@@ -1380,7 +1380,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text += f"• **{ap['api_name']}**: `🔴 OFFLINE / DOWN`\n"
         keyboard = [[InlineKeyboardButton("🔵 📊 Back", callback_data="admin_panel")]]
         try:
-            await query.edit_message_text(text, parse_me='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+            await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except:
             await query.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return
@@ -1488,27 +1488,16 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sent = 0
     for u in users:
         try:
-            await context.bot.send_message(chat_id=u['user_id'], text="📢 *ANNOUNCEMENT*\n\n" + ' '.join(context.args), parse_mode='Markdown')
+            await context.bot.send_message(chat_id=u['user_id'], text="📢 *ANNOUNCEMENT*\n\n" + ' '.join(context.args), parse_message='Markdown')
             sent += 1
         except: pass
     await update.message.reply_text(f"📢 Broadcast sent to {sent} users.")
-
-async def post_init(application: Application):
-    # Set bot commands menu to exclude sensitive admin commands for normal users
-    commands = [
-        BotCommand("start", "Start Bot Menu"),
-        BotCommand("support", "Contact Owner & Support"),
-        BotCommand("balance", "Check Current Balance"),
-        BotCommand("daily", "Claim Daily Bonus"),
-        BotCommand("ref", "Refer & Earn Link")
-    ]
-    await application.bot.set_my_commands(commands)
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
     print("🚀 HARSH OSINT BOT STARTING (10 REPORT STYLES & ALL ADMIN BUGS FIXED)...")
     
-    application = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
+    application = Application.builder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("support", support_command))
@@ -1519,7 +1508,7 @@ def main():
     application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("redeem", redeem_command))
     application.add_handler(CommandHandler("history", history_command))
-    application.add_handler(CommandHandler("setupi", setupi_command))
+    application.add_handler(CommandHandler.add_handler if hasattr(CommandHandler, 'add_handler') else CommandHandler("setupi", setupi_command))
     application.add_handler(CommandHandler("maint", maint_command))
     application.add_handler(CommandHandler("addcredits", addcredits_command))
     application.add_handler(CommandHandler("broadcast", broadcast_command))
