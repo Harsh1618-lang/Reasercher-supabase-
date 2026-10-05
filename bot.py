@@ -668,7 +668,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_db_check.get('phone_number') or not user_db_check['phone_number']:
         contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
-        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     is_joined, unjoined_channels = await check_multi_force_subscription(context.bot, user.id)
@@ -1380,7 +1380,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text += f"• **{ap['api_name']}**: `🔴 OFFLINE / DOWN`\n"
         keyboard = [[InlineKeyboardButton("🔵 📊 Back", callback_data="admin_panel")]]
         try:
-            await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+            await query.edit_message_text(text, parse_me='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except:
             await query.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return
@@ -1493,11 +1493,22 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except: pass
     await update.message.reply_text(f"📢 Broadcast sent to {sent} users.")
 
+async def post_init(application: Application):
+    # Set bot commands menu to exclude sensitive admin commands for normal users
+    commands = [
+        BotCommand("start", "Start Bot Menu"),
+        BotCommand("support", "Contact Owner & Support"),
+        BotCommand("balance", "Check Current Balance"),
+        BotCommand("daily", "Claim Daily Bonus"),
+        BotCommand("ref", "Refer & Earn Link")
+    ]
+    await application.bot.set_my_commands(commands)
+
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
     print("🚀 HARSH OSINT BOT STARTING (10 REPORT STYLES & ALL ADMIN BUGS FIXED)...")
     
-    application = Application.builder().token(BOT_TOKEN).build()
+    application = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("support", support_command))
