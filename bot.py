@@ -137,6 +137,7 @@ def init_database():
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('maintenance', 'off')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('maint_msg', '🚧 Bot abhi maintenance mode par hai. Kripya baad mein koshish karein!')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('upi_id', 'harshhacker@upi')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('upi_qr', '')") 
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('banner_media', '')") 
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('banner_type', 'none')") 
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('clone_req_ref', '2')") 
@@ -144,7 +145,7 @@ def init_database():
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ref_reward_credits', '2')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('force_channels', '')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('report_style', 'cyber')")
-    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('custom_style_template', '🎯 Target: {target}\\n🔍 Type: {type}\\n-----------------\\n{data}')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('custom_style_template', '🔥 REPORT: {type}\\n🎯 Target: {target}\\n-----------------\\n{data}')")
     
     default_apis = [
         ('phone', 'Number Info', 'https://nmdllpezcocquamhgpmb.supabase.co/functions/v1/lookup?number={query}', '@FizzaGirl', '@Harsx1618'),
@@ -313,7 +314,16 @@ async def format_and_send_report(msg_obj, data, target_str, update, context, api
         data_str = ""
         if isinstance(data, dict):
             for k, v in data.items():
-                data_str += f"• {k}: {v}\n"
+                data_str += f"• 🔹 {k}: {v}\n"
+        elif isinstance(data, list):
+            for idx, rec in enumerate(data, 1):
+                data_str += f"👤 [RECORD #{idx}]\n"
+                if isinstance(rec, dict):
+                    for k, v in rec.items():
+                        data_str += f"  • {k}: {v}\n"
+                else:
+                    data_str += f"  • {str(rec)}\n"
+                data_str += "\n"
         else:
             data_str = str(data)
             
@@ -414,6 +424,9 @@ async def ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, parse_mode='Markdown')
 
 async def api_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin_user(update.effective_user.id):
+        await update.message.reply_text("❌ Yeh command sirf Admin ke liye hai.")
+        return
     apis = db_get_all("SELECT * FROM dynamic_apis")
     text = "🟢 **LIVE API STATUS CHECKER**\n━━━━━━━━━━━━━━━━━━━━━━\n"
     for ap in apis:
@@ -589,16 +602,25 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_premium_plans(update, context):
     upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
+    upi_qr = db_get_one("SELECT value FROM settings WHERE key='upi_qr'")
     upi_id = upi_record['value'] if upi_record else "harshhacker@upi"
+    qr_file_id = upi_qr['value'] if upi_qr else ""
+    
     plans = db_get_all("SELECT * FROM plans")
     text = f"💎 **BUY PREMIUM & ADD CREDITS**\n━━━━━━━━━━━━━━━━━━━━━━\n📲 **Admin UPI ID:** `{upi_id}`\n\n📦 **Available Plans:**\n"
     for p in plans:
         text += f"• **{p['name']}** — `{p['price']}` for **{p['credits']} Credits**\n"
     
     if hasattr(update, 'message') and update.message:
-        await update.message.reply_text(text, parse_mode='Markdown')
+        if qr_file_id:
+            await update.message.reply_photo(photo=qr_file_id, caption=text, parse_mode='Markdown')
+        else:
+            await update.message.reply_text(text, parse_mode='Markdown')
     elif hasattr(update, 'callback_query') and update.callback_query:
-        await update.callback_query.message.reply_text(text, parse_mode='Markdown')
+        if qr_file_id:
+            await update.callback_query.message.reply_photo(photo=qr_file_id, caption=text, parse_mode='Markdown')
+        else:
+            await update.callback_query.message.reply_text(text, parse_mode='Markdown')
 
 async def check_user_credit(update, user):
     user_data = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
@@ -646,6 +668,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
             else:
                 await update.message.reply_text("❌ Kripya gallery se koi valid GIF, Video ya Photo bhejein.")
+                return
+
+        if context.user_data.get('waiting_for_upi_qr'):
+            if update.message.photo:
+                qr_id = update.message.photo[-1].file_id
+                db_execute("UPDATE settings SET value = ? WHERE key = 'upi_qr'", (qr_id,), commit=True)
+                context.user_data['waiting_for_upi_qr'] = False
+                await update.message.reply_text("✅ Success! UPI QR Code successfully set ho chuka hai.", parse_mode='Markdown')
+                return
+            else:
+                await update.message.reply_text("❌ Kripya UPI QR Code ki ek valid photo bhejein.")
                 return
 
         if context.user_data.get('waiting_for_custom_template'):
@@ -880,6 +913,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("📷 ⚙ Set UPI QR", callback_data="admin_setupi_qr_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
@@ -889,6 +923,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛠️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -946,7 +981,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await format_and_send_report(msg, data, query_str, update, context, api_type="Telegram Username")
         context.user_data['mode'] = None
     elif mode == 'tg_userid':
-        msg = await update.message.reply_text("🕵️‍♂️️ *TELEGRAM USERID BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERID BREACH*\nInitializing...", parse_mode='Markdown')
         data = await fetch_dynamic_api('tg_userid', cleaned)
         await show_hacking_animation(msg, cleaned, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_ID:" + cleaned, json.dumps(data)), commit=True)
@@ -971,13 +1006,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if err: 
             await msg.edit_text(err)
         else: 
-            # If report style is 'custom', format phone records using custom template
             r_style = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
             if r_style == 'custom':
                 template = db_get_one("SELECT value FROM settings WHERE key='custom_style_template'")['value']
                 rec_str = ""
                 for idx, r in enumerate(records, 1):
-                    rec_str += f"#{idx} Name: {r['name']} | Mob: {r['mobile']}\n"
+                    rec_str += f"👤 [RECORD #{idx}]\n• 🏷️ Name: {r['name']}\n• 👨‍👧 Father: {r['father']}\n• 📱 Mobile: {r['mobile']}\n• 📡 Circle: {r['circle']}\n• 🏠 Address: {r['address']}\n\n"
                 custom_text = template.replace("{target}", cleaned).replace("{type}", "Number Info").replace("{data}", rec_str)
                 await msg.edit_text(custom_text, parse_mode='Markdown')
             else:
@@ -1035,6 +1069,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("📷 ⚙ Set UPI QR", callback_data="admin_setupi_qr_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
@@ -1044,6 +1079,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛠️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         try: await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1053,6 +1089,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "admin_setupi_prompt":
         context.user_data['waiting_for_upi'] = True
         await context.bot.send_message(chat_id=query.from_user.id, text="💳 **Set Admin UPI ID**\nNayi UPI ID bhejein:", parse_mode='Markdown')
+        return
+
+    elif data == "admin_setupi_qr_prompt":
+        context.user_data['waiting_for_upi_qr'] = True
+        await context.bot.send_message(chat_id=query.from_user.id, text="📷 **Set UPI QR Code**\nKripya QR Code ki ek Photo bhejein:", parse_mode='Markdown')
         return
 
     elif data == "admin_addcredit_prompt":
@@ -1127,15 +1168,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{next_style.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("📷 ⚙ Set UPI QR", callback_data="admin_setupi_qr_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛠️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         try: await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1159,20 +1202,44 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("📷 ⚙ Set UPI QR", callback_data="admin_setupi_qr_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
-            [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛠️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
-            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🛠️ ✍️️ Set Custom Style", callback_data="admin_custom_style_prompt")],
+            [InlineKeyboardButton("🛡️️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         try: await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: pass
+        return
+
+    elif data == "admin_check_api_status":
+        apis = db_get_all("SELECT * FROM dynamic_apis")
+        text = "🟢 **LIVE API STATUS CHECKER**\n━━━━━━━━━━━━━━━━━━━━━━\n"
+        for ap in apis:
+            url_to_test = ap['api_url'].replace("{query}", "9999999999" if ap['api_key'] == 'phone' else "110001")
+            try:
+                start_t = time.time()
+                res = requests.get(url_to_test, headers=HTTP_HEADERS, timeout=5)
+                ping = int((time.time() - start_t) * 1000)
+                if res.status_code == 200:
+                    text += f"• **{ap['api_name']}**: `🟢 ONLINE` (Ping: `{ping}ms`)\n"
+                else:
+                    text += f"• **{ap['api_name']}**: `🟡 ISSUE ({res.status_code})`\n"
+            except:
+                text += f"• **{ap['api_name']}**: `🔴 OFFLINE / DOWN`\n"
+        keyboard = [[InlineKeyboardButton("🔵 📊 Back", callback_data="admin_panel")]]
+        try:
+            await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        except:
+            await query.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
     elif data == "admin_cloneref_prompt":
@@ -1295,7 +1362,7 @@ def main():
     application.add_handler(CommandHandler("report", report_command))
     application.add_handler(CommandHandler("daily", daily_command))
     application.add_handler(CommandHandler("ref", ref_command))
-    application.add_handler(CommandHandler("status", api_status_command))
+    application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("redeem", redeem_command))
     application.add_handler(CommandHandler("history", history_command))
     application.add_handler(CommandHandler("setupi", setupi_command))
