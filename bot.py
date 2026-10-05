@@ -506,6 +506,58 @@ def format_aadhaar_response(data, query_str):
 # ============================================
 # COMMAND & MESSAGE HANDLERS
 # ============================================
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    active_live_users.add(user.id)
+    context.user_data.clear()
+    
+    maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
+    if maint == 'on' and not is_admin_user(user.id):
+        maint_msg = db_get_one("SELECT value FROM settings WHERE key='maint_msg'")['value']
+        await update.message.reply_text("🚧 " + maint_msg, parse_mode='Markdown')
+        return
+
+    args = context.args
+    referrer_id = 0
+    if args and args[0].isdigit():
+        ref_id = int(args[0])
+        if ref_id != user.id: referrer_id = ref_id
+
+    reward_setting = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")
+    ref_reward = int(reward_setting['value']) if reward_setting and reward_setting['value'].isdigit() else 2
+
+    user_db = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
+    if not user_db:
+        db_execute("INSERT INTO users (user_id, username, first_name, credits, referred_by) VALUES (?, ?, ?, ?, ?)",
+                   (user.id, user.username or "NoUsername", user.first_name, ref_reward, referrer_id), commit=True)
+        if referrer_id != 0:
+            db_execute("UPDATE users SET credits = credits + ? WHERE user_id = ?", (ref_reward, referrer_id), commit=True)
+            try:
+                await context.bot.send_message(chat_id=referrer_id, text=f"🎉 **Referral Bonus!** Aapke link se ek naye user ne join kiya, aapko `{ref_reward}` extra credits mile hain!")
+            except: pass
+    else:
+        if user_db.get('is_banned') == 1:
+            await update.message.reply_text("❌ Aapko bot use karne se block kar diya gaya hai.")
+            return
+
+    user_db_check = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
+    if not user_db_check.get('phone_number') or not user_db_check['phone_number']:
+        contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
+        reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        return
+
+    is_joined, unjoined_channels = await check_multi_force_subscription(context.bot, user.id)
+    if not is_joined:
+        join_buttons = []
+        for ch in unjoined_channels:
+            join_buttons.append([InlineKeyboardButton(f"📢 Join {ch}", url=f"https://t.me/{ch.replace('@', '')}")])
+        join_buttons.append([InlineKeyboardButton("✅ I Have Joined All", callback_data="check_join_btn")])
+        await update.message.reply_text("⚠️ *MULTI-CHANNEL FORCE JOIN REQUIRED*\n\nBot ko use karne ke liye kripya neeche diye gaye sabhi channels ko join karein:", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(join_buttons))
+        return
+
+    await send_welcome_menu(update, context, user)
+
 async def support_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     support_text = f"💬 *IF YOU FACE ANY ISSUES CONTACT OUR ADMIN*\n\n📲 **Owner / Support Username:** `{OWNER_USERNAME}`\n\nKisi bhi madad ke liye seedhe contact karein!"
     support_keyboard = [[InlineKeyboardButton("💬 Chat with Support Owner", url=f"https://t.me/{OWNER_USERNAME.replace('@', '')}")]]
@@ -933,7 +985,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         panel_text = f"\n📊 *ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Users: `{total_users}` | 🔍 Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🚧 Maint: `{maint.upper()}`\n"
         keyboard = [
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
@@ -1088,11 +1140,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     elif data == "admin_banner_prompt":
         context.user_data['waiting_for_banner'] = True
-        await context.bot.send_message(chat_id=query.from_user.id, text="🖼️️ Send photo/video/gif for banner:", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text="🖼 Send photo/video/gif for banner:", parse_mode='Markdown')
         return
     elif data == "admin_addsub_prompt":
         context.user_data['waiting_for_add_sub'] = True
-        await context.bot.send_message(chat_id=query.from_user.id, text="🛡️️ Enter User ID to add as Sub-Admin:", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text="🛡 Enter User ID to add as Sub-Admin:", parse_mode='Markdown')
         return
     elif data == "toggle_maintenance":
         curr = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
