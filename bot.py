@@ -285,7 +285,7 @@ async def show_hacking_animation(msg_obj, target_str, title_type="PHONE"):
     if title_type == "PINCODE":
         title = "📍 PINCODE INTELLIGENCE BREACH"
     elif title_type == "TG":
-        title = "🕵️️‍♂️ TELEGRAM INTEL BREACH"
+        title = "🕵️‍♂️ TELEGRAM INTEL BREACH"
     elif title_type == "IP":
         title = "🌐 IP INTELLIGENCE BREACH"
     elif title_type == "AADHAAR":
@@ -571,7 +571,7 @@ def format_pincode_response(data, pincode):
 
 def format_tg_response(data, query_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status'] == False and 'error' in data):
+        if not data or (isinstance(data, dict) and data.get('status') == False and 'error' in data):
             return "❌ Error: " + data.get('error', 'No data found')
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
         if len(json_str) > 4000: json_str = json_str[:4000] + "\n... (Truncated)"
@@ -753,7 +753,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_db_check.get('phone_number') or not user_db_check['phone_number']:
         contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
-        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     is_joined, unjoined_channels = await check_multi_force_subscription(context.bot, user.id)
