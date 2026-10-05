@@ -34,12 +34,12 @@ def run_flask():
 # TELEGRAM BOT SETUP
 # ============================================
 try:
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile, BotCommand
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
     os.system('pip install python-telegram-bot==20.7 requests flask')
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile, BotCommand
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 
@@ -318,7 +318,7 @@ async def show_smooth_progress_animation(msg_obj, target_str, title_type="PHONE"
 
 def parse_phone_records(data, phone):
     try:
-        if not data or (isinstance(data, dict) and data.get('status') == False):
+        if not data or (isinstance(data, dict) and data.get('status'] == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return [], "❌ Error: " + error_msg
         
@@ -593,12 +593,24 @@ async def ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    user_info = db_get_one("SELECT credits, searches, joined_date FROM users WHERE user_id = ?", (user.id,))
-    if not user_info:
-        await update.message.reply_text("❌ Aapka account database mein nahi mila. Kripya /start dabayein.")
+    if not is_admin_user(user.id):
+        await update.message.reply_text("❌ Yeh command sirf Admin ke liye hai.")
         return
-    status = "👑 Admin / Unlimited" if (is_admin_user(user.id) or user_info['credits'] > 5000) else ("💎 Premium User" if user_info['credits'] > 10 else "🆓 Free User")
-    text = f"📊 **YOUR ACCOUNT STATUS**\n\n👤 Name: {user.first_name}\n🏷️ Status: `{status}`\n💎 Credits: `{user_info['credits']}`\n🔍 Total Searches: `{user_info['searches']}`\n📅 Joined: `{user_info['joined_date']}`"
+    apis = db_get_all("SELECT * FROM dynamic_apis")
+    text = "🟢 **LIVE API STATUS CHECKER**\n━━━━━━━━━━━━━━━━━━━━━━\n"
+    for ap in apis:
+        test_q = "9876543210" if ap['api_key'] == 'phone' else ("123456789012" if ap['api_key'] == 'aadhaar_info' else ("110001" if ap['api_key'] == 'pincode' else ("8.8.8.8" if ap['api_key'] == 'ip_info' else "12345678")))
+        url_to_test = ap['api_url'].replace("{query}", test_q)
+        try:
+            start_t = time.time()
+            res = requests.get(url_to_test, headers=HTTP_HEADERS, timeout=5)
+            ping = int((time.time() - start_t) * 1000)
+            if res.status_code == 200:
+                text += f"• **{ap['api_name']}**: `🟢 ONLINE` (Ping: `{ping}ms`)\n"
+            else:
+                text += f"• **{ap['api_name']}**: `🟡 ISSUE ({res.status_code})`\n"
+        except:
+            text += f"• **{ap['api_name']}**: `🔴 OFFLINE / DOWN`\n"
     await update.message.reply_text(text, parse_mode='Markdown')
 
 async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1365,7 +1377,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         apis = db_get_all("SELECT * FROM dynamic_apis")
         text = "🟢 **LIVE API STATUS CHECKER**\n━━━━━━━━━━━━━━━━━━━━━━\n"
         for ap in apis:
-            url_to_test = ap['api_url'].replace("{query}", "9999999999" if ap['api_key'] == 'phone' else "110001")
+            test_q = "9876543210" if ap['api_key'] == 'phone' else ("123456789012" if ap['api_key'] == 'aadhaar_info' else ("110001" if ap['api_key'] == 'pincode' else ("8.8.8.8" if ap['api_key'] == 'ip_info' else "12345678")))
+            url_to_test = ap['api_url'].replace("{query}", test_q)
             try:
                 start_t = time.time()
                 res = requests.get(url_to_test, headers=HTTP_HEADERS, timeout=5)
@@ -1407,7 +1420,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("edit_api_wm_"):
         context.user_data['waiting_for_api_old'] = True
         context.user_data['target_api_key'] = data.replace("edit_api_wm_", "")
-        await context.bot.send_message(chat_id=query.from_user.id, text="✍️ Old watermark text bhejein:", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text="✍️️ Old watermark text bhejein:", parse_mode='Markdown')
         return
 
     elif data == "admin_live_analytics":
@@ -1503,7 +1516,6 @@ def main():
     application.add_handler(CommandHandler("report", report_command))
     application.add_handler(CommandHandler("daily", daily_command))
     application.add_handler(CommandHandler("ref", ref_command))
-    application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("redeem", redeem_command))
     application.add_handler(CommandHandler("history", history_command))
     application.add_handler(CommandHandler("setupi", setupi_command))
