@@ -1256,7 +1256,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "admin_addsub_prompt":
         context.user_data['waiting_for_add_sub'] = True
-        await context.bot.send_message(chat_id=query.from_user.id, text="🛡️️ **Add Sub-Admin**\nJise Sub-Admin banana hai uski **User ID** bhejein:", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text="🛡️ **Add Sub-Admin**\nJise Sub-Admin banana hai uski **User ID** bhejein:", parse_mode='Markdown')
         return
 
     elif data == "admin_dynamic_apis":
@@ -1317,7 +1317,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
             [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
-            [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️️ Set Ref Reward", callback_data="admin_refreward_prompt")],
+            [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
