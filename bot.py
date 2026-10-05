@@ -284,7 +284,7 @@ async def schedule_message_deletion(context, chat_id, message_ids, doc_message_i
             pass
 
 # ============================================
-# SMOOTH ANIMATED PROGRESS BAR WITH PERCENTAGE
+# THIN & SLEEK PROGRESS BAR ANIMATION (3 BLOCKS)
 # ============================================
 async def show_smooth_progress_animation(msg_obj, target_str, title_type="PHONE"):
     if title_type == "PINCODE":
@@ -299,21 +299,18 @@ async def show_smooth_progress_animation(msg_obj, target_str, title_type="PHONE"
         title = "💻 SYSTEM BREACH IN PROGRESS"
 
     steps = [
-        ("░░░░░░░░░░", "10%"),
-        ("██░░░░░░░░", "30%"),
-        ("████░░░░░░", "50%"),
-        ("██████░░░░", "70%"),
-        ("████████░░", "90%"),
-        ("██████████", "100%")
+        ("░░░", "33%"),
+        ("█░░", "66%"),
+        ("███", "100%")
     ]
 
     for bar, pct in steps:
         try:
             await msg_obj.edit_text(
-                f"{title}\nTarget: `{target_str}`\n\n⚡ Fetching data securely...\n`{bar} {pct}`",
+                f"{title}\nTarget: `{target_str}`\n\n⚡ Fetching data...\n`[{bar}] {pct}`",
                 parse_mode='Markdown'
             )
-            await asyncio.sleep(0.25)
+            await asyncio.sleep(0.2)
         except:
             pass
 
@@ -517,7 +514,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_db_check.get('phone_number') or not user_db_check['phone_number']:
         contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
         reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
-        await update.message.reply_text("⚠️️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
     is_joined, unjoined_channels = await check_multi_force_subscription(context.bot, user.id)
@@ -791,7 +788,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context.user_data['edit_name_target_key'] = existing['api_key']
                 context.user_data['waiting_for_edit_name_key'] = False
                 context.user_data['waiting_for_edit_name_new'] = True
-                await update.message.reply_text(f"✏️️ Ab is API (`{existing['api_name']}`) ke liye **Naya Button Name** enter karein:", parse_mode='Markdown')
+                await update.message.reply_text(f"✏️ Ab is API (`{existing['api_name']}`) ke liye **Naya Button Name** enter karein:", parse_mode='Markdown')
             else:
                 await update.message.reply_text("❌ Aisi koi API nahi mili!", parse_mode='Markdown')
                 context.user_data['waiting_for_edit_name_key'] = False
@@ -914,7 +911,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
@@ -940,7 +937,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = context.user_data.get('mode', None)
     cleaned = re.sub(r'\D', '', text)
 
-    # Universal Handler with Smooth Progress Animation and 10 Report Styles
+    # Universal Handler for all modes using the 10 Report Styles & Custom Style
     if mode and mode.startswith("custom_api_"):
         api_k = mode.replace("custom_api_", "")
         msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
@@ -1072,9 +1069,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
             [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
-            [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
-            [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛠️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
+            [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️️ Set Ref Reward", callback_data="admin_refreward_prompt")],
+            [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🛠️️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
@@ -1174,7 +1171,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛠️ ✍️ Set Custom Style", callback_data="admin_custom_style_prompt")],
-            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -1204,7 +1201,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
@@ -1372,6 +1369,9 @@ def main():
     application.add_handler(CallbackQueryHandler(button_callback))
     
     application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+
+if __name__ == 'main':
+    main()
 
 if __name__ == '__main__':
     main()
