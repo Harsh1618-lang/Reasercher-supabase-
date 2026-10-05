@@ -474,7 +474,7 @@ def format_pincode_response(data, pincode):
 
 def format_tg_response(data, query_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status'] == False and 'error' in data):
+        if not data or (isinstance(data, dict) and data.get('status') == False and 'error' in data):
             return "❌ Error: " + data.get('error', 'No data found')
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
         if len(json_str) > 4000: json_str = json_str[:4000] + "\n... (Truncated)"
@@ -483,7 +483,7 @@ def format_tg_response(data, query_str):
 
 def format_ip_response(data, ip_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status'] == False):
+        if not data or (isinstance(data, dict) and data.get('status') == False):
             return "❌ Error: " + data.get('error', 'No data found')
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
         if len(json_str) > 4000: json_str = json_str[:4000] + "\n... (Truncated)"
@@ -492,7 +492,7 @@ def format_ip_response(data, ip_str):
 
 def format_aadhaar_response(data, query_str):
     try:
-        if not data or (isinstance(data, dict) and data.get('status'] == False):
+        if not data or (isinstance(data, dict) and data.get('status') == False):
             return "❌ Error: " + data.get('error', 'No data found')
         if isinstance(data, dict):
             data.pop('developer', None)
@@ -984,7 +984,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = None
         await send_welcome_menu(update, context, user)
         return
-    elif text == "🛠️️ Toggle Menu":
+    elif text == "🛠️ Toggle Menu":
         await update.message.reply_text("📉 Menu hide kar diya gaya hai. Wapas lane ke liye /start dabayein.", reply_markup=ReplyKeyboardRemove())
         return
     elif text == "📊 Admin Panel" and is_admin_user(user.id):
@@ -999,7 +999,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1117,11 +1117,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     elif data == "admin_delete_api":
         context.user_data['waiting_for_delete_api_key'] = True
-        await context.bot.send_message(chat_id=query.from_user.id, text="🗑 Enter API Key or Name to delete:", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text="🗑️ Enter API Key or Name to delete:", parse_mode='Markdown')
         return
     elif data == "admin_edit_name":
         context.user_data['waiting_for_edit_name_key'] = True
-        await context.bot.send_message(chat_id=query.from_user.id, text="✏ Enter API Key or current Name to edit:", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text="✏️ Enter API Key or current Name to edit:", parse_mode='Markdown')
         return
     elif data == "admin_toggle_style":
         curr = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
