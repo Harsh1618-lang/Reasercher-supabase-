@@ -261,7 +261,7 @@ async def fetch_dynamic_api(api_key, query_val, timeout_sec=20):
             except:
                 return {"status": True, "raw_result": raw_text}
         else:
-            return {"status": False, "error": "API returned status " + str(response.status_code)}
+            return {"status": False, "error": "API status " + str(response.status_code)}
     except Exception as e:
         return {"status": False, "error": str(e)}
 
@@ -452,7 +452,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
         text += f"────────────────────────\n"
 
     elif r_style == 'minimal':
-        text = f"▪️ **INTEL // {phone} ({page + 1}/{total_pages})**\n\n"
+        text = f"▪️️ **INTEL // {phone} ({page + 1}/{total_pages})**\n\n"
         for idx, rec in enumerate(chunk, start=start_idx + 1):
             text += f"`{idx}` {rec['name']} | {rec['mobile']} | {rec['circle']}\n"
         text += f"\n▪️ Auth: {OWNER_USERNAME}"
@@ -638,6 +638,23 @@ async def ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ref_reward = reward_setting['value'] if reward_setting else "2"
     ref_link = f"https://t.me/{BOT_USERNAME.replace('@', '')}?start={user.id}"
     text = f"🔗 **REFER & EARN PROGRAM**\n\nApne dosto ko yeh link share karein aur har ek join par `{ref_reward}` free credits payein!\n\n👇 **Aapka Referral Link:**\n`{ref_link}`"
+    await update.message.reply_text(text, parse_mode='Markdown')
+
+async def api_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    apis = db_get_all("SELECT * FROM dynamic_apis")
+    text = "🟢 **LIVE API STATUS CHECKER**\n━━━━━━━━━━━━━━━━━━━━━━\n"
+    for ap in apis:
+        url_to_test = ap['api_url'].replace("{query}", "9999999999" if ap['api_key'] == 'phone' else "110001")
+        try:
+            start_t = time.time()
+            res = requests.get(url_to_test, headers=HTTP_HEADERS, timeout=5)
+            ping = int((time.time() - start_t) * 1000)
+            if res.status_code == 200:
+                text += f"• **{ap['api_name']}**: `🟢 ONLINE` (Ping: `{ping}ms`)\n"
+            else:
+                text += f"• **{ap['api_name']}**: `🟡 ISSUE ({res.status_code})`\n"
+        except:
+            text += f"• **{ap['api_name']}**: `🔴 OFFLINE / DOWN`\n"
     await update.message.reply_text(text, parse_mode='Markdown')
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -831,7 +848,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     active_live_users.add(user.id)
     
-    # Strict Admin Prompt Handlers (Handles both text and media like Photo/Video/GIF)
     if is_admin_user(user.id):
         if context.user_data.get('waiting_for_banner'):
             media_id = ""
@@ -1077,7 +1093,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ref_reward_val = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")['value']
         report_style_val = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
         
-        panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
+        panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if्ता else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
             [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
@@ -1087,7 +1103,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1154,7 +1170,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except: await msg.edit_text(formatted, parse_mode=None)
         context.user_data['mode'] = None
     elif mode == 'tg_userid':
-        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM USERID BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("🕵️‍♂️️ *TELEGRAM USERID BREACH*\nInitializing...", parse_mode='Markdown')
         data = await fetch_dynamic_api('tg_userid', cleaned)
         await show_hacking_animation(msg, cleaned, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, "TG_ID:" + cleaned, json.dumps(data)), commit=True)
@@ -1325,7 +1341,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
@@ -1357,7 +1373,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
@@ -1488,7 +1504,10 @@ def main():
     application.add_handler(CommandHandler("report", report_command))
     application.add_handler(CommandHandler("daily", daily_command))
     application.add_handler(CommandHandler("ref", ref_command))
-    application.add_handler(CommandHandler("status", status_command))
+    
+    # Fixed: Restored API status check functionality for /status command
+    application.add_handler(CommandHandler("status", api_status_command))
+    
     application.add_handler(CommandHandler("redeem", redeem_command))
     application.add_handler(CommandHandler("history", history_command))
     application.add_handler(CommandHandler("setupi", setupi_command))
@@ -1497,7 +1516,6 @@ def main():
     application.add_handler(CommandHandler("broadcast", broadcast_command))
     application.add_handler(MessageHandler(filters.CONTACT, handle_contact))
     
-    # Fixed filter syntax for python-telegram-bot v20.7
     application.add_handler(MessageHandler((filters.TEXT & ~filters.COMMAND) | filters.PHOTO | filters.VIDEO | filters.ANIMATION | filters.Document.ALL, handle_message))
     
     application.add_handler(CallbackQueryHandler(button_callback))
