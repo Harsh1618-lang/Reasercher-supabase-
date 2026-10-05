@@ -318,7 +318,7 @@ async def show_smooth_progress_animation(msg_obj, target_str, title_type="PHONE"
 
 def parse_phone_records(data, phone):
     try:
-        if not data or (isinstance(data, dict) and data.get('status'] == False):
+        if not data or (isinstance(data, dict) and data.get('status') == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return [], "❌ Error: " + error_msg
         
@@ -488,7 +488,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
         for idx, rec in enumerate(chunk, start=start_idx + 1):
             text += f"🔹 **RECORD #{idx}**\n"
             text += f"👤 Name: `{rec['name']}`\n"
-            text += f"👨‍‍👧 Father: `{rec['father']}`\n"
+            text += f"👨‍👧 Father: `{rec['father']}`\n"
             text += f"📱 Mobile: `{rec['mobile']}`\n"
             text += f"📞 Alt Num: `{rec['alt_num']}`\n"
             text += f"🌐 Circle: `{rec['circle']}`\n"
@@ -598,7 +598,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Aapka account database mein nahi mila. Kripya /start dabayein.")
         return
     status = "👑 Admin / Unlimited" if (is_admin_user(user.id) or user_info['credits'] > 5000) else ("💎 Premium User" if user_info['credits'] > 10 else "🆓 Free User")
-    text = f"📊 **YOUR ACCOUNT STATUS**\n\n👤 Name: {user.first_name}\n🏷️️ Status: `{status}`\n💎 Credits: `{user_info['credits']}`\n🔍 Total Searches: `{user_info['searches']}`\n📅 Joined: `{user_info['joined_date']}`"
+    text = f"📊 **YOUR ACCOUNT STATUS**\n\n👤 Name: {user.first_name}\n🏷️ Status: `{status}`\n💎 Credits: `{user_info['credits']}`\n🔍 Total Searches: `{user_info['searches']}`\n📅 Joined: `{user_info['joined_date']}`"
     await update.message.reply_text(text, parse_mode='Markdown')
 
 async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1084,7 +1084,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = context.user_data.get('mode', None)
     cleaned = re.sub(r'\D', '', text)
 
-    # Universal Handler with Long Sleek Progress Animation and 10 Report Styles
+    # Universal Handler for all modes with Smooth Progress Animation and 10 Report Styles
     if mode and mode.startswith("custom_api_"):
         api_k = mode.replace("custom_api_", "")
         msg = await update.message.reply_text("⚡ COLLECTING INFO...\n`--- -- -- -- -- -- -- -- -- -- 10%`", parse_mode='Markdown')
@@ -1284,7 +1284,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['waiting_for_delete_api_key'] = True
         apis = db_get_all("SELECT api_key, api_name FROM dynamic_apis")
         api_list_str = "\n".join([f"• `{ap['api_name']}` (Key: `{ap['api_key']}`)" for ap in apis])
-        await context.bot.send_message(chat_id=query.from_user.id, text=f"🗑️ **DELETE API**\n\n{api_list_str}\n\nJise delete karna hai uska **API Key** ya **Name** bhejein:", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"🗑️️ **DELETE API**\n\n{api_list_str}\n\nJise delete karna hai uska **API Key** ya **Name** bhejein:", parse_mode='Markdown')
         return
 
     elif data == "admin_edit_name":
@@ -1296,7 +1296,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "admin_toggle_style":
         curr = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
-        styles = ['cyber', 'json', 'hacker', 'matrix', 'neon', 'card', 'compact', 'minimal', 'vip', 'standard', 'terminal', 'stealth', 'pulse', 'matrix_v2']
+        styles = ['cyber', 'json', 'hacker', 'matrix', 'neon', 'card', 'compact', 'minimal', 'vip', 'standard']
         next_style = styles[(styles.index(curr) + 1) % len(styles)] if curr in styles else 'cyber'
         db_execute("UPDATE settings SET value = ? WHERE key = 'report_style'", (next_style,), commit=True)
         await query.answer(f"🎨 Report Style changed to: {next_style.upper()}!", show_alert=True)
@@ -1319,7 +1319,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
-            [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
@@ -1345,7 +1345,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         panel_text = f"\n📊 *ADVANCED ADMIN PANEL*\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📷 ⚙ Set UPI QR", callback_data="admin_setupi_qr_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
@@ -1408,7 +1408,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("edit_api_wm_"):
         context.user_data['waiting_for_api_old'] = True
         context.user_data['target_api_key'] = data.replace("edit_api_wm_", "")
-        await context.bot.send_message(chat_id=query.from_user.id, text="✍️ Old watermark text bhejein:", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text="✍️️ Old watermark text bhejein:", parse_mode='Markdown')
         return
 
     elif data == "admin_live_analytics":
@@ -1494,7 +1494,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (14 REPORT STYLES & ALL ADMIN BUGS FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (10 REPORT STYLES & ALL ADMIN BUGS FIXED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
