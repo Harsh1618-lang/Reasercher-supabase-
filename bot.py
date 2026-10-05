@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate Report Styles & Fully Fixed Admin Edition
+# OSINT & Pincode Bot - Ultimate 10 Report Styles & Fully Fixed Admin Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Enhanced Report Styles, Fixed Admin Panel & All Features Intact
+Description: Advanced Telegram OSINT Bot with 10 Hacker/JSON/Cyber Report Styles, Fixed Admin Panel & All Features Intact
 """
 
 import os
@@ -318,7 +318,7 @@ async def show_smooth_progress_animation(msg_obj, target_str, title_type="PHONE"
 
 def parse_phone_records(data, phone):
     try:
-        if not data or (isinstance(data, dict) and data.get('status') == False):
+        if not data or (isinstance(data, dict) and data.get('status'] == False):
             error_msg = data.get('error', 'No data found') if isinstance(data, dict) else 'No data found'
             return [], "❌ Error: " + error_msg
         
@@ -368,7 +368,7 @@ def parse_phone_records(data, phone):
         return [], "❌ Parsing Error: " + str(e)
 
 # ============================================
-# EXPANDED REPORT STYLES FORMATTER (NO OWNER/CREDIT LEAK)
+# 10 UNIQUE REPORT STYLES FORMATTER (NO OWNER/CREDIT)
 # ============================================
 async def send_paginated_phone_response(msg_obj, records, phone, update, context, page=0, is_edit=True):
     total = len(records)
@@ -481,48 +481,6 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
             text += f"• Region    : {rec['circle']}\n"
             text += f"• Location  : _{rec['address']}_\n\n──────────────────────────────\n"
 
-    elif r_style == 'terminal':
-        text = f"root@osint-core:~# lookup --target {phone}\n"
-        text += f"[+] Status: SUCCESS | Records Found: {total}\n"
-        text += f"----------------------------------------\n"
-        for idx, rec in enumerate(chunk, start=start_idx + 1):
-            text += f"[{idx}] NAME   : {rec['name']}\n"
-            text += f"    FATHER : {rec['father']}\n"
-            text += f"    MOBILE : {rec['mobile']}\n"
-            text += f"    CIRCLE : {rec['circle']}\n"
-            text += f"    ADDR   : {rec['address']}\n\n"
-
-    elif r_style == 'stealth':
-        text = f"🕶️ [STEALTH ENCRYPTED INTEL]\n"
-        text += f"Target: ||{phone}||\n"
-        text += f"Total Nodes: {total} (Page {page + 1}/{total_pages})\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        for idx, rec in enumerate(chunk, start=start_idx + 1):
-            text += f"🔒 Node #{idx}:\n"
-            text += f"• Subject: ||{rec['name']}||\n"
-            text += f"• Contact: ||{rec['mobile']}||\n"
-            text += f"• Region : {rec['circle']}\n"
-            text += f"• Sector : {rec['address']}\n\n"
-
-    elif r_style == 'pulse':
-        text = f"⚡ PULSE GRID INTEL // {phone}\n"
-        text += f"📡 Page {page + 1} of {total_pages}\n════════════════════════════\n\n"
-        for idx, rec in enumerate(chunk, start=start_idx + 1):
-            text += f"🔋 [UNIT {idx}]\n"
-            text += f"👤 ➔ {rec['name']}\n"
-            text += f"📱 ➔ {rec['mobile']}\n"
-            text += f"📍 ➔ {rec['circle']}\n"
-            text += f"🏠 ➔ {rec['address']}\n\n"
-
-    elif r_style == 'matrix_v2':
-        text = f"💚 𝕸𝕬𝕿𝕽𝕴𝖃 𝕯𝕬𝕿𝕬𝕭𝕬𝕾𝕰 💚\n"
-        text += f"Target: `{phone}` | Page {page + 1}/{total_pages}\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n"
-        for idx, rec in enumerate(chunk, start=start_idx + 1):
-            text += f"🟩 [REC #{idx}]\n"
-            text += f"╠═👤 Name: {rec['name']}\n"
-            text += f"╠═📱 Phone: {rec['mobile']}\n"
-            text += f"╠═🌐 Circle: {rec['circle']}\n"
-            text += f"╚═🏠 Addr: {rec['address']}\n\n"
-
     else:  # Standard
         text = f"📱 **NUMBER INTELLIGENCE REPORT**\n"
         text += f"🎯 Target: `{phone}`\n"
@@ -530,7 +488,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
         for idx, rec in enumerate(chunk, start=start_idx + 1):
             text += f"🔹 **RECORD #{idx}**\n"
             text += f"👤 Name: `{rec['name']}`\n"
-            text += f"👨‍👧 Father: `{rec['father']}`\n"
+            text += f"👨‍‍👧 Father: `{rec['father']}`\n"
             text += f"📱 Mobile: `{rec['mobile']}`\n"
             text += f"📞 Alt Num: `{rec['alt_num']}`\n"
             text += f"🌐 Circle: `{rec['circle']}`\n"
@@ -600,7 +558,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
 # COMMAND HANDLERS
 # ============================================
 async def support_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    support_text = "💬 *IF YOU FACE ANY ISSUES CONTACT OUR ADMIN*\n\n📲 **Support Available**\n\nKisi bhi madad ke liye seedhe contact karein!"
+    support_text = "💬 *IF YOU FACE ANY ISSUES CONTACT OUR ADMIN*\n\n📲 **Support Available**\n\nKisi bhi madad ke liye contact karein!"
     support_keyboard = [[InlineKeyboardButton("💬 Chat with Support Owner", url="https://t.me/" + OWNER_USERNAME.replace('@', ''))]]
     await update.message.reply_text(support_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(support_keyboard))
 
@@ -1104,7 +1062,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
-            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
@@ -1353,7 +1311,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         panel_text = f"\n📊 *ADVANCED ADMIN PANEL*\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{next_style.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📷 ⚙ Set UPI QR", callback_data="admin_setupi_qr_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
@@ -1361,7 +1319,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
-            [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️️ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🟢 🔍 Check API Status", callback_data="admin_check_api_status")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
@@ -1387,7 +1345,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         panel_text = f"\n📊 *ADVANCED ADMIN PANEL*\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
         keyboard = [
-            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
             [InlineKeyboardButton("📷 ⚙ Set UPI QR", callback_data="admin_setupi_qr_prompt")],
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
@@ -1536,7 +1494,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (10 REPORT STYLES & ALL ADMIN BUGS FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (14 REPORT STYLES & ALL ADMIN BUGS FIXED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
@@ -1546,6 +1504,7 @@ def main():
     application.add_handler(CommandHandler("report", report_command))
     application.add_handler(CommandHandler("daily", daily_command))
     application.add_handler(CommandHandler("ref", ref_command))
+    application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("redeem", redeem_command))
     application.add_handler(CommandHandler("history", history_command))
     application.add_handler(CommandHandler("setupi", setupi_command))
@@ -1560,5 +1519,5 @@ def main():
     
     application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
-if __name__ == 'main':
+if __name__ == '__main__':
     main()
