@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate 10 Report Styles & Fully Fixed Commands Edition
+# OSINT & Pincode Bot - Ultimate 10 Report Styles & Fully Fixed Inputs Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Fixed /status & /ref Commands, Editable Welcome, Smart TG & All Admin Features
+Description: Advanced Telegram OSINT Bot with Fully Restored Pincode, IP, Aadhaar, Smart TG & All Features Intact
 """
 
 import os
@@ -509,7 +509,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
     buttons = []
     nav_row = []
     if page > 0:
-        nav_row.append(InlineKeyboardButton("⬅️️ Previous", callback_data=f"phone_page_{page - 1}"))
+        nav_row.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"phone_page_{page - 1}"))
     if page < total_pages - 1:
         nav_row.append(InlineKeyboardButton("Next ➡️", callback_data=f"phone_page_{page + 1}"))
     if nav_row:
@@ -1241,22 +1241,63 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_user_credit(update, user): return
 
     mode = context.user_data.get('mode', None)
-    cleaned = re.sub(r'\D', '', text)
 
     if mode == 'telegram_auto_detect':
         msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM INTEL BREACH*\nInitializing...", parse_mode='Markdown')
+        cleaned_tg = re.sub(r'\D', '', text)
         if text.startswith('@') or not text.isdigit():
             query_str = text if text.startswith('@') else '@' + text
             data = await fetch_dynamic_api('tg_username', query_str)
             log_activity(user.id, f"Telegram username lookup: {query_str}")
         else:
-            data = await fetch_dynamic_api('tg_userid', cleaned)
-            log_activity(user.id, f"Telegram userid lookup: {cleaned}")
+            data = await fetch_dynamic_api('tg_userid', cleaned_tg)
+            log_activity(user.id, f"Telegram userid lookup: {cleaned_tg}")
 
         await show_hacking_animation(msg, text, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"TG:{text}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         formatted = format_tg_response(data, text)
+        try: await msg.edit_text(formatted, parse_mode='Markdown')
+        except: await msg.edit_text(formatted, parse_mode=None)
+        context.user_data['mode'] = None
+        return
+
+    if mode == 'pincode':
+        cleaned_pin = re.sub(r'\D', '', text)
+        msg = await update.message.reply_text("📍 *PINCODE INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
+        data = await fetch_dynamic_api('pincode', cleaned_pin)
+        await show_hacking_animation(msg, cleaned_pin, title_type="PINCODE")
+        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"PIN:{cleaned_pin}", json.dumps(data)), commit=True)
+        db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+        log_activity(user.id, f"Pincode lookup performed on {cleaned_pin}")
+        formatted = format_pincode_response(data, cleaned_pin)
+        try: await msg.edit_text(formatted, parse_mode='Markdown')
+        except: await msg.edit_text(formatted, parse_mode=None)
+        context.user_data['mode'] = None
+        return
+
+    if mode == 'ip_info':
+        msg = await update.message.reply_text("🌐 *IP INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
+        data = await fetch_dynamic_api('ip_info', text)
+        await show_hacking_animation(msg, text, title_type="IP")
+        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"IP:{text}", json.dumps(data)), commit=True)
+        db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+        log_activity(user.id, f"IP lookup performed on {text}")
+        formatted = format_ip_response(data, text)
+        try: await msg.edit_text(formatted, parse_mode='Markdown')
+        except: await msg.edit_text(formatted, parse_mode=None)
+        context.user_data['mode'] = None
+        return
+
+    if mode == 'aadhaar_info':
+        cleaned_aadhaar = re.sub(r'\D', '', text)
+        msg = await update.message.reply_text("🆔 *AADHAAR INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
+        data = await fetch_dynamic_api('aadhaar_info', cleaned_aadhaar)
+        await show_hacking_animation(msg, cleaned_aadhaar, title_type="AADHAAR")
+        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"AADHAAR:{cleaned_aadhaar}", json.dumps(data)), commit=True)
+        db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+        log_activity(user.id, f"Aadhaar lookup performed on {cleaned_aadhaar}")
+        formatted = format_aadhaar_response(data, cleaned_aadhaar)
         try: await msg.edit_text(formatted, parse_mode='Markdown')
         except: await msg.edit_text(formatted, parse_mode=None)
         context.user_data['mode'] = None
@@ -1278,19 +1319,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = None
         return
 
-    if mode == 'phone' or (10 <= len(cleaned) <= 15):
+    cleaned_phone = re.sub(r'\D', '', text)
+    if mode == 'phone' or (10 <= len(cleaned_phone) <= 15):
         msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
-        data = await fetch_dynamic_api('phone', cleaned)
-        await show_hacking_animation(msg, cleaned, title_type="PHONE")
-        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, cleaned, json.dumps(data)), commit=True)
+        data = await fetch_dynamic_api('phone', cleaned_phone)
+        await show_hacking_animation(msg, cleaned_phone, title_type="PHONE")
+        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, cleaned_phone, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
-        log_activity(user.id, f"Phone lookup performed on {cleaned}")
-        records, err = parse_phone_records(data, cleaned)
+        log_activity(user.id, f"Phone lookup performed on {cleaned_phone}")
+        records, err = parse_phone_records(data, cleaned_phone)
         if err: await msg.edit_text(err)
         else: 
             context.user_data['last_phone_records'] = records
-            context.user_data['last_phone_target'] = cleaned
-            await send_paginated_phone_response(msg, records, cleaned, update, context, page=0, is_edit=True)
+            context.user_data['last_phone_target'] = cleaned_phone
+            await send_paginated_phone_response(msg, records, cleaned_phone, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
     else:
         await update.message.reply_text("❌ Kripya valid input enter karein.", parse_mode='Markdown')
@@ -1392,7 +1434,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = []
         for p in plans:
             text += f"• **{p['name']}** — `{p['price']}` ({p['credits']} Credits)\n"
-            keyboard.append([InlineKeyboardButton(f"🗑️️ Delete: {p['name']}", callback_data=f"del_plan_{p['id']}")])
+            keyboard.append([InlineKeyboardButton(f"🗑️ Delete: {p['name']}", callback_data=f"del_plan_{p['id']}")])
         keyboard.append([InlineKeyboardButton("➕ Add New Plan", callback_data="admin_add_plan_prompt")])
         keyboard.append([InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")])
         try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1601,7 +1643,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (FULL WORKING CODE WITH /status & /ref HANDLERS)...")
+    print("🚀 HARSH OSINT BOT STARTING (ALL PINCODE, IP, AADHAAR & TELEGRAM FIXES APPLIED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
