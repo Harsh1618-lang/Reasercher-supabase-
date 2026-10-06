@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate 10 Report Styles & Complete Original Edition
+# OSINT & Pincode Bot - Ultimate 10 Report Styles & Fixed Markdown Parse Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Complete Original Codebase, Editable Welcome, Smart TG & All Admin Features
+Description: Advanced Telegram OSINT Bot with Fixed Markdown Parsing, Editable Welcome Message & All Features Intact
 """
 
 import os
@@ -160,7 +160,7 @@ def init_database():
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('force_channels', '')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('report_style', 'cyber')")
     
-    default_welcome = "\n👋 *Welcome to OSINT & Pincode Lookup Bot!*\n\n💎 Remaining Credits: `{credits}`\nNeeche diye gaye menu se option select karein!\n🎁 *Daily Bonus:* `/daily`\n🔑 *Redeem Key:* `/redeem <key>`\n\n🚀 *Developed by {owner}*"
+    default_welcome = "\n👋 Welcome to OSINT & Pincode Lookup Bot!\n\n💎 Remaining Credits: {credits}\nNeeche diye gaye menu se option select karein!\n🎁 Daily Bonus: /daily\n🔑 Redeem Key: /redeem <key>\n\n🚀 Developed by {owner}"
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('welcome_msg', ?)", (default_welcome,))
 
     default_apis = [
@@ -429,7 +429,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
         text += f"System Core: {OWNER_USERNAME}"
 
     elif r_style == 'cyber':
-        text = f"🌐 𝕮𝕄𝕭𝕰𝕽 𝕴𝕹𝕿𝕰𝕃𝕃𝕴𝕲𝕰𝕹𝕮𝕰 🌐\n"
+        text = f"🌐 𝕮𝖄𝕭𝕰𝕽 𝕴𝕹𝕿𝕰𝕃𝕃𝕴𝕲𝕰𝕹𝕮𝕰 🌐\n"
         text += f"🎯 Target: `{phone}`\n"
         text += f"📊 Records: {total} | Page: {page + 1}/{total_pages}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         for idx, rec in enumerate(chunk, start=start_idx + 1):
@@ -783,18 +783,18 @@ async def send_welcome_menu(update_or_query, context, user):
 
     try:
         if banner_type == 'animation' and banner_media:
-            await context.bot.send_animation(chat_id=chat_id, animation=banner_media, caption=welcome, parse_mode='Markdown', reply_markup=reply_markup)
+            await context.bot.send_animation(chat_id=chat_id, animation=banner_media, caption=welcome, parse_mode=None, reply_markup=reply_markup)
             return
         elif banner_type == 'photo' and banner_media:
-            await context.bot.send_photo(chat_id=chat_id, photo=banner_media, caption=welcome, parse_mode='Markdown', reply_markup=reply_markup)
+            await context.bot.send_photo(chat_id=chat_id, photo=banner_media, caption=welcome, parse_mode=None, reply_markup=reply_markup)
             return
         elif banner_type == 'video' and banner_media:
-            await context.bot.send_video(chat_id=chat_id, video=banner_media, caption=welcome, parse_mode='Markdown', reply_markup=reply_markup)
+            await context.bot.send_video(chat_id=chat_id, video=banner_media, caption=welcome, parse_mode=None, reply_markup=reply_markup)
             return
     except: pass 
 
     if hasattr(update_or_query, 'message') and update_or_query.message:
-        await update_or_query.message.reply_text(welcome, parse_mode='Markdown', reply_markup=reply_markup)
+        await update_or_query.message.reply_text(welcome, parse_mode=None, reply_markup=reply_markup)
 
 async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -857,7 +857,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db_execute("UPDATE settings SET value = ? WHERE key = 'welcome_msg'", (text,), commit=True)
             context.user_data['waiting_for_welcome_msg'] = False
             log_activity(user.id, "Admin updated welcome message template")
-            await update.message.reply_text(f"✅ Welcome message updated successfully to:\n\n{text}", parse_mode='Markdown')
+            await update.message.reply_text(f"✅ Welcome message successfully updated to:\n\n{text}", parse_mode='Markdown')
             return
 
         if context.user_data.get('waiting_for_banner'):
@@ -1227,7 +1227,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cleaned = re.sub(r'\D', '', text)
 
     if mode == 'telegram_auto_detect':
-        msg = await update.message.reply_text("🕵️️‍♂️ *TELEGRAM INTEL BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM INTEL BREACH*\nInitializing...", parse_mode='Markdown')
         if text.startswith('@') or not text.isdigit():
             query_str = text if text.startswith('@') else '@' + text
             data = await fetch_dynamic_api('tg_username', query_str)
@@ -1296,7 +1296,7 @@ async def show_full_admin_panel(update_or_query, context):
         [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
         [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
         [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
-        [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙ Set Ref Reward", callback_data="admin_refreward_prompt")],
+        [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
         [InlineKeyboardButton("💬 ⚙ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙ Set Banner", callback_data="admin_banner_prompt")],
         [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
         [InlineKeyboardButton("💬 Set Welcome Text", callback_data="admin_welcome_prompt"), InlineKeyboardButton("🔑 Gen Redeem Key", callback_data="admin_redeem_prompt")],
@@ -1369,20 +1369,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['waiting_for_redeem_gen'] = True
         await context.bot.send_message(chat_id=query.from_user.id, text="🔑 **Generate Redeem Key**\nFormat bhejein: `KEY_NAME CREDITS` (jaise: `VIP50 50`)", parse_mode='Markdown')
         return
-    elif data == "admin_banner_prompt":
-        context.user_data['waiting_for_banner'] = True
-        await context.bot.send_message(chat_id=query.from_user.id, text="🖼️ **Set Welcome Banner**\nKripya koi bhi Photo, GIF ya Video bhejein:", parse_mode='Markdown')
-        return
-    elif data == "admin_download_logs":
-        await download_search_logs_file(update, context)
-        return
     elif data == "admin_plans":
         plans = db_get_all("SELECT * FROM plans")
         text = "📦 *SUBSCRIPTION PLANS MANAGER*\n━━━━━━━━━━━━━━━━━━━━\n"
         keyboard = []
         for p in plans:
             text += f"• **{p['name']}** — `{p['price']}` ({p['credits']} Credits)\n"
-            keyboard.append([InlineKeyboardButton(f"🗑️️ Delete: {p['name']}", callback_data=f"del_plan_{p['id']}")])
+            keyboard.append([InlineKeyboardButton(f"🗑️ Delete: {p['name']}", callback_data=f"del_plan_{p['id']}")])
         keyboard.append([InlineKeyboardButton("➕ Add New Plan", callback_data="admin_add_plan_prompt")])
         keyboard.append([InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")])
         try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1410,6 +1403,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "admin_addcredit_prompt":
         context.user_data['waiting_for_add_credits_id'] = True
         await context.bot.send_message(chat_id=query.from_user.id, text="💎 **Add Credits**\nUser ki numeric **User ID** bhejein:", parse_mode='Markdown')
+        return
+    elif data == "admin_banner_prompt":
+        context.user_data['waiting_for_banner'] = True
+        await context.bot.send_message(chat_id=query.from_user.id, text="🖼️ **Set Welcome Banner**\nKripya koi bhi Photo, GIF ya Video bhejein:", parse_mode='Markdown')
         return
     elif data == "admin_addsub_prompt":
         context.user_data['waiting_for_add_sub'] = True
@@ -1480,7 +1477,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("edit_api_wm_"):
         context.user_data['waiting_for_api_old'] = True
         context.user_data['target_api_key'] = data.replace("edit_api_wm_", "")
-        await context.bot.send_message(chat_id=query.from_user.id, text="✍️ Old watermark text bhejein:", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text="✍️️ Old watermark text bhejein:", parse_mode='Markdown')
         return
     elif data == "admin_live_analytics":
         analytics = db_get_all("SELECT feature_name, count FROM analytics")
@@ -1515,6 +1512,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("🔵 📊 Back", callback_data="admin_panel")]]
         try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: await query.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+    elif data == "admin_download_logs":
+        await download_search_logs_file(update, context)
         return
     elif data == "toggle_maintenance":
         current = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
@@ -1584,7 +1584,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (COMPLETE ORIGINAL 1600+ LINES CODE + ALL NEW FEATURES)...")
+    print("🚀 HARSH OSINT BOT STARTING (FULL CODE + FIXED WELCOME PARSING)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
