@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate 10 Report Styles & Fixed Markdown Parse Edition
+# OSINT & Pincode Bot - Ultimate 10 Report Styles & Fully Restored Complete Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Fixed Markdown Parsing, Editable Welcome Message & All Features Intact
+Description: Advanced Telegram OSINT Bot with Complete Original Codebase, Editable Stylish Welcome with Real Credits, Smart TG & All Admin Features
 """
 
 import os
@@ -160,7 +160,7 @@ def init_database():
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('force_channels', '')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('report_style', 'cyber')")
     
-    default_welcome = "\n👋 Welcome to OSINT & Pincode Lookup Bot!\n\n💎 Remaining Credits: {credits}\nNeeche diye gaye menu se option select karein!\n🎁 Daily Bonus: /daily\n🔑 Redeem Key: /redeem <key>\n\n🚀 Developed by {owner}"
+    default_welcome = "\n╔═════════════════════════════════╗\n║       👑 HARSHX1618 ELITE 👑       ║\n╚═════════════════════════════════╝\n💎 Your Vault:    {credits} Credits ✨\n🌟 Privilege: Lifetime Access ⚡\n👇 Choose Your Path:\n┌─────────────────────────────────┐\n│ 🎁 Claim Freebies ➔ /daily      │\n│ 🔑 Redeem Code   ➔ /redeem      │\n└─────────────────────────────────┘"
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('welcome_msg', ?)", (default_welcome,))
 
     default_apis = [
@@ -1214,7 +1214,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_data = db_get_one("SELECT phone_number, is_banned FROM users WHERE user_id = ?", (user.id,))
     if not user_data or user_data['is_banned'] == 1:
-        await update.message.reply_text("❌ Aapko bot use karne se block kar diya gaya hai.")
+        await update.message.reply_text("❌ Aapko block kar diya gaya hai.")
         return
     if not user_data.get('phone_number') or not user_data['phone_number']:
         contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
@@ -1296,7 +1296,7 @@ async def show_full_admin_panel(update_or_query, context):
         [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
         [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
         [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
-        [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
+        [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙ Set Ref Reward", callback_data="admin_refreward_prompt")],
         [InlineKeyboardButton("💬 ⚙ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙ Set Banner", callback_data="admin_banner_prompt")],
         [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
         [InlineKeyboardButton("💬 Set Welcome Text", callback_data="admin_welcome_prompt"), InlineKeyboardButton("🔑 Gen Redeem Key", callback_data="admin_redeem_prompt")],
@@ -1477,7 +1477,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("edit_api_wm_"):
         context.user_data['waiting_for_api_old'] = True
         context.user_data['target_api_key'] = data.replace("edit_api_wm_", "")
-        await context.bot.send_message(chat_id=query.from_user.id, text="✍️️ Old watermark text bhejein:", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=query.from_user.id, text="✍️ Old watermark text bhejein:", parse_mode='Markdown')
         return
     elif data == "admin_live_analytics":
         analytics = db_get_all("SELECT feature_name, count FROM analytics")
@@ -1584,7 +1584,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (FULL CODE + FIXED WELCOME PARSING)...")
+    print("🚀 HARSH OSINT BOT STARTING (FULL CODE + REAL CREDITS WELCOME + ALL FEATURES)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
