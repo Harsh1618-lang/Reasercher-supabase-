@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate 10 Report Styles & Fully Fixed Smart TG Auto-Detect Edition
+# OSINT & Pincode Bot - Ultimate 10 Report Styles & Search History Export Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Clean Single TG Button, Smart Auto-Detect & All Admin Features Intact
+Description: Advanced Telegram OSINT Bot with Search History Export to record.txt, Restored Admin Panel & All Features Intact
 """
 
 import os
@@ -473,7 +473,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
         text = f"▪️ **INTEL // {phone} ({page + 1}/{total_pages})**\n\n"
         for idx, rec in enumerate(chunk, start=start_idx + 1):
             text += f"`{idx}` {rec['name']} | {rec['mobile']} | {rec['circle']}\n"
-        text += f"\n▪️ Auth: {OWNER_USERNAME}"
+        text += f"\n▪️️ Auth: {OWNER_USERNAME}"
 
     elif r_style == 'vip':
         text = f"⭐ 👑 **VIP EXCLUSIVE OSINT REPORT** 👑 ⭐\n"
@@ -675,6 +675,53 @@ async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Error: {str(e)}")
 
 # ============================================
+# ADMIN DOWNLOAD SEARCH LOGS FUNCTION
+# ============================================
+async def download_search_logs_file(update, context):
+    user = update.effective_user
+    if not is_admin_user(user.id): return
+    try:
+        searches = db_get_all("SELECT s.user_id, u.first_name, s.phone, s.response, s.timestamp FROM searches s LEFT JOIN users u ON s.user_id = u.user_id ORDER BY s.timestamp DESC")
+        file_content = "=========================================\n"
+        file_content += "      USER SEARCH HISTORY & RESULTS\n"
+        file_content += "      Admin Export Record File\n"
+        file_content += "=========================================\n\n"
+        
+        for idx, s in enumerate(searches, 1):
+            file_content += f"--- SEARCH RECORD #{idx} ---\n"
+            file_content += f"User ID: {s['user_id']}\n"
+            file_content += f"Name: {s['first_name'] or 'Unknown'}\n"
+            file_content += f"Query Target: {s['phone']}\n"
+            file_content += f"Timestamp: {s['timestamp']}\n"
+            file_content += f"API Response:\n{s['response']}\n\n"
+            file_content += "-----------------------------------------\n\n"
+
+        file_name = "record.txt"
+        with open(file_name, "w", encoding="utf-8") as f:
+            f.write(file_content)
+
+        with open(file_name, "rb") as f:
+            if hasattr(update, 'callback_query') and update.callback_query:
+                await update.callback_query.message.reply_document(
+                    document=InputFile(f, filename=file_name),
+                    caption="📂 **User Search History Record File (`record.txt`)**",
+                    parse_mode='Markdown'
+                )
+            elif hasattr(update, 'message') and update.message:
+                await update.message.reply_document(
+                    document=InputFile(f, filename=file_name),
+                    caption="📂 **User Search History Record File (`record.txt`)**",
+                    parse_mode='Markdown'
+                )
+        os.remove(file_name)
+        log_activity(user.id, "Exported user search history as record.txt")
+    except Exception as e:
+        if hasattr(update, 'callback_query') and update.callback_query:
+            await update.callback_query.message.reply_text(f"❌ Error exporting records: {str(e)}")
+        elif hasattr(update, 'message') and update.message:
+            await update.message.reply_text(f"❌ Error exporting records: {str(e)}")
+
+# ============================================
 # TELEGRAM HANDLERS
 # ============================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -744,7 +791,7 @@ async def send_welcome_menu(update_or_query, context, user):
     menu_keyboard = []
     row = []
     
-    static_buttons = ["💬 Owner | Support", "💰 Refer & Earn", "🏆 Leaderboard", "🤖 My Clone Bot", "💎 Buy Premium / Credits", "🛠 Toggle Menu"]
+    static_buttons = ["💬 Owner | Support", "💰 Refer & Earn", "🏆 Leaderboard", "🤖 My Clone Bot", "💎 Buy Premium / Credits", "🛠️ Toggle Menu"]
     
     api_button_names = []
     for ap in apis:
@@ -904,7 +951,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 db_execute("UPDATE settings SET value = ? WHERE key = 'upi_id'", (text,), commit=True)
                 context.user_data['waiting_for_upi'] = False
                 log_activity(user.id, f"Admin updated UPI ID to {text}")
-                await update.message.reply_text(f"✅ UPI ID successfully updated to: `{text}`", parse_mode='Markdown')
+                await update.message.reply_text(f"✅ UPI ID successfully updated to: `{text}`\n\nAb aap chahe toh payment QR code ka photo bhi bhej sakte hain.", parse_mode='Markdown')
                 return
 
         if context.user_data.get('waiting_for_ban_id'):
@@ -914,6 +961,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context.user_data['waiting_for_ban_id'] = False
                 log_activity(user.id, f"Admin banned user {target_id}")
                 await update.message.reply_text(f"✅ User ID `{target_id}` successfully ban kar diya gaya hai!", parse_mode='Markdown')
+                try: await context.bot.send_message(chat_id=target_id, text="❌ Aapko bot use karne se block kar diya gaya hai.")
+                except: pass
             else:
                 await update.message.reply_text("❌ Kripya valid numeric User ID enter karein.")
             return
@@ -925,6 +974,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context.user_data['waiting_for_unban_id'] = False
                 log_activity(user.id, f"Admin unbanned user {target_id}")
                 await update.message.reply_text(f"✅ User ID `{target_id}` successfully unban kar diya gaya hai!", parse_mode='Markdown')
+                try: await context.bot.send_message(chat_id=target_id, text="🎉 Aapko unban kar diya gaya hai! Ab aap bot use kar sakte hain.")
+                except: pass
             else:
                 await update.message.reply_text("❌ Kripya valid numeric User ID enter karein.")
             return
@@ -945,7 +996,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db_execute("UPDATE settings SET value = ? WHERE key = 'force_channels'", (channels_val,), commit=True)
             context.user_data['waiting_for_force_channels'] = False
             log_activity(user.id, f"Admin updated force channels: {channels_val}")
-            await update.message.reply_text(f"✅ Force join channels successfully updated!", parse_mode='Markdown')
+            await update.message.reply_text(f"✅ Force join channels successfully updated to:\n`{channels_val if channels_val else 'None (Disabled)'}`", parse_mode='Markdown')
             return
 
     # Check Maintenance
@@ -958,10 +1009,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for prefix in ["🔍 ", "📍 ", "🌐 ", "🆔 ", "🔤 ", "🔮 ", "✈️ "]:
         clean_input_text = clean_input_text.replace(prefix, "")
 
-    # Smart Auto-Detect for Telegram to Number (Username vs User ID) matching your exact layout
+    # Smart Auto-Detect for Telegram to Number (Username vs User ID)
     if clean_input_text.upper() == "TELEGRAM TO NUM":
         context.user_data['mode'] = 'telegram_auto_detect'
-        menu_display = f"✈️ *TELEGRAM TO NUMBER*\n\n👉 *SEND TELEGRAM ID OR USERNAME*\n\n┌─────────────┬──────────────┐\n│ USERNAME    │ `@username`  │\n├─────────────┼──────────────┤\n│ USER ID     │ `1234567890` │\n└─────────────┴──────────────┘"
+        menu_display = f"\n✈️ *TELEGRAM TO NUMBER*\n\n👉 *SEND TELEGRAM ID OR USERNAME*\n\n┌─────────────┬──────────────┐\n│ USERNAME    │ `@username`  │\n├─────────────┼──────────────┤\n│ USER ID     │ `1234567890` │\n└─────────────┴──────────────┘"
         await update.message.reply_text(menu_display, parse_mode='Markdown')
         return
 
@@ -1048,13 +1099,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
-            [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
-            [InlineKeyboardButton("💬 ⚙ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙ Set Ref Reward", callback_data="admin_refreward_prompt")],
+            [InlineKeyboardButton("💬 ⚙ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🔑 Gen Redeem Key", callback_data="admin_redeem_prompt"), InlineKeyboardButton("📜 View Logs", callback_data="admin_view_logs")],
             [InlineKeyboardButton("🔨 Ban User", callback_data="admin_ban_prompt"), InlineKeyboardButton("🔓 Unban User", callback_data="admin_unban_prompt")],
+            [InlineKeyboardButton("📥 Download Search Logs", callback_data="admin_download_logs")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         await update.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1176,17 +1228,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
             [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
             [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-            [InlineKeyboardButton("🗑️️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
             [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
             [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙ Set Ref Reward", callback_data="admin_refreward_prompt")],
             [InlineKeyboardButton("💬 ⚙ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙ Set Banner", callback_data="admin_banner_prompt")],
             [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
             [InlineKeyboardButton("🔑 Gen Redeem Key", callback_data="admin_redeem_prompt"), InlineKeyboardButton("📜 View Logs", callback_data="admin_view_logs")],
             [InlineKeyboardButton("🔨 Ban User", callback_data="admin_ban_prompt"), InlineKeyboardButton("🔓 Unban User", callback_data="admin_unban_prompt")],
+            [InlineKeyboardButton("📥 Download Search Logs", callback_data="admin_download_logs")],
             [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
         ]
         try: await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: await query.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    elif data == "admin_download_logs":
+        await download_search_logs_file(update, context)
         return
 
     elif data == "admin_setupi_prompt":
@@ -1292,6 +1349,102 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=query.from_user.id, text=f"✏️ **EDIT BUTTON NAME**\n\n{api_list_str}\n\nJiska name change karna hai uska **API Key** bhejein:", parse_mode='Markdown')
         return
 
+    elif data == "admin_toggle_style":
+        curr = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
+        styles = ['cyber', 'json', 'hacker', 'matrix', 'neon', 'card', 'compact', 'minimal', 'vip', 'standard']
+        next_style = styles[(styles.index(curr) + 1) % len(styles)] if curr in styles else 'cyber'
+        db_execute("UPDATE settings SET value = ? WHERE key = 'report_style'", (next_style,), commit=True)
+        await query.answer(f"🎨 Report Style changed to: {next_style.upper()}!", show_alert=True)
+        
+        total_users = db_get_one("SELECT COUNT(*) as count FROM users")['count']
+        total_searches = db_get_one("SELECT COUNT(*) as count FROM searches")['count']
+        maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
+        upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
+        clone_ref_val = db_get_one("SELECT value FROM settings WHERE key='clone_req_ref'")['value']
+        clone_toggle_val = db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")['value']
+        ref_reward_val = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")['value']
+        
+        panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{next_style.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
+        keyboard = [
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙️ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
+            [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
+            [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
+            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
+            [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
+            [InlineKeyboardButton("💬 ⚙️ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🔑 Gen Redeem Key", callback_data="admin_redeem_prompt"), InlineKeyboardButton("📜 View Logs", callback_data="admin_view_logs")],
+            [InlineKeyboardButton("🔨 Ban User", callback_data="admin_ban_prompt"), InlineKeyboardButton("🔓 Unban User", callback_data="admin_unban_prompt")],
+            [InlineKeyboardButton("📥 Download Search Logs", callback_data="admin_download_logs")],
+            [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
+        ]
+        try: await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        except: pass
+        return
+
+    elif data == "admin_toggle_clone_ref":
+        curr = db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")
+        new_val = 'off' if curr and curr['value'] == 'on' else 'on'
+        db_execute("UPDATE settings SET value = ? WHERE key = 'clone_ref_toggle'", (new_val,), commit=True)
+        await query.answer(f"✅ Clone Referral requirement is now {new_val.upper()}!", show_alert=True)
+        
+        total_users = db_get_one("SELECT COUNT(*) as count FROM users")['count']
+        total_searches = db_get_one("SELECT COUNT(*) as count FROM searches")['count']
+        maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
+        upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
+        clone_ref_val = db_get_one("SELECT value FROM settings WHERE key='clone_req_ref'")['value']
+        ref_reward_val = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")['value']
+        report_style_val = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
+        
+        panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{new_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
+        keyboard = [
+            [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
+            [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
+            [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
+            [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
+            [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
+            [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
+            [InlineKeyboardButton("👥 ⚙ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙️ Set Ref Reward", callback_data="admin_refreward_prompt")],
+            [InlineKeyboardButton("💬 ⚙ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙️ Set Banner", callback_data="admin_banner_prompt")],
+            [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
+            [InlineKeyboardButton("🔑 Gen Redeem Key", callback_data="admin_redeem_prompt"), InlineKeyboardButton("📜 View Logs", callback_data="admin_view_logs")],
+            [InlineKeyboardButton("🔨 Ban User", callback_data="admin_ban_prompt"), InlineKeyboardButton("🔓 Unban User", callback_data="admin_unban_prompt")],
+            [InlineKeyboardButton("📥 Download Search Logs", callback_data="admin_download_logs")],
+            [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
+        ]
+        try: await query.edit_message_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        except: pass
+        return
+
+    elif data == "admin_cloneref_prompt":
+        context.user_data['waiting_for_clone_ref_count'] = True
+        await context.bot.send_message(chat_id=query.from_user.id, text="👥 **Set Clone Referrals**\nNaya required referrals count bhejein:", parse_mode='Markdown')
+        return
+
+    elif data == "admin_refreward_prompt":
+        context.user_data['waiting_for_ref_reward'] = True
+        await context.bot.send_message(chat_id=query.from_user.id, text="🎁 **Set Referral Reward**\nNaye reward credits bhejein:", parse_mode='Markdown')
+        return
+
+    elif data == "admin_setmaintmsg_prompt":
+        context.user_data['waiting_for_maint_msg'] = True
+        await context.bot.send_message(chat_id=query.from_user.id, text="💬 **Set Maintenance Message**\nNaya message bhejein:", parse_mode='Markdown')
+        return
+
+    elif data.startswith("edit_api_url_"):
+        context.user_data['waiting_for_api_url'] = True
+        context.user_data['target_api_key'] = data.replace("edit_api_url_", "")
+        await context.bot.send_message(chat_id=query.from_user.id, text="🌐 Naya API URL bhejein (use `{query}` placeholder):", parse_mode='Markdown')
+        return
+
+    elif data.startswith("edit_api_wm_"):
+        context.user_data['waiting_for_api_old'] = True
+        context.user_data['target_api_key'] = data.replace("edit_api_wm_", "")
+        await context.bot.send_message(chat_id=query.from_user.id, text="✍️ Old watermark text bhejein:", parse_mode='Markdown')
+        return
+
     elif data == "admin_live_analytics":
         analytics = db_get_all("SELECT feature_name, count FROM analytics")
         text = f"📈 *ANALYTICS*\nActive Live Users: `{len(active_live_users)}`\n\n"
@@ -1376,7 +1529,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (ORIGINAL CODE + SINGLE TELEGRAM TO NUM BUTTON)...")
+    print("🚀 HARSH OSINT BOT STARTING (ORIGINAL FEATURES + SEARCH LOGS EXPORT TO record.txt)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
