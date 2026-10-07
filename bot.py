@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# OSINT & Pincode Bot - Ultimate 10 Report Styles & Transaction Management Edition
+# OSINT & Pincode Bot - Ultimate 10 Report Styles & Transaction Management + Native Button Colors Edition
 """
 Developer: @Harsx1618
 Description: Advanced Telegram OSINT Bot with User/Admin Transaction Management, Advanced Search History Upgrade, Logs Analytics & All Features Intact
@@ -34,11 +34,15 @@ def run_flask():
 # TELEGRAM BOT SETUP
 # ============================================
 try:
+    import telegram
+    _ptb_version = tuple(int(x) for x in telegram.__version__.split('.')[:2])
+    if _ptb_version < (22, 7):
+        raise ImportError("python-telegram-bot >= 22.7 is required for native button styles")
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
-    os.system('pip install python-telegram-bot>=22.7 requests flask')
+    os.system('pip install -U python-telegram-bot>=22.7 requests flask')
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
@@ -530,6 +534,56 @@ def db_get_all(query, params=()):
     result = c.execute(query, params).fetchall()
     conn.close()
     return [dict(row) for row in result]
+
+# ============================================
+# TELEGRAM NATIVE BUTTON STYLE MANAGER
+# Bot API supports: primary (blue), success (green), danger (red)
+# ============================================
+def get_button_style(button_text):
+    try:
+        rec = db_get_one("SELECT value FROM settings WHERE key = ?", (f'button_style:{button_text}',))
+        style = rec['value'] if rec else ''
+        return style if style in ('primary', 'success', 'danger') else None
+    except Exception:
+        return None
+
+def set_button_style(button_text, style):
+    if style not in ('primary', 'success', 'danger', 'default'):
+        return
+    if style == 'default':
+        db_execute("DELETE FROM settings WHERE key = ?", (f'button_style:{button_text}',), commit=True)
+    else:
+        db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)", (f'button_style:{button_text}', style), commit=True)
+
+def button_style_label(style):
+    return {
+        'primary': '🔵 Primary',
+        'success': '🟢 Success',
+        'danger': '🔴 Danger'
+    }.get(style, '⚪ Default')
+
+def get_configurable_button_items():
+    items = []
+    for ap in db_get_all("SELECT api_name FROM dynamic_apis ORDER BY rowid"):
+        name = ap['api_name']
+        if name == 'Number Info': items.append("🔍 NUMBER INFO")
+        elif name == 'Pincode Info': items.append("📍 PINCODE INFO")
+        elif name == 'IP Info': items.append("🌐 IP INFO")
+        elif name == 'Aadhaar Info': items.append("🆔 AADHAAR INFO")
+        elif name in ('TG Username', 'TG UserID', 'Telegram To Num'):
+            if "✈️ TELEGRAM TO NUM" not in items: items.append("✈️ TELEGRAM TO NUM")
+        else: items.append(f"🔮 {name.upper()}")
+    if "✈️ TELEGRAM TO NUM" not in items:
+        items.append("✈️ TELEGRAM TO NUM")
+    items += [
+        "💎 MY PREMIUM STATUS", "💰 MY BALANCE",
+        "🆘 Help Center", "📈 Live Stats", "🔔 Notifications", "🔍 Quick Search",
+        "👤 MY PROFILE", "💬 Owner | Support", "💰 Refer & Earn", "🏆 Achievements",
+        "🤖 My Clone Bot", "💎 Buy Premium / Credits", "🎟️ Promo Center", "🎁 Daily Check-in",
+        "💳 Transactions", "🛠️ Toggle Menu", "📊 Admin Panel"
+    ]
+    # Keep first occurrence only while preserving order.
+    return list(dict.fromkeys(items))
 
 async def check_multi_force_subscription(bot, user_id):
     channels_str = db_get_one("SELECT value FROM settings WHERE key='force_channels'")['value']
@@ -1254,41 +1308,16 @@ async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     if not await require_feature(update, 'daily', user.id): return
-    user_data = db_get_one("SELECT last_daily, last_daily_claim, streak_days FROM users WHERE user_id = ?", (user.id,)) or {}
+    user_data = db_get_one("SELECT last_daily, last_daily_claim, streak_days FROM users WHERE user_id = ?", (user.id,))
     today_str = datetime.now().strftime("%Y-%m-%d")
-    last_claim = user_data.get('last_daily_claim') or user_data.get('last_daily') or ''
-    if last_claim == today_str:
+    if user_data['last_daily'] == today_str:
         await update.message.reply_text("❌ Aapne aaj ka daily bonus pehle hi claim kar liya hai!")
         return
-
-    # Keep the 7-day streak system functional. Consecutive claims increase the
-    # streak; a missed day starts a fresh streak. Day 7+ keeps the streak at 7
-    # for the achievement while using the configured Day-7 reward.
-    try:
-        from datetime import timedelta
-        yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-    except Exception:
-        yesterday_str = ''
-    old_streak = int(user_data.get('streak_days', 0) or 0)
-    streak = old_streak + 1 if last_claim == yesterday_str else 1
-    reward_day = min(streak, 7)
-    reward_row = db_get_one("SELECT value FROM settings WHERE key = ?", (f"daily_reward_{reward_day}",))
-    try:
-        bonus = max(0, int(reward_row['value'])) if reward_row else 2
-    except (TypeError, ValueError):
-        bonus = 2
-
-    db_execute(
-        "UPDATE users SET credits = credits + ?, last_daily = ?, last_daily_claim = ?, streak_days = ? WHERE user_id = ?",
-        (bonus, today_str, today_str, streak, user.id), commit=True
-    )
-    record_transaction(user.id, "Daily Bonus", bonus, f"Day {reward_day} daily streak reward")
-    log_activity(user.id, f"Claimed daily bonus of {bonus} credits (streak {streak})")
-    await check_and_unlock_achievements(context.bot, user.id)
-    await update.message.reply_text(
-        f"🎁 **Daily Bonus Claimed!**\n\n💎 Reward: `{bonus}` credits\n⚡ Streak: `{streak} day{'s' if streak != 1 else ''}`",
-        parse_mode='Markdown'
-    )
+    bonus = 2
+    db_execute("UPDATE users SET credits = credits + ?, last_daily = ? WHERE user_id = ?", (bonus, today_str, user.id), commit=True)
+    record_transaction(user.id, "Daily Bonus", bonus, "Claimed daily bonus reward")
+    log_activity(user.id, f"Claimed daily bonus of {bonus} credits")
+    await update.message.reply_text(f"🎁 **Daily Bonus Claimed!**\nAapko `{bonus}` free credits mile hain.", parse_mode='Markdown')
 
 async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await require_feature(update, 'export', update.effective_user.id): return
@@ -1407,14 +1436,14 @@ async def send_welcome_menu(update_or_query, context, user):
 
     all_menu_items = api_button_names + ["💎 MY PREMIUM STATUS", "💰 MY BALANCE"] + static_buttons
     for item in all_menu_items:
-        row.append(KeyboardButton(item))
+        row.append(KeyboardButton(item, style=get_button_style(item)))
         if len(row) == 2:
             menu_keyboard.append(row)
             row = []
     if row: menu_keyboard.append(row)
 
     if is_admin_user(user.id):
-        menu_keyboard.append([KeyboardButton("📊 Admin Panel")])
+        menu_keyboard.append([KeyboardButton("📊 Admin Panel", style=get_button_style("📊 Admin Panel"))])
 
     reply_markup = ReplyKeyboardMarkup(menu_keyboard, resize_keyboard=True)
     banner_media = db_get_one("SELECT value FROM settings WHERE key='banner_media'")['value']
@@ -1494,26 +1523,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     active_live_users.add(user.id)
     text = update.message.text.strip() if update.message.text else ""
-
-    # Custom Emoji ID Detector (admin only)
-    if is_admin_user(user.id) and update.message.entities:
-        custom_entities = [e for e in update.message.entities if e.type == "custom_emoji"]
-        if custom_entities:
-            ids = []
-            for entity in custom_entities:
-                cid = getattr(entity, "custom_emoji_id", None)
-                if cid:
-                    ids.append(str(cid))
-            if ids:
-                unique_ids = list(dict.fromkeys(ids))
-                db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('last_custom_emoji_id',?)", (unique_ids[-1],), commit=True)
-                lines = ["🎨 **CUSTOM EMOJI DETECTED**", "", f"🆔 **ID:** `{unique_ids[-1]}`"]
-                if len(unique_ids) > 1:
-                    lines.append("\n📋 **All IDs in this message:**")
-                    lines.extend([f"{i}. `{cid}`" for i, cid in enumerate(unique_ids, 1)])
-                lines.append("\n✅ ID save ho gayi. Admin Panel → 🎨 Custom Emoji ID se dekh sakte ho.")
-                await update.message.reply_text("\n".join(lines), parse_mode='Markdown')
-                return
 
     # Strict Admin Prompt Handlers
     if is_admin_user(user.id):
@@ -1888,6 +1897,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['waiting_for_delete_api_key'] = False
             return
 
+        if context.user_data.get('waiting_for_button_style_select'):
+            try:
+                choice = int(text.strip())
+                items = context.user_data.get('button_style_items', [])
+                if choice < 1 or choice > len(items):
+                    raise ValueError
+                target = items[choice - 1]
+                context.user_data['button_style_target'] = target
+                context.user_data['waiting_for_button_style_select'] = False
+                current = get_button_style(target)
+                kb = [[
+                    InlineKeyboardButton('🔵 Primary', callback_data='btnstyle_primary'),
+                    InlineKeyboardButton('🟢 Success', callback_data='btnstyle_success')
+                ], [
+                    InlineKeyboardButton('🔴 Danger', callback_data='btnstyle_danger'),
+                    InlineKeyboardButton('⚪ Default', callback_data='btnstyle_default')
+                ], [InlineKeyboardButton('🔙 Cancel', callback_data='admin_button_colors')]]
+                await update.message.reply_text(
+                    f"🎨 *BUTTON COLOR MANAGER*\n\n🔘 Selected: *{target}*\n🎨 Current: *{button_style_label(current)}*\n\n👇 Select the new Telegram button style:",
+                    parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb)
+                )
+            except ValueError:
+                await update.message.reply_text('❌ Invalid number. List mein diya hua valid button number bhejein.')
+            return
+
         if context.user_data.get('waiting_for_edit_name_key'):
             existing = db_get_one("SELECT * FROM dynamic_apis WHERE api_key = ? OR LOWER(api_name) = ?", (text.strip().lower(), text.strip().lower()))
             if existing:
@@ -1946,11 +1980,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     clean_input_text = text
-    for prefix in [
-        "🔍 ", "📍 ", "🌐 ", "🆔 ", "🔤 ", "🔮 ", "✈️ ", "👤 ",
-        "🔔 ", "📈 ", "🆘 ", "💬 ", "💰 ", "🏆 ", "🎟️ ", "💎 ",
-        "🎁 ", "💳 ", "🤖 "
-    ]:
+    for prefix in ["🔍 ", "📍 ", "🌐 ", "🆔 ", "🔤 ", "🔮 ", "✈️ ", "👤 ", "🔔 ", "📈 ", "🆘 "]:
         clean_input_text = clean_input_text.replace(prefix, "")
 
     feature_text_map = {
@@ -1968,12 +1998,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if clean_input_text.upper() in ("PROMO CENTER",) or text == "/promo":
         await show_promo_center(update, context, user.id, False)
-        return
-    if clean_input_text.upper() in ("DAILY CHECK-IN",) or text == "/daily":
-        await daily_command(update, context)
-        return
-    if clean_input_text.upper() in ("TRANSACTIONS",) or text == "/balance":
-        await show_transaction_history(update, context, user.id, is_callback=False)
         return
 
     if clean_input_text.upper() == "HELP CENTER" or text == "/help":
@@ -2207,7 +2231,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['last_phone_target'] = cleaned_phone
             await send_paginated_phone_response(msg, records, cleaned_phone, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
-        return
     else:
         if len(cleaned_phone) >= 10:
             msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
@@ -2256,7 +2279,7 @@ async def show_full_admin_panel(update_or_query, context):
         [InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
         [InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api"), InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api")],
         [InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name"), InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style")],
-        [InlineKeyboardButton("🎨 Custom Emoji ID", callback_data="admin_custom_emoji")],
+        [InlineKeyboardButton("🎨 Button Colors", callback_data="admin_button_colors"), InlineKeyboardButton("🔧 Button Style Reset", callback_data="admin_button_colors_reset")],
         [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
         [InlineKeyboardButton("🎁 ⚙ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("💬 ⚙ Set Maint Msg", callback_data="admin_setmaintmsg_prompt")],
         [InlineKeyboardButton("🖼️ ⚙ Set Banner", callback_data="admin_banner_prompt"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
@@ -2322,30 +2345,9 @@ async def render_admin_stats_dashboard(query):
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
     data = query.data
     user = query.from_user
-
-    # Answer callback only once. Alert branches below (and feature guards)
-    # answer the query themselves; answering here first makes Telegram reject
-    # their later show_alert response.
-    _callback_alert_or_guard = (
-        data.startswith("bug_wrong_") or data.startswith("bug_apierr_") or
-        data in {
-            "profile_transactions", "profile_search_history", "tx_refresh", "sh_refresh",
-            "help_support_ticket", "stats_refresh", "ach_refresh", "promo_refresh",
-            "qs_number", "qs_pincode", "qs_ip", "qs_telegram", "qs_custom",
-            "adm_ticket_reply_latest", "adm_bug_resolve_latest", "adm_bug_reject_latest",
-            "notif_clear", "check_join_btn", "feat_all_on", "feat_all_off",
-            "admin_toggle_style", "admin_toggle_clone_ref", "admin_custom_emoji_clear",
-            "toggle_maintenance"
-        } or
-        data.startswith(("feat_toggle_", "adm_TOG_", "edit_api_url_", "edit_api_wm_", "del_plan_"))
-    )
-    if not _callback_alert_or_guard:
-        try:
-            await query.answer()
-        except Exception:
-            pass
     
     if data.startswith("phone_page_"):
         page_num = int(data.split("_")[-1])
@@ -2364,11 +2366,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_upgraded_search_history(update, context, user.id, is_callback=True)
         return
     elif data == "tx_refresh":
-        if not await require_feature(update, 'transactions', user.id): return
         await show_transaction_history(update, context, user.id, is_callback=True)
         return
     elif data == "sh_refresh":
-        if not await require_feature(update, 'history', user.id): return
         await show_upgraded_search_history(update, context, user.id, is_callback=True)
         return
 
@@ -2614,27 +2614,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Quick Search Menu Callback Handlers
     if data == "qs_number":
-        if not await require_feature(update, 'number', user.id): return
         context.user_data['mode'] = 'phone'
         await query.message.reply_text("📱 *Number Info Mode Active*\nKripya ab 10-digit mobile number bhejein:", parse_mode='Markdown')
         return
     elif data == "qs_pincode":
-        if not await require_feature(update, 'pincode', user.id): return
         context.user_data['mode'] = 'pincode'
         await query.message.reply_text("📍 *Pincode Lookup Mode Active*\nKripya 6-digit PIN code bhejein:", parse_mode='Markdown')
         return
     elif data == "qs_ip":
-        if not await require_feature(update, 'ip', user.id): return
         context.user_data['mode'] = 'ip_info'
         await query.message.reply_text("🌐 *IP Info Mode Active*\nKripya IP address bhejein:", parse_mode='Markdown')
         return
     elif data == "qs_telegram":
-        if not await require_feature(update, 'telegram', user.id): return
         context.user_data['mode'] = 'telegram_auto_detect'
         await query.message.reply_text("✈️ *Telegram Lookup Mode Active*\nKripya Telegram ID ya Username bhejein:", parse_mode='Markdown')
         return
     elif data == "qs_custom":
-        if not await require_feature(update, 'custom', user.id): return
         context.user_data['mode'] = 'custom_api_phone'
         await query.message.reply_text("🔎 *Custom API Mode Active*\nQuery enter karein:", parse_mode='Markdown')
         return
@@ -2928,26 +2923,35 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         api_list_str = "\n".join([f"• `{ap['api_name']}` (Key: `{ap['api_key']}`)" for ap in apis])
         await context.bot.send_message(chat_id=query.from_user.id, text=f"🗑️ **DELETE API**\n\n{api_list_str}\n\nJise delete karna hai uska **API Key** ya **Name** bhejein:", parse_mode='Markdown')
         return
-    elif data == "admin_custom_emoji":
-        saved = db_get_one("SELECT value FROM settings WHERE key='last_custom_emoji_id'")
-        emoji_id = saved['value'] if saved and saved['value'] else None
-        if emoji_id:
-            text = ("🎨 **CUSTOM EMOJI MANAGER**\n\n"
-                    f"🆔 **Last detected ID:** `{emoji_id}`\n\n"
-                    "📌 Naya custom emoji bot ko bhejoge to ID automatically update ho jayegi.\n"
-                    "Phir isi ID ko bot messages me use kiya ja sakta hai.")
-        else:
-            text = ("🎨 **CUSTOM EMOJI MANAGER**\n\n"
-                    "📭 Abhi koi custom emoji ID save nahi hai.\n\n"
-                    "👉 Apna Instagram/custom emoji **isi bot ko send karo**.\n"
-                    "Bot automatically uska `custom_emoji_id` detect karke save karega.")
-        kb=[[InlineKeyboardButton("🗑️ Clear Saved ID",callback_data="admin_custom_emoji_clear")],[InlineKeyboardButton("🔙 Back",callback_data="admin_panel")]]
-        await query.edit_message_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+    elif data == "admin_button_colors":
+        items = get_configurable_button_items()
+        context.user_data['button_style_items'] = items
+        context.user_data['waiting_for_button_style_select'] = True
+        lines = ["🎨 *BUTTON COLOR MANAGER*", "━━━━━━━━━━━━━━━━━━━━"]
+        for i, item in enumerate(items, 1):
+            lines.append(f"{i}. {item} — `{button_style_label(get_button_style(item))}`")
+        lines.append("\n👇 Jis button ka color/style change karna hai uska *number* bhejein:")
+        await context.bot.send_message(chat_id=query.from_user.id, text='\n'.join(lines), parse_mode='Markdown')
         return
-    elif data == "admin_custom_emoji_clear":
-        db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('last_custom_emoji_id','')",(),commit=True)
-        await query.answer("🗑️ Custom emoji ID cleared",show_alert=True)
-        await show_full_admin_panel(update,context)
+    elif data == "admin_button_colors_reset":
+        db_execute("DELETE FROM settings WHERE key LIKE 'button_style:%'", commit=True)
+        await query.answer("All button styles reset", show_alert=True)
+        await context.bot.send_message(chat_id=query.from_user.id, text="✅ *Button colors reset!*\n\nAb sabhi native buttons Telegram ke default/app-specific style mein dikhengi.", parse_mode='Markdown')
+        return
+    elif data.startswith('btnstyle_'):
+        style = data.replace('btnstyle_', '', 1)
+        target = context.user_data.get('button_style_target')
+        if not target or style not in ('primary', 'success', 'danger', 'default'):
+            await query.answer("Session expired. Button Colors dobara open karein.", show_alert=True)
+            return
+        set_button_style(target, style)
+        context.user_data.pop('button_style_target', None)
+        await query.answer("Button style saved", show_alert=True)
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text=f"✅ *Button style updated!*\n\n🔘 Button: *{target}*\n🎨 Style: *{button_style_label(None if style == 'default' else style)}*\n\n⚡ Menu ko refresh karne ke liye `/start` bhejein.",
+            parse_mode='Markdown'
+        )
         return
     elif data == "admin_edit_name":
         context.user_data['waiting_for_edit_name_key'] = True
