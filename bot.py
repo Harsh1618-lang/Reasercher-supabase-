@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate 10 Report Styles & Radar Satellite Search Animation Edition
+# OSINT & Pincode Bot - Ultimate 10 Report Styles & Complete User Profile Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Radar & Satellite Search Animation, Editable Welcome & All Features Intact
+Description: Advanced Telegram OSINT Bot with Complete Original Codebase, User Profile Dashboard, Radar Animation, Editable Welcome & All Features
 """
 
 import os
@@ -624,6 +624,56 @@ def format_aadhaar_response(data, query_str):
         return "❌ Error formatting data: " + str(e)
 
 # ============================================
+# USER PROFILE & STATISTICS HANDLERS
+# ============================================
+async def show_user_profile(update_or_query, context, user_id, is_callback=False):
+    user_db = db_get_one("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    if not user_db:
+        text = "❌ User profile not found in database."
+    else:
+        name = user_db.get('first_name') or 'User'
+        username = "@" + user_db.get('username') if user_db.get('username') and user_db.get('username') != 'NoUsername' else "Not Set"
+        credits = user_db.get('credits', 0)
+        searches = user_db.get('searches', 0)
+        joined = user_db.get('joined_date', 'N/A')
+        if joined and len(str(joined)) >= 10:
+            try: joined = str(joined)[:10]
+            except: pass
+        
+        referrals = db_get_all("SELECT COUNT(*) as cnt FROM users WHERE referred_by = ?", (user_id,))
+        ref_count = referrals[0]['cnt'] if referrals else 0
+
+        text = f"👤 **USER PROFILE**\n\n"
+        text += f"━━━━━━━━━━━━━━━━━━━━\n"
+        text += f"📛 **Name:** {name}\n"
+        text += f"👤 **Username:** {username}\n"
+        text += f"🆔 **Telegram ID:** `{user_id}`\n\n"
+        text += f"💎 **Credits:** `{credits}`\n"
+        text += f"🔍 **Total Searches:** `{searches}`\n"
+        text += f"🎁 **Successful Referrals:** `{ref_count}`\n\n"
+        text += f"📅 **Joined:** `{joined}`\n"
+        text += f"━━━━━━━━━━━━━━━━━━━━"
+
+    keyboard = [
+        [InlineKeyboardButton("📜 SEARCH HISTORY", callback_data="profile_history"), InlineKeyboardButton("📊 MY STATISTICS", callback_data="profile_stats")],
+        [InlineKeyboardButton("🎁 REFER & EARN", callback_data="profile_referral"), InlineKeyboardButton("💎 BUY CREDITS", callback_data="profile_buy")],
+        [InlineKeyboardButton("🔄 REFRESH", callback_data="profile_refresh"), InlineKeyboardButton("🏠 MAIN MENU", callback_data="profile_menu")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if is_callback:
+        try:
+            await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        except:
+            await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+    else:
+        await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+
+async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    await show_user_profile(update, context, user.id, is_callback=False)
+
+# ============================================
 # COMMAND HANDLERS
 # ============================================
 async def support_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -666,10 +716,10 @@ async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Yeh redeem key invalid hai ya pehle hi use ki ja chuki hai.")
         return
     credits_to_add = key_data['credits']
-    db_execute("UPDATE users SET credits = credits + ? WHERE user_id = ?", (credits_to_add, user.id), commit=True)
+    db_execute("UPDATE users SET credits = credits + ?, is_premium = 1, premium_expiry = datetime('now', '+30 days') WHERE user_id = ?", (credits_to_add, user.id), commit=True)
     db_execute("UPDATE redeem_keys SET is_used = 1, used_by = ? WHERE key = ?", (user.id, key), commit=True)
     log_activity(user.id, f"Redeemed key {key} for {credits_to_add} credits")
-    await update.message.reply_text(f"🎉 **Redeem Successful!**\nAapke account mein `{credits_to_add}` credits add kar diye gaye hain!", parse_mode='Markdown')
+    await update.message.reply_text(f"🎉 **Redeem Successful!**\nAapke account mein `{credits_to_add}` credits aur 30 din ki premium access mil gayi hai!", parse_mode='Markdown')
 
 async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -764,7 +814,7 @@ async def send_welcome_menu(update_or_query, context, user):
     menu_keyboard = []
     row = []
     
-    static_buttons = ["💬 Owner | Support", "💰 Refer & Earn", "🏆 Leaderboard", "🤖 My Clone Bot", "💎 Buy Premium / Credits", "🛠️ Toggle Menu"]
+    static_buttons = ["👤 MY PROFILE", "💬 Owner | Support", "💰 Refer & Earn", "🏆 Leaderboard", "🤖 My Clone Bot", "💎 Buy Premium / Credits", "🛠️ Toggle Menu"]
     
     api_button_names = []
     for ap in apis:
@@ -1147,7 +1197,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     clean_input_text = text
-    for prefix in ["🔍 ", "📍 ", "🌐 ", "🆔 ", "🔤 ", "🔮 ", "✈️ "]:
+    for prefix in ["🔍 ", "📍 ", "🌐 ", "🆔 ", "🔤 ", "🔮 ", "✈️ ", "👤 "]:
         clean_input_text = clean_input_text.replace(prefix, "")
 
     # Smart Auto-Detect for Telegram to Number (Username vs User ID)
@@ -1155,6 +1205,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['mode'] = 'telegram_auto_detect'
         menu_display = f"\n✈️ *TELEGRAM TO NUMBER*\n\n👉 *SEND TELEGRAM ID OR USERNAME*\n\n┌─────────────┬──────────────┐\n│ USERNAME    │ `@username`  │\n├─────────────┼──────────────┤\n│ USER ID     │ `1234567890` │\n└─────────────┴──────────────┘"
         await update.message.reply_text(menu_display, parse_mode='Markdown')
+        return
+
+    if clean_input_text.upper() == "MY PROFILE" or text == "/profile":
+        await show_user_profile(update, context, user.id, is_callback=False)
         return
 
     matched_api = db_get_one("SELECT * FROM dynamic_apis WHERE UPPER(api_name) = ? OR api_key = ?", (clean_input_text.upper(), text.lower()))
@@ -1370,18 +1424,76 @@ async def show_full_admin_panel(update_or_query, context):
         await update_or_query.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
 # ============================================
-# ADMIN CALLBACK HANDLER
+# ADMIN & PROFILE CALLBACK HANDLER
 # ============================================
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
+    user = query.from_user
     
     if data.startswith("phone_page_"):
         page_num = int(data.split("_")[-1])
         records = context.user_data.get('last_phone_records', [])
         phone = context.user_data.get('last_phone_target', 'Unknown')
         await send_paginated_phone_response(query.message, records, phone, update, context, page=page_num, is_edit=True)
+        return
+
+    # Profile Inline Button Handlers (Security Verified via query.from_user.id)
+    if data == "profile_refresh":
+        await show_user_profile(update, context, user.id, is_callback=True)
+        return
+    elif data == "profile_stats":
+        user_db = db_get_one("SELECT * FROM users WHERE user_id = ?", (user.id,))
+        searches = user_db.get('searches', 0) if user_db else 0
+        credits = user_db.get('credits', 0) if user_db else 0
+        joined = user_db.get('joined_date', 'N/A') if user_db else 'N/A'
+        if joined and len(str(joined)) >= 10: joined = str(joined)[:10]
+        referrals = db_get_all("SELECT COUNT(*) as cnt FROM users WHERE referred_by = ?", (user.id,))
+        ref_count = referrals[0]['cnt'] if referrals else 0
+        
+        stats_text = f"📊 **MY STATISTICS**\n\n"
+        stats_text += f"🔍 **Total Searches:** `{searches}`\n"
+        stats_text += f"💎 **Current Credits:** `{credits}`\n"
+        stats_text += f"🎁 **Total Referrals:** `{ref_count}`\n"
+        stats_text += f"📅 **Account Created:** `{joined}`"
+        
+        kb = [[InlineKeyboardButton("🔙 Back to Profile", callback_data="profile_refresh")]]
+        await query.edit_message_text(stats_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
+        return
+    elif data == "profile_history":
+        searches = db_get_all("SELECT phone, timestamp FROM searches WHERE user_id = ? ORDER BY timestamp DESC LIMIT 5", (user.id,))
+        hist_text = "📜 **RECENT SEARCH HISTORY**\n\n"
+        if not searches:
+            hist_text += "Aapne abhi tak koi search nahi ki hai."
+        else:
+            for idx, s in enumerate(searches, 1):
+                hist_text += f"{idx}. Target: `{s['phone']}` | ⏰ `{s['timestamp']}`\n"
+        kb = [[InlineKeyboardButton("🔙 Back to Profile", callback_data="profile_refresh")]]
+        await query.edit_message_text(hist_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
+        return
+    elif data == "profile_referral":
+        bot_uname = BOT_USERNAME.replace('@', '')
+        ref_link = f"https://t.me/{bot_uname}?start={user.id}"
+        reward_setting = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")
+        ref_reward = reward_setting['value'] if reward_setting else "2"
+        ref_text = f"💰 **REFER & EARN FREE CREDITS**\n\nHar naye user ke join par `{ref_reward} Credits` milenge!\n\n🔗 **Aapka Link:**\n`{ref_link}`"
+        kb = [[InlineKeyboardButton("🔙 Back to Profile", callback_data="profile_refresh")]]
+        await query.edit_message_text(ref_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
+        return
+    elif data == "profile_buy":
+        upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
+        upi_id = upi_record['value'] if upi_record else "harshhacker@upi"
+        plans = db_get_all("SELECT * FROM plans")
+        buy_text = f"💎 **BUY PREMIUM & ADD CREDITS**\n\n📲 **Admin UPI:** `{upi_id}`\n\n📦 **Plans:**\n"
+        for p in plans:
+            buy_text += f"• {p['name']} — {p['price']} ({p['credits']} Credits)\n"
+        kb = [[InlineKeyboardButton("🔙 Back to Profile", callback_data="profile_refresh")]]
+        await query.edit_message_text(buy_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
+        return
+    elif data == "profile_menu":
+        await query.message.delete()
+        await send_welcome_menu(update, context, user)
         return
 
     if data == "buy_credits_btn":
@@ -1478,7 +1590,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text += f"• **{ap['api_name']}** (`{ap['api_key']}`)\n  `{ap['api_url']}`\n\n"
             keyboard.append([
                 InlineKeyboardButton(f"🔗 URL: {ap['api_name']}", callback_data=f"edit_api_url_{ap['api_key']}"),
-                InlineKeyboardButton(f"✍️️ Old/New", callback_data=f"edit_api_wm_{ap['api_key']}")
+                InlineKeyboardButton(f"✍️ Old/New", callback_data=f"edit_api_wm_{ap['api_key']}")
             ])
         keyboard.append([InlineKeyboardButton("🔵 📊 Back to Panel", callback_data="admin_panel")])
         try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -1642,11 +1754,12 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (RADAR ANIMATION + ALL WORKING FEATURES FIXED)...")
+    print("🚀 HARSH OSINT BOT STARTING (FULL WORKING CODE WITH USER PROFILE DASHBOARD & RADAR ANIMATION)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("profile", profile_command))
     application.add_handler(CommandHandler("support", support_command))
     application.add_handler(CommandHandler("balance", balance_command))
     application.add_handler(CommandHandler("redeem", redeem_command))
@@ -1664,5 +1777,5 @@ def main():
     
     application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
-if __name__ == '__main__':
+if __name__ == 'main__':
     main()
