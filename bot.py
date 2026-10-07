@@ -1254,31 +1254,41 @@ async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     if not await require_feature(update, 'daily', user.id): return
-    user_data = db_get_one("SELECT last_daily, last_daily_claim, streak_days FROM users WHERE user_id = ?", (user.id,))
+    user_data = db_get_one("SELECT last_daily, last_daily_claim, streak_days FROM users WHERE user_id = ?", (user.id,)) or {}
     today_str = datetime.now().strftime("%Y-%m-%d")
-    if user_data['last_daily'] == today_str:
+    last_claim = user_data.get('last_daily_claim') or user_data.get('last_daily') or ''
+    if last_claim == today_str:
         await update.message.reply_text("❌ Aapne aaj ka daily bonus pehle hi claim kar liya hai!")
         return
-    # Use the admin-configured 7-day reward table and update streak state.
-    prev_claim = user_data.get('last_daily_claim') or ''
-    streak = int(user_data.get('streak_days') or 0)
+
+    # Keep the 7-day streak system functional. Consecutive claims increase the
+    # streak; a missed day starts a fresh streak. Day 7+ keeps the streak at 7
+    # for the achievement while using the configured Day-7 reward.
     try:
-        prev_date = datetime.strptime(str(prev_claim), "%Y-%m-%d").date() if prev_claim else None
+        from datetime import timedelta
+        yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
     except Exception:
-        prev_date = None
-    today_date = datetime.strptime(today_str, "%Y-%m-%d").date()
-    if prev_date and (today_date - prev_date).days == 1:
-        streak = min(streak + 1, 7)
-    else:
-        streak = 1
-    reward_day = ((streak - 1) % 7) + 1
-    reward_row = db_get_one("SELECT value FROM settings WHERE key=?", (f"daily_reward_{reward_day}",))
-    bonus = int(reward_row['value']) if reward_row and str(reward_row.get('value','')).isdigit() else 2
-    db_execute("UPDATE users SET credits = credits + ?, last_daily = ?, last_daily_claim = ?, streak_days = ? WHERE user_id = ?", (bonus, today_str, today_str, streak, user.id), commit=True)
-    record_transaction(user.id, "Daily Bonus", bonus, f"Claimed day {reward_day} streak reward")
+        yesterday_str = ''
+    old_streak = int(user_data.get('streak_days', 0) or 0)
+    streak = old_streak + 1 if last_claim == yesterday_str else 1
+    reward_day = min(streak, 7)
+    reward_row = db_get_one("SELECT value FROM settings WHERE key = ?", (f"daily_reward_{reward_day}",))
+    try:
+        bonus = max(0, int(reward_row['value'])) if reward_row else 2
+    except (TypeError, ValueError):
+        bonus = 2
+
+    db_execute(
+        "UPDATE users SET credits = credits + ?, last_daily = ?, last_daily_claim = ?, streak_days = ? WHERE user_id = ?",
+        (bonus, today_str, today_str, streak, user.id), commit=True
+    )
+    record_transaction(user.id, "Daily Bonus", bonus, f"Day {reward_day} daily streak reward")
     log_activity(user.id, f"Claimed daily bonus of {bonus} credits (streak {streak})")
     await check_and_unlock_achievements(context.bot, user.id)
-    await update.message.reply_text(f"🎁 **Daily Bonus Claimed!**\n\n📅 Streak: `{streak} day(s)`\n💎 Reward: `+{bonus} credits`", parse_mode='Markdown')
+    await update.message.reply_text(
+        f"🎁 **Daily Bonus Claimed!**\n\n💎 Reward: `{bonus}` credits\n⚡ Streak: `{streak} day{'s' if streak != 1 else ''}`",
+        parse_mode='Markdown'
+    )
 
 async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await require_feature(update, 'export', update.effective_user.id): return
@@ -1936,7 +1946,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     clean_input_text = text
-    for prefix in ["🔍 ", "📍 ", "🌐 ", "🆔 ", "🔤 ", "🔮 ", "✈️ ", "👤 ", "🔔 ", "📈 ", "🆘 "]:
+    for prefix in [
+        "🔍 ", "📍 ", "🌐 ", "🆔 ", "🔤 ", "🔮 ", "✈️ ", "👤 ",
+        "🔔 ", "📈 ", "🆘 ", "💬 ", "💰 ", "🏆 ", "🎟️ ", "💎 ",
+        "🎁 ", "💳 ", "🤖 "
+    ]:
         clean_input_text = clean_input_text.replace(prefix, "")
 
     feature_text_map = {
@@ -1955,6 +1969,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if clean_input_text.upper() in ("PROMO CENTER",) or text == "/promo":
         await show_promo_center(update, context, user.id, False)
         return
+    if clean_input_text.upper() in ("DAILY CHECK-IN",) or text == "/daily":
+        await daily_command(update, context)
+        return
+    if clean_input_text.upper() in ("TRANSACTIONS",) or text == "/balance":
+        await show_transaction_history(update, context, user.id, is_callback=False)
+        return
 
     if clean_input_text.upper() == "HELP CENTER" or text == "/help":
         await show_help_center(update, context, is_callback=False)
@@ -1966,16 +1986,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if clean_input_text.upper() == "NOTIFICATIONS" or text == "/notifications":
         await show_notifications_center(update, context, user.id, is_callback=False)
-        return
-
-    if clean_input_text.upper() == "DAILY CHECK-IN" or text == "/daily":
-        await daily_command(update, context)
-        return
-
-    if clean_input_text.upper() == "TRANSACTIONS" or text == "/transactions":
-        if not await require_feature(update, 'transactions', user.id):
-            return
-        await show_transaction_history(update, context, user.id, is_callback=False)
         return
 
     # Smart Auto-Detect for Telegram to Number (Username vs User ID)
@@ -2197,6 +2207,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['last_phone_target'] = cleaned_phone
             await send_paginated_phone_response(msg, records, cleaned_phone, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
+        return
     else:
         if len(cleaned_phone) >= 10:
             msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
@@ -2311,9 +2322,30 @@ async def render_admin_stats_dashboard(query):
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
     data = query.data
     user = query.from_user
+
+    # Answer callback only once. Alert branches below (and feature guards)
+    # answer the query themselves; answering here first makes Telegram reject
+    # their later show_alert response.
+    _callback_alert_or_guard = (
+        data.startswith("bug_wrong_") or data.startswith("bug_apierr_") or
+        data in {
+            "profile_transactions", "profile_search_history", "tx_refresh", "sh_refresh",
+            "help_support_ticket", "stats_refresh", "ach_refresh", "promo_refresh",
+            "qs_number", "qs_pincode", "qs_ip", "qs_telegram", "qs_custom",
+            "adm_ticket_reply_latest", "adm_bug_resolve_latest", "adm_bug_reject_latest",
+            "notif_clear", "check_join_btn", "feat_all_on", "feat_all_off",
+            "admin_toggle_style", "admin_toggle_clone_ref", "admin_custom_emoji_clear",
+            "toggle_maintenance"
+        } or
+        data.startswith(("feat_toggle_", "adm_TOG_", "edit_api_url_", "edit_api_wm_", "del_plan_"))
+    )
+    if not _callback_alert_or_guard:
+        try:
+            await query.answer()
+        except Exception:
+            pass
     
     if data.startswith("phone_page_"):
         page_num = int(data.split("_")[-1])
@@ -2332,9 +2364,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_upgraded_search_history(update, context, user.id, is_callback=True)
         return
     elif data == "tx_refresh":
+        if not await require_feature(update, 'transactions', user.id): return
         await show_transaction_history(update, context, user.id, is_callback=True)
         return
     elif data == "sh_refresh":
+        if not await require_feature(update, 'history', user.id): return
         await show_upgraded_search_history(update, context, user.id, is_callback=True)
         return
 
@@ -2580,22 +2614,27 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Quick Search Menu Callback Handlers
     if data == "qs_number":
+        if not await require_feature(update, 'number', user.id): return
         context.user_data['mode'] = 'phone'
         await query.message.reply_text("📱 *Number Info Mode Active*\nKripya ab 10-digit mobile number bhejein:", parse_mode='Markdown')
         return
     elif data == "qs_pincode":
+        if not await require_feature(update, 'pincode', user.id): return
         context.user_data['mode'] = 'pincode'
         await query.message.reply_text("📍 *Pincode Lookup Mode Active*\nKripya 6-digit PIN code bhejein:", parse_mode='Markdown')
         return
     elif data == "qs_ip":
+        if not await require_feature(update, 'ip', user.id): return
         context.user_data['mode'] = 'ip_info'
         await query.message.reply_text("🌐 *IP Info Mode Active*\nKripya IP address bhejein:", parse_mode='Markdown')
         return
     elif data == "qs_telegram":
+        if not await require_feature(update, 'telegram', user.id): return
         context.user_data['mode'] = 'telegram_auto_detect'
         await query.message.reply_text("✈️ *Telegram Lookup Mode Active*\nKripya Telegram ID ya Username bhejein:", parse_mode='Markdown')
         return
     elif data == "qs_custom":
+        if not await require_feature(update, 'custom', user.id): return
         context.user_data['mode'] = 'custom_api_phone'
         await query.message.reply_text("🔎 *Custom API Mode Active*\nQuery enter karein:", parse_mode='Markdown')
         return
@@ -3021,19 +3060,6 @@ async def telegram_error_handler(update: object, context: ContextTypes.DEFAULT_T
     err=context.error
     print(f"[TELEGRAM ERROR] {type(err).__name__}: {err}")
 
-async def healthcheck_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin_user(update.effective_user.id):
-        return
-    checks = []
-    for table in ['users','searches','transactions','achievements','user_achievements','notifications','user_notifications','promo_offers','dynamic_apis','plans','faqs','support_tickets','bug_reports','settings']:
-        try:
-            row = db_get_one(f"SELECT COUNT(*) as c FROM {table}")
-            checks.append(f"✅ `{table}`: {row['c'] if row else 0}")
-        except Exception as e:
-            checks.append(f"❌ `{table}`: {type(e).__name__}")
-    await update.message.reply_text("🩺 **BOT HEALTH CHECK**\n\n" + "\n".join(checks) + "\n\nHandlers: Message + CallbackQuery active.", parse_mode='Markdown')
-
-
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
     print("🚀 HARSH OSINT BOT STARTING (TRANSACTIONS, SEARCH LOGS, HELP CENTER & ALL FEATURES)...")
@@ -3059,7 +3085,6 @@ def main():
     application.add_handler(CommandHandler("maint", maint_command))
     application.add_handler(CommandHandler("addcredits", addcredits_command))
     application.add_handler(CommandHandler("broadcast", broadcast_command))
-    application.add_handler(CommandHandler("healthcheck", healthcheck_command))
     application.add_handler(MessageHandler(filters.CONTACT, handle_contact))
     application.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.ANIMATION | filters.Document.ALL, handle_message))
     application.add_handler(CallbackQueryHandler(button_callback))
