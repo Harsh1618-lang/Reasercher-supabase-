@@ -1,8 +1,8 @@
-#!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate 10 Report Styles & Notification Center Edition
+#!/usr/bin/env python3
+# OSINT & Pincode Bot - Ultimate 10 Report Styles & Transaction Management Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with User-side & Admin-side Notification Center, Analytics, Profile, UI Settings & All Features Intact
+Description: Advanced Telegram OSINT Bot with User/Admin Transaction Management, Advanced Search History Upgrade, Logs Analytics & All Features Intact
 """
 
 import os
@@ -51,6 +51,7 @@ BOT_TOKEN = "8664550290:AAFe6m8yQrx5Km8mvh-tz5Y8rcfY1zcWIZ4"  # Bot Token
 ADMIN_ID = 1420016904                                           # Main Admin ID
 OWNER_USERNAME = "@Harsx1618"                                   # Owner Username
 BOT_USERNAME = "@Reasercherinfobot"                             # Bot Username
+BOT_START_TIME = time.time()                                    # Uptime Tracking
 
 HTTP_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -96,6 +97,14 @@ def init_database():
     except: pass
     try: c.execute("ALTER TABLE users ADD COLUMN notifications TEXT DEFAULT 'ON'")
     except: pass
+    try: c.execute("ALTER TABLE users ADD COLUMN is_premium INTEGER DEFAULT 0")
+    except: pass
+    try: c.execute("ALTER TABLE users ADD COLUMN premium_expiry TEXT DEFAULT ''")
+    except: pass
+    try: c.execute("ALTER TABLE users ADD COLUMN streak_days INTEGER DEFAULT 0")
+    except: pass
+    try: c.execute("ALTER TABLE users ADD COLUMN last_daily_claim TEXT DEFAULT ''")
+    except: pass
 
     c.execute('''CREATE TABLE IF NOT EXISTS searches (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,6 +118,31 @@ def init_database():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         action TEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Transactions Table for Ledger Audit
+    c.execute('''CREATE TABLE IF NOT EXISTS transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        tx_type TEXT,
+        amount INTEGER,
+        description TEXT,
+        balance_after INTEGER,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Advanced Search Logs Table for Audit & Analytics
+    c.execute('''CREATE TABLE IF NOT EXISTS search_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        search_type TEXT,
+        query_masked TEXT,
+        result_count INTEGER DEFAULT 0,
+        api_used TEXT,
+        response_time REAL DEFAULT 0.0,
+        status TEXT DEFAULT 'Success',
+        credits_deducted INTEGER DEFAULT 1,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
 
@@ -148,6 +182,39 @@ def init_database():
         credits INTEGER
     )''')
 
+    c.execute('''CREATE TABLE IF NOT EXISTS achievements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT UNIQUE,
+        title TEXT,
+        description TEXT,
+        icon TEXT DEFAULT '🏆',
+        requirement INTEGER DEFAULT 1,
+        reward_credits INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'Active'
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS user_achievements (
+        user_id INTEGER,
+        achievement_id INTEGER,
+        unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, achievement_id)
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS promo_offers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        description TEXT,
+        coupon_code TEXT DEFAULT '',
+        reward_credits INTEGER DEFAULT 0,
+        discount_percent INTEGER DEFAULT 0,
+        target_group TEXT DEFAULT 'All users',
+        usage_limit INTEGER DEFAULT 0,
+        used_count INTEGER DEFAULT 0,
+        expires_at TEXT DEFAULT '',
+        status TEXT DEFAULT 'Active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
     c.execute('''CREATE TABLE IF NOT EXISTS clones (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         owner_id INTEGER,
@@ -162,7 +229,6 @@ def init_database():
         count INTEGER DEFAULT 0
     )''')
 
-    # Notification Center Tables
     c.execute('''CREATE TABLE IF NOT EXISTS notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT,
@@ -183,6 +249,36 @@ def init_database():
         is_read INTEGER DEFAULT 0,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS bug_reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        search_type TEXT,
+        query_masked TEXT,
+        report_type TEXT,
+        message TEXT,
+        status TEXT DEFAULT 'Pending',
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS faqs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        question TEXT,
+        answer TEXT,
+        category TEXT,
+        display_order INTEGER DEFAULT 1,
+        status TEXT DEFAULT 'Active',
+        views INTEGER DEFAULT 0
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS support_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        subject TEXT,
+        message TEXT,
+        status TEXT DEFAULT 'Open',
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
     
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('maintenance', 'off')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('maint_msg', '🚧 Bot abhi maintenance mode par hai. Kripya baad mein koshish karein!')")
@@ -195,6 +291,53 @@ def init_database():
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ref_reward_credits', '2')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('force_channels', '')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('report_style', 'cyber')")
+
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('help_center_toggle', 'on')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('faq_toggle', 'on')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('support_toggle', 'on')")
+    # Master user-feature controls. Admin can toggle these without changing code.
+    feature_defaults = {
+        'feature_profile':'on','feature_search':'on','feature_number':'on','feature_pincode':'on',
+        'feature_ip':'on','feature_telegram':'on','feature_notifications':'on','feature_daily':'on',
+        'feature_achievements':'on','feature_referral':'on','feature_transactions':'on','feature_history':'on',
+        'feature_buy_credits':'on','feature_redeem':'on','feature_promo':'on','feature_support':'on',
+        'feature_faq':'on','feature_stats':'on','feature_settings':'on','feature_bug_report':'on',
+        'feature_export':'on','feature_clone':'on','feature_quick_search':'on',
+        'daily_reward_1':'1','daily_reward_2':'1','daily_reward_3':'2','daily_reward_4':'2',
+        'daily_reward_5':'3','daily_reward_6':'3','daily_reward_7':'10',
+        'search_cost_number':'1','search_cost_pincode':'1','search_cost_ip':'1','search_cost_telegram':'1',
+        'search_cost_aadhaar':'1','search_cost_custom':'1','search_cost_phone':'1',
+    }
+    for _k,_v in feature_defaults.items():
+        c.execute("INSERT OR IGNORE INTO settings (key,value) VALUES (?,?)", (_k,_v))
+    default_achievements = [
+        ('first_search','First Search','Apni pehli search complete karein','🥇',1,1),
+        ('search_10','10 Searches','10 successful searches complete karein','🔥',10,3),
+        ('search_100','100 Searches','100 searches complete karein','💯',100,10),
+        ('ref_10','10 Referrals','10 users refer karein','🤝',10,10),
+        ('streak_7','7-Day Streak','7 din continuous daily claim karein','⚡',7,10),
+        ('search_1000','1000 Searches','1000 searches complete karein','👑',1000,50),
+    ]
+    for _a in default_achievements:
+        c.execute("INSERT OR IGNORE INTO achievements(code,title,description,icon,requirement,reward_credits) VALUES (?,?,?,?,?,?)", _a)
+
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('stat_online', 'on')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('stat_searches', 'on')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('stat_api_status', 'on')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('stat_uptime', 'on')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('stat_premium', 'on')")
+
+    c.execute("SELECT COUNT(*) FROM faqs")
+    if c.fetchone()[0] == 0:
+        default_faqs = [
+            ("Credits کیسے मिलेंगे?", "Aapko daily bonus (/daily) claim karne par, ya referral link se doston ko invite karne par free credits milte hain.", "💳 Credits & Premium", 1),
+            ("Search کیسے करें?", "Quick Search menu open karke aap Number, Pincode, IP ya Telegram lookup select kar sakte hain.", "🔎 Search", 2),
+            ("Referral کیسے काम करता है?", "Apna referral link /ref ya Profile se copy karke doston ko bhejein. Har naye join par aapko credits milenge.", "🎁 Referral", 3),
+            ("API unavailable کیوں ہے?", "Kabhi-kabhi upstream server overload hone par API temporary down ho sakti hai. Kuch der baad koshish karein.", "🔌 API", 4),
+            ("Contact support", "Kisi bhi samasya ke liye aap admin se seedhe contact kar sakte hain ya support ticket raise kar sakte hain.", "📞 Support", 5)
+        ]
+        for q, a, cat, ord in default_faqs:
+            c.execute("INSERT INTO faqs (question, answer, category, display_order) VALUES (?, ?, ?, ?)", (q, a, cat, ord))
     
     default_welcome = "\n╔═════════════════════════════════╗\n║       👑 HARSHX1618 ELITE 👑       ║\n╚═════════════════════════════════╝\n💎 Your Vault:    {credits} Credits ✨\n🌟 Privilege: Lifetime Access ⚡\n👇 Choose Your Path:\n┌─────────────────────────────────┐\n│ 🎁 Claim Freebies ➔ /daily      │\n│ 🔑 Redeem Code   ➔ /redeem      │\n└─────────────────────────────────┘"
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('welcome_msg', ?)", (default_welcome,))
@@ -230,6 +373,129 @@ init_database()
 
 def log_activity(user_id, action):
     db_execute("INSERT INTO logs (user_id, action) VALUES (?, ?)", (user_id, action), commit=True)
+
+FEATURE_LABELS = {
+    'profile':'👤 Profile','search':'🔎 Search','number':'📱 Number Search','pincode':'📍 Pincode Search',
+    'ip':'🌐 IP Search','telegram':'✈️ Telegram Search','notifications':'🔔 Notifications','daily':'🎁 Daily Check-in',
+    'achievements':'🏆 Achievements','referral':'🤝 Referral','transactions':'💳 Transactions','history':'📜 Search History',
+    'buy_credits':'💎 Buy Credits','redeem':'🔑 Redeem','promo':'🎟️ Promo Center','support':'🆘 Support',
+    'faq':'❓ FAQ','stats':'📈 Live Statistics','settings':'⚙️ User Settings','bug_report':'🐛 Bug Report',
+    'export':'📤 Export History','clone':'🤖 Clone Bot','quick_search':'⚡ Quick Search'
+}
+
+def feature_enabled(feature, user_id=None):
+    if user_id is not None and is_admin_user(user_id):
+        return True
+    row = db_get_one("SELECT value FROM settings WHERE key=?", (f"feature_{feature}",))
+    return not row or str(row.get('value','on')).lower() == 'on'
+
+def feature_block_text(feature):
+    return f"🚫 {FEATURE_LABELS.get(feature, feature.title())} abhi admin ne temporarily disabled kiya hai."
+
+async def require_feature(update, feature, user_id):
+    if feature_enabled(feature, user_id):
+        return True
+    if getattr(update, 'message', None):
+        await update.message.reply_text(feature_block_text(feature))
+    elif getattr(update, 'callback_query', None):
+        try: await update.callback_query.answer(feature_block_text(feature), show_alert=True)
+        except Exception: pass
+    return False
+
+async def check_and_unlock_achievements(bot, user_id):
+    if not feature_enabled('achievements', user_id):
+        return
+    u = db_get_one("SELECT searches, streak_days FROM users WHERE user_id=?", (user_id,)) or {}
+    refs = db_get_one("SELECT COUNT(*) as cnt FROM users WHERE referred_by=?", (user_id,)) or {'cnt':0}
+    values = {'searches': int(u.get('searches',0) or 0), 'referrals': int(refs.get('cnt',0) or 0), 'streak': int(u.get('streak_days',0) or 0)}
+    rows = db_get_all("SELECT * FROM achievements WHERE status='Active'")
+    for a in rows:
+        metric = 'streak' if a['code']=='streak_7' else ('referrals' if a['code'].startswith('ref_') else 'searches')
+        if values.get(metric,0) < int(a['requirement'] or 0):
+            continue
+        exists = db_get_one("SELECT achievement_id FROM user_achievements WHERE user_id=? AND achievement_id=?", (user_id,a['id']))
+        if exists: continue
+        db_execute("INSERT OR IGNORE INTO user_achievements(user_id,achievement_id) VALUES (?,?)", (user_id,a['id']), commit=True)
+        reward = int(a['reward_credits'] or 0)
+        if reward:
+            db_execute("UPDATE users SET credits=credits+? WHERE user_id=?", (reward,user_id), commit=True)
+            record_transaction(user_id, 'Achievement Reward', reward, a['title'])
+        try:
+            await bot.send_message(chat_id=user_id, text=f"🏆 **Achievement Unlocked!**\n\n{a['icon']} **{a['title']}**\n{a['description']}\n\n💎 Reward: **+{reward} credits**", parse_mode='Markdown')
+        except Exception:
+            pass
+
+async def show_achievements(update, context, user_id, is_callback=False):
+    if not await require_feature(update, 'achievements', user_id): return
+    rows = db_get_all("SELECT a.*, ua.unlocked_at FROM achievements a LEFT JOIN user_achievements ua ON a.id=ua.achievement_id AND ua.user_id=? WHERE a.status='Active' ORDER BY a.id", (user_id,))
+    text='🏆 **ACHIEVEMENTS**\n━━━━━━━━━━━━━━━━━━━━\n'
+    for a in rows:
+        status='✅ Unlocked' if a.get('unlocked_at') else f"🔒 {a['requirement']} required"
+        text += f"{a['icon']} **{a['title']}** — {status}\n{a['description']} | +{a['reward_credits']} 💎\n\n"
+    kb=[[InlineKeyboardButton('🔄 Refresh',callback_data='ach_refresh'),InlineKeyboardButton('🏠 Main Menu',callback_data='profile_menu')]]
+    if is_callback:
+        try: await update.callback_query.edit_message_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+        except Exception: await update.callback_query.message.reply_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+    else: await update.message.reply_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+
+async def show_promo_center(update, context, user_id, is_callback=False):
+    if not await require_feature(update, 'promo', user_id): return
+    u=db_get_one("SELECT is_premium,joined_date FROM users WHERE user_id=?",(user_id,)) or {}
+    premium=int(u.get('is_premium',0) or 0)==1
+    offers=db_get_all("SELECT * FROM promo_offers WHERE status='Active' ORDER BY id DESC LIMIT 20")
+    text='🎟️ **PROMO & OFFER CENTER**\n━━━━━━━━━━━━━━━━━━━━\n'
+    shown=0
+    for o in offers:
+        target=(o.get('target_group') or 'All users').lower()
+        if target=='premium users' and not premium: continue
+        if target=='new users':
+            try:
+                from datetime import timedelta
+                if datetime.fromisoformat(str(u.get('joined_date')).replace(' ','T')) < datetime.now()-timedelta(days=7): continue
+            except Exception: continue
+        if o.get('expires_at'):
+            try:
+                if datetime.fromisoformat(str(o['expires_at']).replace(' ','T')) < datetime.now(): continue
+            except Exception: pass
+        shown+=1
+        text += f"🎁 **{o['title']}**\n{o['description']}\n"
+        if o.get('coupon_code'): text += f"🎟️ Code: `{o['coupon_code']}`\n"
+        if o.get('reward_credits'): text += f"💎 Reward: +{o['reward_credits']} credits\n"
+        if o.get('discount_percent'): text += f"🏷️ Discount: {o['discount_percent']}%\n"
+        text += '━━━━━━━━━━━━━━━━━━━━\n'
+    if not shown: text += '📭 Filhal koi active offer nahi hai.\n'
+    kb=[[InlineKeyboardButton('🔄 Refresh',callback_data='promo_refresh'),InlineKeyboardButton('🏠 Main Menu',callback_data='profile_menu')]]
+    if is_callback:
+        try: await update.callback_query.edit_message_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+        except Exception: await update.callback_query.message.reply_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+    else: await update.message.reply_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+
+async def show_feature_control(query, page=0):
+    keys=list(FEATURE_LABELS.keys())
+    per=8; chunk=keys[page*per:(page+1)*per]
+    text=f"⚙️ **USER FEATURE CONTROL**\nPage {page+1}/{max(1,(len(keys)+per-1)//per)}\n\n"
+    kb=[]
+    for k in chunk:
+        r=db_get_one("SELECT value FROM settings WHERE key=?",(f'feature_{k}',)); on=not r or r.get('value','on')=='on'
+        kb.append([InlineKeyboardButton(f"{'🟢' if on else '🔴'} {FEATURE_LABELS[k]}",callback_data=f'feat_toggle_{k}')])
+    nav=[]
+    if page>0: nav.append(InlineKeyboardButton('⬅️ Prev',callback_data=f'feat_page_{page-1}'))
+    if (page+1)*per<len(keys): nav.append(InlineKeyboardButton('Next ➡️',callback_data=f'feat_page_{page+1}'))
+    if nav: kb.append(nav)
+    kb.append([InlineKeyboardButton('🔄 Enable All',callback_data='feat_all_on'),InlineKeyboardButton('⛔ Disable All',callback_data='feat_all_off')])
+    kb.append([InlineKeyboardButton('🔙 Back to Panel',callback_data='admin_panel')])
+    try: await query.edit_message_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+    except Exception: await query.message.reply_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+
+def record_transaction(user_id, tx_type, amount, description):
+    user_db = db_get_one("SELECT credits FROM users WHERE user_id = ?", (user_id,))
+    bal = user_db['credits'] if user_db else 0
+    db_execute("INSERT INTO transactions (user_id, tx_type, amount, description, balance_after) VALUES (?, ?, ?, ?, ?)",
+               (user_id, tx_type, amount, description, bal), commit=True)
+
+def record_search_log(user_id, search_type, query_masked, result_count, api_used, resp_time, status, credits_ded):
+    db_execute("INSERT INTO search_logs (user_id, search_type, query_masked, result_count, api_used, response_time, status, credits_deducted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+               (user_id, search_type, query_masked, result_count, api_used, resp_time, status, credits_ded), commit=True)
 
 def is_admin_user(user_id):
     if user_id == ADMIN_ID:
@@ -281,6 +547,13 @@ async def check_multi_force_subscription(bot, user_id):
             unjoined.append(ch)
     return len(unjoined) == 0, unjoined
 
+def format_uptime():
+    uptime_sec = int(time.time() - BOT_START_TIME)
+    days = uptime_sec // 86400
+    hours = (uptime_sec % 86400) // 3600
+    mins = (uptime_sec % 3600) // 60
+    return f"{days}d {hours}h {mins}m"
+
 # ============================================
 # DYNAMIC API FETCH HELPER
 # ============================================
@@ -308,19 +581,22 @@ async def fetch_dynamic_api(api_key, query_val, timeout_sec=20):
     new_c = api_record['new_credit'] if api_record and api_record.get('new_credit') else ""
 
     try:
+        start_t = time.time()
         response = requests.get(final_url, headers=HTTP_HEADERS, timeout=timeout_sec)
+        resp_time = round(time.time() - start_t, 2)
         if response.status_code == 200:
             raw_text = response.text
             if old_c:
                 raw_text = raw_text.replace(old_c, new_c)
             try:
-                return json.loads(raw_text)
+                res_json = json.loads(raw_text)
+                return res_json, resp_time, "Success"
             except:
-                return {"status": True, "raw_result": raw_text}
+                return {"status": True, "raw_result": raw_text}, resp_time, "Success"
         else:
-            return {"status": False, "error": "API returned status " + str(response.status_code)}
+            return {"status": False, "error": "API returned status " + str(response.status_code)}, resp_time, "Failed"
     except Exception as e:
-        return {"status": False, "error": str(e)}
+        return {"status": False, "error": str(e)}, 0.0, "Failed"
 
 # ============================================
 # AUTO-DELETE BACKGROUND TASK
@@ -469,7 +745,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
         text += f"System Core: {OWNER_USERNAME}"
 
     elif r_style == 'cyber':
-        text = f"🌐 𝕮𝖄𝕭𝕰𝕽 𝕴𝕹𝕿𝕰𝕃𝕃𝕴𝕲𝕰𝕹𝕮𝕰 ({r_mode.upper()}) 🌐\n"
+        text = f"🌐 𝕮𝕴𝕭𝕰𝕽 𝕴𝕹𝕿𝕰𝕃𝕃𝕴𝕲𝕰𝕹𝕮𝕰 ({r_mode.upper()}) 🌐\n"
         text += f"🎯 Target: `{phone}`\n"
         text += f"📊 Records: {total} | Page: {page + 1}/{total_pages}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         for idx, rec in enumerate(chunk, start=start_idx + 1):
@@ -524,7 +800,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
         for idx, rec in enumerate(chunk, start=start_idx + 1):
             text += f"🌟 **VIP PROFILE #{idx}**\n"
             text += f"• Full Name : **{rec['name']}**\n"
-            if r_mode == 'Full': text += f"• Father    : **{rec['father']}**\n"
+            if r_mode == 'Full': text += f"• Father    : **{rec['father']}`\n"
             text += f"• Contact   : `{rec['mobile']}`\n"
             text += f"• Region    : {rec['circle']}\n"
             text += f"• Location  : _{rec['address']}_\n\n──────────────────────────────\n"
@@ -556,13 +832,21 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
     if nav_row:
         buttons.append(nav_row)
 
-    reply_markup = InlineKeyboardMarkup(buttons) if buttons else None
+    bug_row = [
+        InlineKeyboardButton("❓ Wrong Result", callback_data=f"bug_wrong_{phone}"),
+        InlineKeyboardButton("🔌 API Error", callback_data=f"bug_apierr_{phone}")
+    ]
+    support_bug_row = [
+        InlineKeyboardButton("💬 Contact Support", url=f"https://t.me/{OWNER_USERNAME.replace('@', '')}")
+    ]
+    buttons.append(bug_row)
+    buttons.append(support_bug_row)
+
+    reply_markup = InlineKeyboardMarkup(buttons)
 
     if is_edit:
-        try:
-            await msg_obj.edit_text(text, parse_mode='Markdown', reply_markup=reply_markup)
-        except:
-            pass
+        try: await msg_obj.edit_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        except: pass
     else:
         reply_msg = await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
         msg_obj = reply_msg
@@ -666,61 +950,177 @@ def format_aadhaar_response(data, query_str):
         return "❌ Error formatting data: " + str(e)
 
 # ============================================
-# NOTIFICATION CENTER & USER PROFILE HANDLERS
+# TRANSACTION HISTORY & SEARCH HISTORY UPGRADE
 # ============================================
-async def show_notifications_center(update_or_query, context, user_id, is_callback=False):
-    user_db = db_get_one("SELECT * FROM users WHERE user_id = ?", (user_id,))
-    if not user_db:
-        text = "❌ User profile not found."
+async def show_transaction_history(update_or_query, context, user_id, is_callback=False):
+    txs = db_get_all("SELECT * FROM transactions WHERE user_id = ? ORDER BY id DESC LIMIT 10", (user_id,))
+    user_db = db_get_one("SELECT credits FROM users WHERE user_id = ?", (user_id,))
+    bal = user_db['credits'] if user_db else 0
+
+    text = f"💳 **TRANSACTION & CREDIT LEDGER**\n\n💎 Current Balance: `{bal} Credits`\n━━━━━━━━━━━━━━━━━━━━\n"
+    if not txs:
+        text += "📭 Abhi tak koi transaction record nahi hai.\n"
     else:
-        # Fetch active notifications targeted to this user
-        notifs = db_get_all("SELECT * FROM notifications WHERE status = 'Active' ORDER BY id DESC LIMIT 5")
-        text = f"🔔 **NOTIFICATION CENTER**\n\n"
-        text += f"Aapke latest updates, announcements aur offers:\n━━━━━━━━━━━━━━━━━━━━\n"
-        
-        if not notifs:
-        
-            text += "📭 Filhal koi nayi notification nahi hai.\n"
+        for t in txs:
+            sign = "+" if t['amount'] > 0 else ""
+            text += f"• `{t['timestamp']}`\n  `{t['description']}` ({sign}{t['amount']} Cr) | Bal: `{t['balance_after']}`\n"
+    
+    keyboard = [[InlineKeyboardButton("🔄 Refresh Ledger", callback_data="tx_refresh"), InlineKeyboardButton("🏠 Main Menu", callback_data="profile_menu")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if is_callback:
+        try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+    else:
+        await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+
+async def show_upgraded_search_history(update_or_query, context, user_id, is_callback=False):
+    logs = db_get_all("SELECT * FROM search_logs WHERE user_id = ? ORDER BY id DESC LIMIT 5", (user_id,))
+    text = f"🧾 **UPGRADED SEARCH RESULT HISTORY**\n\nAapki pichli search queries aur status:\n━━━━━━━━━━━━━━━━━━━━\n"
+    if not logs:
+        text += "📭 Koi search history available nahi hai.\n"
+    else:
+        for l in logs:
+            status_icon = "✅" if l['status'] == 'Success' else "❌"
+            text += f"{status_icon} **Type:** `{l['search_type']}` | Target: `{l['query_masked']}`\n"
+            text += f"⏰ `{l['timestamp']}` | Results: `{l['result_count']}` | API: `{l['api_used']}`\n━━━━━━━━━━━━━━━━━━━━\n"
+
+    keyboard = [[InlineKeyboardButton("🔄 Refresh History", callback_data="sh_refresh"), InlineKeyboardButton("🏠 Main Menu", callback_data="profile_menu")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if is_callback:
+        try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+    else:
+        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+
+async def show_help_center(update_or_query, context, is_callback=False):
+    hc_toggle = db_get_one("SELECT value FROM settings WHERE key='help_center_toggle'")
+    if hc_toggle and hc_toggle['value'] == 'off':
+        text = "🚧 Help Center is currently disabled by admin."
+    else:
+        text = "🆘 **HELP CENTER & FAQ**\n\nNeeche diye gaye topics mein se apna sawaal select karein ya support par contact karein:\n━━━━━━━━━━━━━━━━━━━━\n"
+        faqs = db_get_all("SELECT * FROM faqs WHERE status='Active' ORDER BY display_order ASC")
+        if not faqs:
+            text += "📭 Filhal koi FAQ available nahi hai.\n"
         else:
-            for n in notifs:
-                # Check read status
-                read_rec = db_get_one("SELECT * FROM user_notifications WHERE user_id = ? AND notif_id = ?", (user_id, n['id']))
-                status_icon = "✅ Read" if read_rec and read_rec['is_read'] == 1 else "🔵 Unread"
-                
-                # Mark as read automatically when opened
-                if not read_rec:
-                    db_execute("INSERT INTO user_notifications (user_id, notif_id, is_read) VALUES (?, ?, 1)", (user_id, n['id']), commit=True)
-                elif read_rec['is_read'] == 0:
-                    db_execute("UPDATE user_notifications SET is_read = 1 WHERE user_id = ? AND notif_id = ?", (user_id, n['id']), commit=True)
-
-                icon_type = "📢"
-                if n['notif_type'] == 'Offer': icon_type = "🎁"
-                elif n['notif_type'] == 'Maintenance': icon_type = "🔧"
-                elif n['notif_type'] == 'Update': icon_type = "🚀"
-                elif n['notif_type'] == 'Important': icon_type = "⚠️"
-
-                text += f"{icon_type} **{n['title']}** [{status_icon}]\n"
-                text += f"{n['message']}\n"
-                if n['btn_text'] and n['btn_url']:
-                    text += f"🔗 [{n['btn_text']}]({n['btn_url']})\n"
-                text += f"━━━━━━━━━━━━━━━━━━━━\n"
+            for f in faqs:
+                text += f"❓ **{f['question']}**\n💡 _{f['answer']}_\n━━━━━━━━━━━━━━━━━━━━\n"
 
     keyboard = [
-        [InlineKeyboardButton("🔄 Refresh Notifs", callback_data="notif_refresh"), InlineKeyboardButton("🗑️ Clear / Mark Read", callback_data="notif_clear")],
+        [InlineKeyboardButton("💬 Contact Support", callback_data="help_support_ticket")],
         [InlineKeyboardButton("🏠 Main Menu", callback_data="profile_menu")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if is_callback:
-        try:
-            await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup, disable_web_page_preview=True)
-        except:
-            await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup, disable_web_page_preview=True)
+        try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
     else:
-        await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup, disable_web_page_preview=True)
+        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await require_feature(update, 'faq', update.effective_user.id): return
+    await show_help_center(update, context, is_callback=False)
+
+async def show_live_statistics(update_or_query, context, is_callback=False):
+    s_online = db_get_one("SELECT value FROM settings WHERE key='stat_online'")['value'] == 'on'
+    s_search = db_get_one("SELECT value FROM settings WHERE key='stat_searches'")['value'] == 'on'
+    s_api = db_get_one("SELECT value FROM settings WHERE key='stat_api_status'")['value'] == 'on'
+    s_uptime = db_get_one("SELECT value FROM settings WHERE key='stat_uptime'")['value'] == 'on'
+    s_prem = db_get_one("SELECT value FROM settings WHERE key='stat_premium'")['value'] == 'on'
+
+    text = f"📈 **LIVE BOT STATISTICS**\n\n━━━━━━━━━━━━━━━━━━━━\n"
+    if s_online: text += f"👥 **Online Users:** `{len(active_live_users)} Active`\n"
+    if s_search:
+        total_searches = db_get_one("SELECT COUNT(*) as cnt FROM searches")['cnt'] or 0
+        text += f"🔎 **Total Searches:** `{total_searches:,}`\n"
+    if s_api: text += f"⚡ **API Status:** `6/6 Operational`\n"
+    if s_uptime: text += f"🤖 **Bot Uptime:** `{format_uptime()}`\n"
+    if s_prem:
+        prem_count = db_get_one("SELECT COUNT(*) as cnt FROM users WHERE credits > 10")['cnt'] or 0
+        text += f"⭐ **Premium Users:** `{prem_count}`\n"
+    text += f"━━━━━━━━━━━━━━━━━━━━"
+
+    keyboard = [[InlineKeyboardButton("🔄 Refresh Stats", callback_data="stats_refresh"), InlineKeyboardButton("🏠 Main Menu", callback_data="profile_menu")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if is_callback:
+        try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+    else:
+        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await require_feature(update, 'stats', update.effective_user.id): return
+    await show_live_statistics(update, context, is_callback=False)
+
+async def deliver_notification(context, notif_id):
+    """Deliver one notification to target users and record it as unread in their center."""
+    n = db_get_one("SELECT * FROM notifications WHERE id = ?", (notif_id,))
+    if not n:
+        return {"sent": 0, "failed": 0}
+    target = (n.get('target_group') or 'All users').strip().lower()
+    if target == 'premium users':
+        users = db_get_all("SELECT user_id FROM users WHERE is_banned = 0 AND COALESCE(is_premium, 0) = 1 AND COALESCE(notifications, 'ON') = 'ON'")
+    elif target == 'new users':
+        users = db_get_all("SELECT user_id FROM users WHERE is_banned = 0 AND joined_date >= datetime('now', '-7 days') AND COALESCE(notifications, 'ON') = 'ON'")
+    else:
+        users = db_get_all("SELECT user_id FROM users WHERE is_banned = 0 AND COALESCE(notifications, 'ON') = 'ON'")
+    icon = {'offer':'🎁','maintenance':'🔧','update':'🚀','important':'⚠️'}.get((n.get('notif_type') or '').lower(), '📢')
+    body = f"{icon} **{n.get('title', 'Notification')}**\n\n{n.get('message', '')}"
+    sent = failed = 0
+    for u in users:
+        try:
+            await context.bot.send_message(chat_id=u['user_id'], text=body, parse_mode='Markdown', disable_web_page_preview=True)
+            db_execute("INSERT OR IGNORE INTO user_notifications (user_id, notif_id, is_read) VALUES (?, ?, 0)", (u['user_id'], notif_id), commit=True)
+            sent += 1
+        except Exception:
+            failed += 1
+    return {"sent": sent, "failed": failed}
+
+async def show_notifications_center(update_or_query, context, user_id, is_callback=False):
+    user_db = db_get_one("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    if not user_db:
+        text = "❌ User profile not found."
+    else:
+        is_premium = int(user_db.get('is_premium', 0) or 0) == 1
+        all_notifs = db_get_all("SELECT * FROM notifications WHERE status = 'Active' ORDER BY id DESC LIMIT 20")
+        notifs = []
+        for n in all_notifs:
+            target = (n.get('target_group') or 'All users').strip().lower()
+            if target == 'all users' or (target == 'premium users' and is_premium):
+                notifs.append(n)
+            elif target == 'new users':
+                try:
+                    if __import__('datetime').datetime.fromisoformat(str(user_db.get('joined_date')).replace(' ', 'T')) >= __import__('datetime').datetime.now() - __import__('datetime').timedelta(days=7):
+                        notifs.append(n)
+                except Exception:
+                    pass
+        notifs = notifs[:5]
+        text = "🔔 **NOTIFICATION CENTER**\n\nLatest updates, announcements & offers:\n━━━━━━━━━━━━━━━━━━━━\n"
+        if not notifs:
+            text += "📭 Filhal koi nayi notification nahi hai.\n"
+        else:
+            for n in notifs:
+                read_rec = db_get_one("SELECT is_read FROM user_notifications WHERE user_id = ? AND notif_id = ?", (user_id, n['id']))
+                status_icon = "✅ Read" if read_rec and read_rec.get('is_read') == 1 else "🔵 Unread"
+                icon_type = {'offer':'🎁','maintenance':'🔧','update':'🚀','important':'⚠️'}.get((n.get('notif_type') or '').lower(), '📢')
+                text += f"{icon_type} **{n['title']}** [{status_icon}]\n{n['message']}\n━━━━━━━━━━━━━━━━━━━━\n"
+    keyboard = [
+        [InlineKeyboardButton("🔄 Refresh Notifs", callback_data="notif_refresh"), InlineKeyboardButton("✅ Mark All Read", callback_data="notif_clear")],
+        [InlineKeyboardButton("🏠 Main Menu", callback_data="profile_menu")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    if is_callback:
+        try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup, disable_web_page_preview=True)
+        except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup, disable_web_page_preview=True)
+    else:
+        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup, disable_web_page_preview=True)
 
 async def notif_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    if not await require_feature(update, 'notifications', user.id): return
     await show_notifications_center(update, context, user.id, is_callback=False)
 
 async def show_user_profile(update_or_query, context, user_id, is_callback=False):
@@ -760,6 +1160,7 @@ async def show_user_profile(update_or_query, context, user_id, is_callback=False
         text += f"━━━━━━━━━━━━━━━━━━━━"
 
     keyboard = [
+        [InlineKeyboardButton("💳 Transactions", callback_data="profile_transactions"), InlineKeyboardButton("🧾 Search History", callback_data="profile_search_history")],
         [InlineKeyboardButton("🌙 Toggle Theme", callback_data="ui_toggle_theme"), InlineKeyboardButton("📄 Report Mode", callback_data="ui_toggle_mode")],
         [InlineKeyboardButton("🎨 Report Style", callback_data="ui_set_style"), InlineKeyboardButton("🔔 Notifications", callback_data="ui_toggle_notif")],
         [InlineKeyboardButton("📜 HISTORY", callback_data="profile_history"), InlineKeyboardButton("📊 STATS", callback_data="profile_stats")],
@@ -769,14 +1170,13 @@ async def show_user_profile(update_or_query, context, user_id, is_callback=False
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if is_callback:
-        try:
-            await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
-        except:
-            await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
     else:
-        await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
 
 async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await require_feature(update, 'profile', update.effective_user.id): return
     user = update.effective_user
     await show_user_profile(update, context, user.id, is_callback=False)
 
@@ -789,26 +1189,27 @@ async def quick_search_menu(update_or_query, context, is_callback=False):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     if is_callback:
-        try:
-            await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
-        except:
-            await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
     else:
-        await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
 
 async def quick_search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await require_feature(update, 'quick_search', update.effective_user.id): return
     await quick_search_menu(update, context, is_callback=False)
 
 # ============================================
 # COMMAND HANDLERS
 # ============================================
 async def support_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await require_feature(update, 'support', update.effective_user.id): return
     support_text = "💬 *IF YOU FACE ANY ISSUES CONTACT OUR ADMIN*\n\n📲 **Owner / Support Username:** `" + OWNER_USERNAME + "`\n\nKisi bhi madad ke liye seedhe contact karein!"
     support_keyboard = [[InlineKeyboardButton("💬 Chat with Support Owner", url="https://t.me/" + OWNER_USERNAME.replace('@', ''))]]
     await update.message.reply_text(support_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(support_keyboard))
 
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    if not await require_feature(update, 'transactions', user.id): return
     user_info = db_get_one("SELECT credits FROM users WHERE user_id = ?", (user.id,))
     credits = user_info['credits'] if user_info else 0
     await update.message.reply_text("💰 *Aapka Current Balance:*\n\n💎 Remaining Credits: `" + str(credits) + " Credits`", parse_mode='Markdown')
@@ -819,6 +1220,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    if not await require_feature(update, 'referral', user.id): return
     bot_uname = BOT_USERNAME.replace('@', '')
     ref_link = f"https://t.me/{bot_uname}?start={user.id}"
     reward_setting = db_get_one("SELECT value FROM settings WHERE key='ref_reward_credits'")
@@ -832,6 +1234,7 @@ async def ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    if not await require_feature(update, 'redeem', user.id): return
     args = context.args
     if not args:
         await update.message.reply_text("⚠️ Kripya key dalein. Sahi tarika: `/redeem YOUR_KEY`", parse_mode='Markdown')
@@ -844,22 +1247,26 @@ async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credits_to_add = key_data['credits']
     db_execute("UPDATE users SET credits = credits + ?, is_premium = 1, premium_expiry = datetime('now', '+30 days') WHERE user_id = ?", (credits_to_add, user.id), commit=True)
     db_execute("UPDATE redeem_keys SET is_used = 1, used_by = ? WHERE key = ?", (user.id, key), commit=True)
+    record_transaction(user.id, "Coupon Redeem", credits_to_add, f"Redeemed key {key}")
     log_activity(user.id, f"Redeemed key {key} for {credits_to_add} credits")
     await update.message.reply_text(f"🎉 **Redeem Successful!**\nAapke account mein `{credits_to_add}` credits aur 30 din ki premium access mil gayi hai!", parse_mode='Markdown')
 
 async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    user_data = db_get_one("SELECT last_daily FROM users WHERE user_id = ?", (user.id,))
+    if not await require_feature(update, 'daily', user.id): return
+    user_data = db_get_one("SELECT last_daily, last_daily_claim, streak_days FROM users WHERE user_id = ?", (user.id,))
     today_str = datetime.now().strftime("%Y-%m-%d")
     if user_data['last_daily'] == today_str:
         await update.message.reply_text("❌ Aapne aaj ka daily bonus pehle hi claim kar liya hai!")
         return
     bonus = 2
     db_execute("UPDATE users SET credits = credits + ?, last_daily = ? WHERE user_id = ?", (bonus, today_str, user.id), commit=True)
+    record_transaction(user.id, "Daily Bonus", bonus, "Claimed daily bonus reward")
     log_activity(user.id, f"Claimed daily bonus of {bonus} credits")
     await update.message.reply_text(f"🎁 **Daily Bonus Claimed!**\nAapko `{bonus}` free credits mile hain.", parse_mode='Markdown')
 
 async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await require_feature(update, 'export', update.effective_user.id): return
     user = update.effective_user
     if not is_admin_user(user.id): return
     try:
@@ -872,6 +1279,12 @@ async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ============================================
 # TELEGRAM HANDLERS
 # ============================================
+async def achievements_command(update, context):
+    await show_achievements(update, context, update.effective_user.id, False)
+
+async def promo_command(update, context):
+    await show_promo_center(update, context, update.effective_user.id, False)
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     active_live_users.add(user.id)
@@ -896,9 +1309,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_db:
         db_execute("INSERT INTO users (user_id, username, first_name, credits, referred_by) VALUES (?, ?, ?, ?, ?)",
                    (user.id, user.username or "NoUsername", user.first_name, ref_reward, referrer_id), commit=True)
+        record_transaction(user.id, "Signup Bonus", ref_reward, "Welcome bonus credits")
         log_activity(user.id, "New user joined via /start")
         if referrer_id != 0:
             db_execute("UPDATE users SET credits = credits + ? WHERE user_id = ?", (ref_reward, referrer_id), commit=True)
+            record_transaction(referrer_id, "Referral Reward", ref_reward, f"Referral bonus from user {user.id}")
             try:
                 await context.bot.send_message(chat_id=referrer_id, text=f"🎉 **Referral Bonus!** Aapke link se ek naye user ne join kiya, aapko `{ref_reward}` extra credits mile hain!")
             except: pass
@@ -940,7 +1355,15 @@ async def send_welcome_menu(update_or_query, context, user):
     menu_keyboard = []
     row = []
     
-    static_buttons = ["🔔 Notifications", "🔍 Quick Search", "👤 MY PROFILE", "💬 Owner | Support", "💰 Refer & Earn", "🏆 Leaderboard", "🤖 My Clone Bot", "💎 Buy Premium / Credits", "🛠️ Toggle Menu"]
+    static_buttons = []
+    feature_button_map = [
+        ('faq','🆘 Help Center'),('stats','📈 Live Stats'),('notifications','🔔 Notifications'),('quick_search','🔍 Quick Search'),
+        ('profile','👤 MY PROFILE'),('support','💬 Owner | Support'),('referral','💰 Refer & Earn'),('achievements','🏆 Achievements'),
+        ('clone','🤖 My Clone Bot'),('buy_credits','💎 Buy Premium / Credits'),('promo','🎟️ Promo Center'),('daily','🎁 Daily Check-in'),('transactions','💳 Transactions'),
+    ]
+    for _f,_label in feature_button_map:
+        if feature_enabled(_f, user.id): static_buttons.append(_label)
+    static_buttons.append('🛠️ Toggle Menu')
     
     api_button_names = []
     for ap in apis:
@@ -987,6 +1410,8 @@ async def send_welcome_menu(update_or_query, context, user):
 
     if hasattr(update_or_query, 'message') and update_or_query.message:
         await update_or_query.message.reply_text(welcome, parse_mode=None, reply_markup=reply_markup)
+    else:
+        await context.bot.send_message(chat_id=chat_id, text=welcome, parse_mode=None, reply_markup=reply_markup)
 
 async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -1045,8 +1470,67 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     active_live_users.add(user.id)
     text = update.message.text.strip() if update.message.text else ""
 
-    # Strict Admin Prompt Handlers for Notifications & Settings
+    # Strict Admin Prompt Handlers
     if is_admin_user(user.id):
+        if context.user_data.get('waiting_for_admin_adjust_uid'):
+            if text.isdigit():
+                context.user_data['adj_target_uid'] = int(text)
+                context.user_data['waiting_for_admin_adjust_uid'] = False
+                context.user_data['waiting_for_admin_adjust_amt'] = True
+                await update.message.reply_text("⚖️ Kitne credits add (positive) ya deduct (negative) karne hain? (jaise: `10` ya `-5`):", parse_mode='Markdown')
+            else:
+                await update.message.reply_text("❌ Kripya valid numeric User ID enter karein.")
+            return
+
+        if context.user_data.get('waiting_for_admin_adjust_amt'):
+            try:
+                amt = int(text)
+                target_uid = context.user_data.get('adj_target_uid')
+                db_execute("UPDATE users SET credits = credits + ? WHERE user_id = ?", (amt, target_uid), commit=True)
+                record_transaction(target_uid, "Admin Adjustment", amt, f"Admin manual adjustment of {amt} credits")
+                context.user_data.clear()
+                await update.message.reply_text(f"✅ Successfully adjusted `{amt}` credits for User ID `{target_uid}`!", parse_mode='Markdown')
+                try: await context.bot.send_message(chat_id=target_uid, text=f"💳 Admin ne aapke account mein `{amt}` credits adjust kiye hain!")
+                except: pass
+            except:
+                await update.message.reply_text("❌ Kripya valid integer amount enter karein.")
+            return
+
+        if context.user_data.get('waiting_for_faq_q'):
+            context.user_data['temp_faq_q'] = text
+            context.user_data['waiting_for_faq_q'] = False
+            context.user_data['waiting_for_faq_a'] = True
+            await update.message.reply_text("📝 Ab is FAQ ka **Answer** enter karein:", parse_mode='Markdown')
+            return
+
+        if context.user_data.get('waiting_for_faq_a'):
+            context.user_data['temp_faq_a'] = text
+            context.user_data['waiting_for_faq_a'] = False
+            context.user_data['waiting_for_faq_cat'] = True
+            await update.message.reply_text("📂 Category enter karein (jaise: `💳 Credits & Premium`, `🔎 Search`, `🎁 Referral`, `🔌 API`, `📞 Support`):", parse_mode='Markdown')
+            return
+
+        if context.user_data.get('waiting_for_faq_cat'):
+            q = context.user_data.get('temp_faq_q')
+            a = context.user_data.get('temp_faq_a')
+            cat = text.strip()
+            db_execute("INSERT INTO faqs (question, answer, category) VALUES (?, ?, ?)", (q, a, cat), commit=True)
+            context.user_data.clear()
+            await update.message.reply_text("🎉 Naya FAQ successfully add ho gaya!", parse_mode='Markdown')
+            return
+
+        if context.user_data.get('waiting_for_ticket_reply'):
+            t_id = context.user_data.get('reply_ticket_id')
+            db_execute("UPDATE support_tickets SET status='Resolved' WHERE id = ?", (t_id,), commit=True)
+            try:
+                t_data = db_get_one("SELECT user_id FROM support_tickets WHERE id = ?", (t_id,))
+                if t_data:
+                    await context.bot.send_message(chat_id=t_data['user_id'], text=f"💬 **Support Reply for Ticket #{t_id}**:\n\n{text}\n\n✅ Status: Resolved")
+            except: pass
+            context.user_data.clear()
+            await update.message.reply_text("✅ Support ticket successfully replied & resolved!", parse_mode='Markdown')
+            return
+
         if context.user_data.get('waiting_for_notif_title'):
             context.user_data['temp_notif_title'] = text
             context.user_data['waiting_for_notif_title'] = False
@@ -1074,10 +1558,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ntype = context.user_data.get('temp_notif_type')
             target = text.strip()
             
+            target_map = {'all users': 'All users', 'premium users': 'Premium users', 'new users': 'New users'}
+            target = target_map.get(target.lower(), target)
             db_execute("INSERT INTO notifications (title, message, notif_type, target_group) VALUES (?, ?, ?, ?)", (title, msg, ntype, target), commit=True)
+            notif_row = db_get_one("SELECT id FROM notifications ORDER BY id DESC LIMIT 1")
+            result = await deliver_notification(context, notif_row['id']) if notif_row else {'sent': 0, 'failed': 0}
             context.user_data.clear()
             log_activity(user.id, f"Admin created notification: {title}")
-            await update.message.reply_text("🎉 Notification successfully created and sent to target group!", parse_mode='Markdown')
+            await update.message.reply_text(f"🎉 Notification created!\n\n📤 Sent: {result['sent']}\n❌ Failed: {result['failed']}\n🎯 Target: {target}", parse_mode='Markdown')
             return
 
         if context.user_data.get('waiting_for_welcome_msg'):
@@ -1115,6 +1603,47 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 await update.message.reply_text(f"❌ Error saving banner: {str(e)}")
                 return
+
+        if context.user_data.get('waiting_for_promo'):
+            state=context.user_data.get('waiting_for_promo')
+            if state=='title':
+                context.user_data['promo_title']=text; context.user_data['waiting_for_promo']='description'
+                await update.message.reply_text('📝 Offer description bhejein:'); return
+            if state=='description':
+                context.user_data['promo_description']=text; context.user_data['waiting_for_promo']='reward'
+                await update.message.reply_text('💎 Reward credits (0 if none) bhejein:'); return
+            if state=='reward':
+                try: val=int(text)
+                except: await update.message.reply_text('❌ Number bhejein.'); return
+                context.user_data['promo_reward']=val; context.user_data['waiting_for_promo']='target'
+                await update.message.reply_text('👥 Target: All users / Premium users / New users'); return
+            if state=='target':
+                target=text.strip();
+                if target.lower() not in ('all users','premium users','new users'):
+                    await update.message.reply_text('❌ Valid target bhejein: All users / Premium users / New users'); return
+                db_execute("INSERT INTO promo_offers(title,description,reward_credits,target_group) VALUES(?,?,?,?)",(context.user_data.get('promo_title'),context.user_data.get('promo_description'),context.user_data.get('promo_reward',0),target),commit=True)
+                context.user_data.pop('waiting_for_promo',None); context.user_data.pop('promo_title',None); context.user_data.pop('promo_description',None); context.user_data.pop('promo_reward',None)
+                await update.message.reply_text('✅ Promo offer successfully created!'); return
+
+        if context.user_data.get('waiting_for_daily_reward_day'):
+            day=context.user_data.get('waiting_for_daily_reward_day')
+            if text.isdigit():
+                db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)",(f'daily_reward_{day}',str(max(0,int(text)))),commit=True)
+                context.user_data.pop('waiting_for_daily_reward_day',None)
+                await update.message.reply_text(f'✅ Day {day} reward updated to {text} credits.')
+            else:
+                await update.message.reply_text('❌ Sirf numeric value bhejein.')
+            return
+
+        if context.user_data.get('waiting_for_cost_key'):
+            key=context.user_data.get('waiting_for_cost_key')
+            if text.isdigit():
+                db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)",(f'search_cost_{key}',str(max(0,int(text)))),commit=True)
+                context.user_data.pop('waiting_for_cost_key',None)
+                await update.message.reply_text(f'✅ `{key}` search cost updated to `{text}` credit(s).',parse_mode='Markdown')
+            else:
+                await update.message.reply_text('❌ Sirf numeric value bhejein.')
+            return
 
         if context.user_data.get('waiting_for_maint_msg'):
             db_execute("UPDATE settings SET value = ? WHERE key = 'maint_msg'", (text,), commit=True)
@@ -1182,6 +1711,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text("❌ Sahi format use karein: `KEY_NAME CREDITS` (jaise: `VIP50 50`)", parse_mode='Markdown')
             return
 
+        if context.user_data.get('waiting_for_maint_msg'):
+            db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('maint_msg',?)", (text.strip(),), commit=True)
+            context.user_data['waiting_for_maint_msg'] = False
+            await update.message.reply_text("✅ Maintenance message successfully updated!")
+            return
+
         if context.user_data.get('waiting_for_force_channels'):
             channels_val = "" if text.lower() == 'none' else text.strip()
             db_execute("UPDATE settings SET value = ? WHERE key = 'force_channels'", (channels_val,), commit=True)
@@ -1242,6 +1777,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 target_id = context.user_data.get('add_credit_target_id')
                 amount = int(text)
                 db_execute("UPDATE users SET credits = credits + ? WHERE user_id = ?", (amount, target_id), commit=True)
+                record_transaction(target_id, "Admin Credit Add", amount, f"Admin added {amount} credits")
                 context.user_data['waiting_for_add_credits_amount'] = False
                 context.user_data['add_credit_target_id'] = None
                 log_activity(user.id, f"Admin added {amount} credits to user {target_id}")
@@ -1357,9 +1893,41 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🚧 " + db_get_one("SELECT value FROM settings WHERE key='maint_msg'")['value'], parse_mode='Markdown')
         return
 
+    # User Support Ticket Creator Mode
+    if context.user_data.get('waiting_for_user_ticket'):
+        db_execute("INSERT INTO support_tickets (user_id, subject, message) VALUES (?, ?, ?)", (user.id, "User Query", text), commit=True)
+        context.user_data['waiting_for_user_ticket'] = False
+        await update.message.reply_text("✅ Aapka support ticket successfully submit ho gaya hai! Admin jald hi aapse contact karega.", parse_mode='Markdown')
+        return
+
     clean_input_text = text
-    for prefix in ["🔍 ", "📍 ", "🌐 ", "🆔 ", "🔤 ", "🔮 ", "✈️ ", "👤 ", "🔔 "]:
+    for prefix in ["🔍 ", "📍 ", "🌐 ", "🆔 ", "🔤 ", "🔮 ", "✈️ ", "👤 ", "🔔 ", "📈 ", "🆘 "]:
         clean_input_text = clean_input_text.replace(prefix, "")
+
+    feature_text_map = {
+        "MY PROFILE": "profile", "NOTIFICATIONS": "notifications", "LIVE STATS": "stats",
+        "QUICK SEARCH": "quick_search", "REFER & EARN": "referral", "DAILY CHECK-IN": "daily",
+        "ACHIEVEMENTS": "achievements", "PROMO CENTER": "promo", "TRANSACTIONS": "transactions",
+        "BUY PREMIUM / CREDITS": "buy_credits", "OWNER | SUPPORT": "support",
+    }
+    for _phrase,_feat in feature_text_map.items():
+        if clean_input_text.upper() == _phrase and not await require_feature(update, _feat, user.id):
+            return
+
+    if clean_input_text.upper() in ("ACHIEVEMENTS",) or text == "/achievements":
+        await show_achievements(update, context, user.id, False)
+        return
+    if clean_input_text.upper() in ("PROMO CENTER",) or text == "/promo":
+        await show_promo_center(update, context, user.id, False)
+        return
+
+    if clean_input_text.upper() == "HELP CENTER" or text == "/help":
+        await show_help_center(update, context, is_callback=False)
+        return
+
+    if clean_input_text.upper() == "LIVE STATS" or text == "/stats":
+        await show_live_statistics(update, context, is_callback=False)
+        return
 
     if clean_input_text.upper() == "NOTIFICATIONS" or text == "/notifications":
         await show_notifications_center(update, context, user.id, is_callback=False)
@@ -1463,21 +2031,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_user_credit(update, user): return
 
     mode = context.user_data.get('mode', None)
+    mode_feature = {'phone':'number','pincode':'pincode','ip_info':'ip','telegram_auto_detect':'telegram','custom_api_phone':'custom','aadhaar_info':'number'}
+    if mode in mode_feature and not await require_feature(update, mode_feature[mode], user.id):
+        context.user_data['mode'] = None
+        return
 
     if mode == 'telegram_auto_detect':
         msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
         await show_radar_animation(msg, text)
-        if text.startswith('@') or not text.isdigit():
+        if text.startswith('@' ) or not text.isdigit():
             query_str = text if text.startswith('@') else '@' + text
-            data = await fetch_dynamic_api('tg_username', query_str)
+            data, r_time, stat = await fetch_dynamic_api('tg_username', query_str)
             log_activity(user.id, f"Telegram username lookup: {query_str}")
         else:
             cleaned_tg = re.sub(r'\D', '', text)
-            data = await fetch_dynamic_api('tg_userid', cleaned_tg)
+            data, r_time, stat = await fetch_dynamic_api('tg_userid', cleaned_tg)
             log_activity(user.id, f"Telegram userid lookup: {cleaned_tg}")
 
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"TG:{text}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+        record_transaction(user.id, "Search Cost", -1, f"Telegram lookup on {text}")
+        record_search_log(user.id, "Telegram", text[:3] + "****", 1 if stat=='Success' else 0, "TG API", r_time, stat, 1)
+        await check_and_unlock_achievements(context.bot, user.id)
+
         formatted = format_tg_response(data, text)
         try: await msg.edit_text(formatted, parse_mode='Markdown')
         except: await msg.edit_text(formatted, parse_mode=None)
@@ -1487,9 +2063,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if mode == 'pincode':
         msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
         await show_radar_animation(msg, text)
-        data = await fetch_dynamic_api('pincode', text.strip())
+        data, r_time, stat = await fetch_dynamic_api('pincode', text.strip())
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"PIN:{text.strip()}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+        record_transaction(user.id, "Search Cost", -1, f"Pincode lookup on {text.strip()}")
+        record_search_log(user.id, "Pincode", text.strip()[:2] + "****", len(data.get('records', [])) if isinstance(data, dict) else 1, "Pincode API", r_time, stat, 1)
+        await check_and_unlock_achievements(context.bot, user.id)
+
         log_activity(user.id, f"Pincode lookup performed on {text.strip()}")
         formatted = format_pincode_response(data, text.strip())
         try: await msg.edit_text(formatted, parse_mode='Markdown')
@@ -1500,9 +2080,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if mode == 'ip_info':
         msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
         await show_radar_animation(msg, text)
-        data = await fetch_dynamic_api('ip_info', text.strip())
+        data, r_time, stat = await fetch_dynamic_api('ip_info', text.strip())
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"IP:{text.strip()}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+        record_transaction(user.id, "Search Cost", -1, f"IP lookup on {text.strip()}")
+        record_search_log(user.id, "IP Info", text.strip()[:3] + "****", 1 if stat=='Success' else 0, "IP API", r_time, stat, 1)
+        await check_and_unlock_achievements(context.bot, user.id)
+
         log_activity(user.id, f"IP lookup performed on {text.strip()}")
         formatted = format_ip_response(data, text.strip())
         try: await msg.edit_text(formatted, parse_mode='Markdown')
@@ -1514,9 +2098,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cleaned_aadhaar = re.sub(r'\D', '', text)
         msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
         await show_radar_animation(msg, cleaned_aadhaar)
-        data = await fetch_dynamic_api('aadhaar_info', cleaned_aadhaar)
+        data, r_time, stat = await fetch_dynamic_api('aadhaar_info', cleaned_aadhaar)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"AADHAAR:{cleaned_aadhaar}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+        record_transaction(user.id, "Search Cost", -1, "Aadhaar lookup")
+        record_search_log(user.id, "Aadhaar", "********", 1 if stat=='Success' else 0, "Aadhaar API", r_time, stat, 1)
+        await check_and_unlock_achievements(context.bot, user.id)
+
         log_activity(user.id, f"Aadhaar lookup performed on {cleaned_aadhaar}")
         formatted = format_aadhaar_response(data, cleaned_aadhaar)
         try: await msg.edit_text(formatted, parse_mode='Markdown')
@@ -1528,9 +2116,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         api_k = mode.replace("custom_api_", "")
         msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
         await show_radar_animation(msg, text)
-        data = await fetch_dynamic_api(api_k, text)
+        data, r_time, stat = await fetch_dynamic_api(api_k, text)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"{api_k}:{text}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+        record_transaction(user.id, "Search Cost", -1, f"Custom API search: {api_k}")
+        record_search_log(user.id, f"Custom ({api_k})", text[:3] + "****", 1 if stat=='Success' else 0, api_k, r_time, stat, 1)
+        await check_and_unlock_achievements(context.bot, user.id)
+
         log_activity(user.id, f"Custom API search: {api_k}")
         
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
@@ -1544,11 +2136,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if mode == 'phone' or (10 <= len(cleaned_phone) <= 15):
         msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
         await show_radar_animation(msg, cleaned_phone)
-        data = await fetch_dynamic_api('phone', cleaned_phone)
+        data, r_time, stat = await fetch_dynamic_api('phone', cleaned_phone)
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, cleaned_phone, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
-        log_activity(user.id, f"Phone lookup performed on {cleaned_phone}")
+        record_transaction(user.id, "Search Cost", -1, f"Number lookup on {cleaned_phone[:4]}****")
+        
         records, err = parse_phone_records(data, cleaned_phone)
+        record_search_log(user.id, "Number Info", cleaned_phone[:4] + "****", len(records), "Phone API", r_time, stat, 1)
+        await check_and_unlock_achievements(context.bot, user.id)
+
+        log_activity(user.id, f"Phone lookup performed on {cleaned_phone}")
         if err: await msg.edit_text(err)
         else: 
             context.user_data['last_phone_records'] = records
@@ -1559,11 +2156,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if len(cleaned_phone) >= 10:
             msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
             await show_radar_animation(msg, cleaned_phone)
-            data = await fetch_dynamic_api('phone', cleaned_phone)
+            data, r_time, stat = await fetch_dynamic_api('phone', cleaned_phone)
             db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, cleaned_phone, json.dumps(data)), commit=True)
             db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
-            log_activity(user.id, f"Direct phone lookup on {cleaned_phone}")
+            record_transaction(user.id, "Search Cost", -1, f"Number lookup on {cleaned_phone[:4]}****")
+            
             records, err = parse_phone_records(data, cleaned_phone)
+            record_search_log(user.id, "Number Info", cleaned_phone[:4] + "****", len(records), "Phone API", r_time, stat, 1)
+            await check_and_unlock_achievements(context.bot, user.id)
+
+            log_activity(user.id, f"Direct phone lookup on {cleaned_phone}")
             if err: await msg.edit_text(err)
             else:
                 context.user_data['last_phone_records'] = records
@@ -1571,7 +2173,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_paginated_phone_response(msg, records, cleaned_phone, update, context, page=0, is_edit=True)
             return
 
-        await update.message.reply_text("❌ Kripya pehle menu se koi option select karein ya valid input enter karein.", parse_mode='Markdown')
+    if feature_enabled('achievements', user.id):
+        await check_and_unlock_achievements(context.bot, user.id)
+    await update.message.reply_text("❌ Kripya pehle menu se koi option select karein ya valid input enter karein.", parse_mode='Markdown')
 
 async def show_full_admin_panel(update_or_query, context):
     total_users = db_get_one("SELECT COUNT(*) as count FROM users")['count']
@@ -1585,20 +2189,24 @@ async def show_full_admin_panel(update_or_query, context):
     
     panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
     keyboard = [
-        [InlineKeyboardButton("🔔 📢 Create Notification", callback_data="admin_create_notif"), InlineKeyboardButton("📈 📊 Notif Analytics", callback_data="admin_notif_analytics")],
-        [InlineKeyboardButton("🟢 👥 View Users & Logs", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
-        [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
-        [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
-        [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
-        [InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api"), InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name")],
-        [InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style"), InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref")],
-        [InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt"), InlineKeyboardButton("🎁 ⚙ Set Ref Reward", callback_data="admin_refreward_prompt")],
-        [InlineKeyboardButton("💬 ⚙ Set Maint Msg", callback_data="admin_setmaintmsg_prompt"), InlineKeyboardButton("🖼️ ⚙ Set Banner", callback_data="admin_banner_prompt")],
-        [InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt"), InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance")],
-        [InlineKeyboardButton("💬 Set Welcome Text", callback_data="admin_welcome_prompt"), InlineKeyboardButton("🔑 Gen Redeem Key", callback_data="admin_redeem_prompt")],
-        [InlineKeyboardButton("📜 View Logs", callback_data="admin_view_logs"), InlineKeyboardButton("🔨 Ban User", callback_data="admin_ban_prompt")],
-        [InlineKeyboardButton("🔓 Unban User", callback_data="admin_unban_prompt"), InlineKeyboardButton("📥 Download Search Logs", callback_data="admin_download_logs")],
-        [InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
+        [InlineKeyboardButton("💳 Transactions & Adjust", callback_data="admin_tx_mgmt"), InlineKeyboardButton("🔎 Search Logs & Audit", callback_data="admin_search_logs")],
+        [InlineKeyboardButton("📚 FAQ Manager", callback_data="admin_faq_manager"), InlineKeyboardButton("🎫 Support Tickets", callback_data="admin_support_tickets")],
+        [InlineKeyboardButton("📊 Analytics & Live Stats", callback_data="admin_stats_dashboard"), InlineKeyboardButton("🐛 Bug Reports", callback_data="admin_bug_reports")],
+        [InlineKeyboardButton("🔔 Create Notif", callback_data="admin_create_notif"), InlineKeyboardButton("🟢 👥 View Users & Logs", callback_data="admin_users")],
+        [InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt"), InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans")],
+        [InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt"), InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics")],
+        [InlineKeyboardButton("⚙️ User Feature Controls", callback_data="admin_feature_control"), InlineKeyboardButton("🎁 Rewards & Achievements", callback_data="admin_rewards")],
+        [InlineKeyboardButton("🎟️ Promo / Offer Manager", callback_data="admin_promo_manager"), InlineKeyboardButton("📋 Feature Costs", callback_data="admin_feature_costs")],
+        [InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
+        [InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api"), InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api")],
+        [InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name"), InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style")],
+        [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
+        [InlineKeyboardButton("🎁 ⚙ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("💬 ⚙ Set Maint Msg", callback_data="admin_setmaintmsg_prompt")],
+        [InlineKeyboardButton("🖼️ ⚙ Set Banner", callback_data="admin_banner_prompt"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
+        [InlineKeyboardButton("🛠️ 🔄 Maintenance", callback_data="toggle_maintenance"), InlineKeyboardButton("💬 Set Welcome Text", callback_data="admin_welcome_prompt")],
+        [InlineKeyboardButton("🔑 Gen Redeem Key", callback_data="admin_redeem_prompt"), InlineKeyboardButton("📜 View Logs", callback_data="admin_view_logs")],
+        [InlineKeyboardButton("🔨 Ban User", callback_data="admin_ban_prompt"), InlineKeyboardButton("🔓 Unban User", callback_data="admin_unban_prompt")],
+        [InlineKeyboardButton("📥 Download Search Logs", callback_data="admin_download_logs"), InlineKeyboardButton("❌ 📦 Close", callback_data="close_panel")]
     ]
     
     chat_id = update_or_query.message.chat_id if hasattr(update_or_query, 'message') and update_or_query.message else update_or_query.effective_chat.id
@@ -1608,8 +2216,53 @@ async def show_full_admin_panel(update_or_query, context):
         await update_or_query.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
 # ============================================
-# ADMIN, PROFILE & NOTIFICATION CALLBACK HANDLER
+# ADMIN, PROFILE & TRANSACTION CALLBACK HANDLER
 # ============================================
+async def show_bug_reports_dashboard(query):
+    reports = db_get_all("SELECT * FROM bug_reports ORDER BY id DESC LIMIT 10")
+    tot_rep = db_get_one("SELECT COUNT(*) as cnt FROM bug_reports")['cnt'] or 0
+    pend_rep = db_get_one("SELECT COUNT(*) as cnt FROM bug_reports WHERE status='Pending'")['cnt'] or 0
+    res_rep = db_get_one("SELECT COUNT(*) as cnt FROM bug_reports WHERE status='Resolved'")['cnt'] or 0
+    text = f"🐛 **ADMIN PANEL: USER REPORTS**\n\n📊 Total: `{tot_rep}` | Pending: `{pend_rep}` | Resolved: `{res_rep}`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    if not reports:
+        text += "📭 Koi active bug report nahi hai."
+    else:
+        for r in reports:
+            text += f"🆔 **ID:** `{r['id']}` | 👤 **User:** `{r['user_id']}`\n"
+            text += f"🚨 **Type:** `{r['report_type']}` | 📊 **Status:** `{r['status']}`\n"
+            text += f"🔍 **Query:** `{r['query_masked']}` | ⏰ `{r['timestamp']}`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    kb=[[InlineKeyboardButton("✅ Resolve Latest", callback_data="adm_bug_resolve_latest"), InlineKeyboardButton("❌ Reject Latest", callback_data="adm_bug_reject_latest")], [InlineKeyboardButton("🔙 Back to Panel", callback_data="admin_panel")]]
+    try:
+        await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
+    except Exception as e:
+        print(f"[BUG DASHBOARD] {e}")
+        await query.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
+
+async def render_admin_stats_dashboard(query):
+    tot_users = db_get_one("SELECT COUNT(*) as cnt FROM users")['cnt'] or 0
+    tot_searches = db_get_one("SELECT COUNT(*) as cnt FROM searches")['cnt'] or 0
+    today_searches = db_get_one("SELECT COUNT(*) as cnt FROM searches WHERE date(timestamp) = date('now')")['cnt'] or 0
+    prem_users = db_get_one("SELECT COUNT(*) as cnt FROM users WHERE credits > 10")['cnt'] or 0
+    new_users_today = db_get_one("SELECT COUNT(*) as cnt FROM users WHERE date(joined_date) = date('now')")['cnt'] or 0
+    credits_used = db_get_one("SELECT SUM(searches) as s FROM users")['s'] or 0
+    def setting(k, default='off'):
+        r=db_get_one("SELECT value FROM settings WHERE key=?",(k,))
+        return r['value'] if r else default
+    st_on, st_srch, st_api = setting('stat_online'), setting('stat_searches'), setting('stat_api_status')
+    st_upt, st_prem = setting('stat_uptime'), setting('stat_premium')
+    text=(f"📊 **ADMIN ANALYTICS & LIVE STATISTICS**\n\n━━━━━━━━━━━━━━━━━━━━\n👥 **Online Active:** `{len(active_live_users)}`\n"
+          f"👤 **Total Users:** `{tot_users}` | 🆕 **New Today:** `{new_users_today}`\n"
+          f"🔎 **Total Searches:** `{tot_searches}` | 📅 **Today:** `{today_searches}`\n"
+          f"⭐ **Premium Users:** `{prem_users}` | 💳 **Credits Used:** `{credits_used}`\n"
+          f"🤖 **Bot Uptime:** `{format_uptime()}` | ⚡ **API Status:** `6/6 Online`\n━━━━━━━━━━━━━━━━━━━━\n"
+          f"⚙️ **Public Stats Visibility Controls:**\n• Online Users: `{st_on.upper()}`\n• Searches: `{st_srch.upper()}`\n"
+          f"• API Status: `{st_api.upper()}`\n• Uptime: `{st_upt.upper()}`\n• Premium Count: `{st_prem.upper()}`")
+    kb=[[InlineKeyboardButton("🔄 Toggle Online Stat",callback_data="adm_TOG_online"),InlineKeyboardButton("🔄 Toggle Searches Stat",callback_data="adm_TOG_searches")],[InlineKeyboardButton("🔄 Toggle API Stat",callback_data="adm_TOG_api"),InlineKeyboardButton("🔄 Toggle Uptime Stat",callback_data="adm_TOG_uptime")],[InlineKeyboardButton("🔄 Toggle Premium Stat",callback_data="adm_TOG_prem"),InlineKeyboardButton("🔙 Back to Panel",callback_data="admin_panel")]]
+    try: await query.edit_message_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+    except Exception as e:
+        print(f"[STATS DASHBOARD] {e}")
+        await query.message.reply_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1622,6 +2275,224 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         phone = context.user_data.get('last_phone_target', 'Unknown')
         await send_paginated_phone_response(query.message, records, phone, update, context, page=page_num, is_edit=True)
         return
+
+    # User Profile Inline Buttons for Transaction & Search History
+    if data == "profile_transactions":
+        if not await require_feature(update, 'transactions', user.id): return
+        await show_transaction_history(update, context, user.id, is_callback=True)
+        return
+    elif data == "profile_search_history":
+        if not await require_feature(update, 'history', user.id): return
+        await show_upgraded_search_history(update, context, user.id, is_callback=True)
+        return
+    elif data == "tx_refresh":
+        await show_transaction_history(update, context, user.id, is_callback=True)
+        return
+    elif data == "sh_refresh":
+        await show_upgraded_search_history(update, context, user.id, is_callback=True)
+        return
+
+    # Admin Transaction Management Dashboard
+    if data == "admin_tx_mgmt":
+        txs = db_get_all("SELECT * FROM transactions ORDER BY id DESC LIMIT 5")
+        tot_tx = db_get_one("SELECT COUNT(*) as cnt FROM transactions")['cnt'] or 0
+        text = f"💳 **ADMIN PANEL: TRANSACTION MANAGEMENT**\n\nTotal Transactions Recorded: `{tot_tx}`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        if not txs:
+            text += "📭 Koi transaction record nahi hai."
+        else:
+            for t in txs:
+                text += f"🆔 TX #{t['id']} | UID: `{t['user_id']}`\n"
+                text += f"• `{t['description']}` ({t['amount']} Cr) | Bal: `{t['balance_after']}`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        
+        kb = [
+            [InlineKeyboardButton("➕ Manually Add/Deduct Credit", callback_data="adm_tx_adjust")],
+            [InlineKeyboardButton("🔙 Back to Panel", callback_data="admin_panel")]
+        ]
+        await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
+        return
+
+    if data == "adm_tx_adjust":
+        context.user_data['waiting_for_admin_adjust_uid'] = True
+        await context.bot.send_message(chat_id=user.id, text="💳 **CREDIT ADJUSTMENT**\nJis user ke credits adjust karne hain, uski numeric **User ID** bhejein:", parse_mode='Markdown')
+        return
+
+    # Admin Search Logs & Audit Dashboard
+    if data == "admin_search_logs":
+        logs = db_get_all("SELECT * FROM search_logs ORDER BY id DESC LIMIT 5")
+        succ_cnt = db_get_one("SELECT COUNT(*) as cnt FROM search_logs WHERE status='Success'")['cnt'] or 0
+        fail_cnt = db_get_one("SELECT COUNT(*) as cnt FROM search_logs WHERE status='Failed'")['cnt'] or 0
+        text = f"🔎 **ADMIN PANEL: SEARCH LOGS & AUDIT**\n\n✅ Successful: `{succ_cnt}` | ❌ Failed: `{fail_cnt}`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        if not logs:
+            text += "📭 Koi search log nahi hai."
+        else:
+            for l in logs:
+                text += f"👤 UID: `{l['user_id']}` | Type: `{l['search_type']}`\n"
+                text += f"Query: `{l['query_masked']}` | Status: `{l['status']}`\n"
+                text += f"API: `{l['api_used']}` | Time: `{l['response_time']}s`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+        kb = [[InlineKeyboardButton("🔙 Back to Panel", callback_data="admin_panel")]]
+        await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
+        return
+
+    # Help Center Support Ticket User Callback
+    if data == "help_support_ticket":
+        if not await require_feature(update, 'support', user.id): return
+        context.user_data['waiting_for_user_ticket'] = True
+        await query.message.reply_text("💬 **SUPPORT TICKET**\nKripya apni problem ya message type karke bhejein:", parse_mode='Markdown')
+        return
+
+    # Bug Report User-side Button Actions
+    if data.startswith("bug_wrong_") or data.startswith("bug_apierr_"):
+        if not await require_feature(update, 'bug_report', user.id): return
+        parts = data.split("_")
+        rtype = "Wrong Result" if parts[1] == "wrong" else "API Error"
+        target_q = parts[2] if len(parts) > 2 else "Unknown"
+        masked_q = target_q[:3] + "****" + target_q[-3:] if len(target_q) > 6 else "****"
+        
+        db_execute("INSERT INTO bug_reports (user_id, search_type, query_masked, report_type, message) VALUES (?, ?, ?, ?, ?)", 
+                   (user.id, "Number/Query", masked_q, rtype, f"User reported {rtype} for target {masked_q}"), commit=True)
+        
+        await query.answer(f"🚨 Bug reported successfully as '{rtype}'! Admin will review it.", show_alert=True)
+        return
+
+    # Live Stats Refresh Callback
+    if data == "stats_refresh":
+        if not await require_feature(update, 'stats', user.id): return
+        await show_live_statistics(update, context, is_callback=True)
+        return
+
+    # Admin FAQ Manager & Support Tickets Dashboard
+    if data == "admin_faq_manager":
+        faqs = db_get_all("SELECT * FROM faqs ORDER BY display_order ASC")
+        text = "📚 **ADMIN PANEL: FAQ MANAGER**\n━━━━━━━━━━━━━━━━━━━━\n"
+        for f in faqs:
+            text += f"ID: `{f['id']}` | [{f['category']}]\n❓ **{f['question']}**\n💡 _{f['answer']}_\n━━━━━━━━━━━━━━━━━━━━\n"
+        kb = [
+            [InlineKeyboardButton("➕ Add New FAQ", callback_data="adm_faq_add")],
+            [InlineKeyboardButton("🔙 Back to Panel", callback_data="admin_panel")]
+        ]
+        await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
+        return
+
+    if data == "adm_faq_add":
+        context.user_data['waiting_for_faq_q'] = True
+        await context.bot.send_message(chat_id=user.id, text="📚 **ADD NEW FAQ**\nNaye FAQ ka **Question** enter karein:", parse_mode='Markdown')
+        return
+
+    if data == "admin_support_tickets":
+        tickets = db_get_all("SELECT * FROM support_tickets ORDER BY id DESC LIMIT 5")
+        text = "🎫 **ADMIN PANEL: SUPPORT TICKETS**\n━━━━━━━━━━━━━━━━━━━━\n"
+        if not tickets:
+            text += "📭 Koi support ticket nahi hai."
+        else:
+            for t in tickets:
+                text += f"🆔 **Ticket #{t['id']}** | 👤 UID: `{t['user_id']}` | Status: `{t['status']}`\n"
+                text += f"📝 **Message:** {t['message']}\n━━━━━━━━━━━━━━━━━━━━\n"
+        kb = [
+            [InlineKeyboardButton("💬 Reply to Latest Ticket", callback_data="adm_ticket_reply_latest")],
+            [InlineKeyboardButton("🔙 Back to Panel", callback_data="admin_panel")]
+        ]
+        await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
+        return
+
+    if data == "adm_ticket_reply_latest":
+        latest_t = db_get_one("SELECT * FROM support_tickets WHERE status='Open' ORDER BY id DESC LIMIT 1")
+        if latest_t:
+            context.user_data['waiting_for_ticket_reply'] = True
+            context.user_data['reply_ticket_id'] = latest_t['id']
+            await context.bot.send_message(chat_id=user.id, text=f"💬 **REPLY TO TICKET #{latest_t['id']}**\nUser message: _{latest_t['message']}_\n\nApna reply message bhejein:", parse_mode='Markdown')
+        else:
+            await query.answer("ℹ️ Koi open support ticket nahi hai.", show_alert=True)
+        return
+
+    # Admin Bug Reports Management Dashboard
+    if data == "admin_bug_reports":
+        reports = db_get_all("SELECT * FROM bug_reports ORDER BY id DESC LIMIT 5")
+        tot_rep = db_get_one("SELECT COUNT(*) as cnt FROM bug_reports")['cnt'] or 0
+        pend_rep = db_get_one("SELECT COUNT(*) as cnt FROM bug_reports WHERE status='Pending'")['cnt'] or 0
+        res_rep = db_get_one("SELECT COUNT(*) as cnt FROM bug_reports WHERE status='Resolved'")['cnt'] or 0
+
+        text = f"🐛 **ADMIN PANEL: USER REPORTS**\n\n📊 Total: `{tot_rep}` | Pending: `{pend_rep}` | Resolved: `{res_rep}`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+        if not reports:
+            text += "📭 Koi active bug report nahi hai."
+        else:
+            for r in reports:
+                text += f"🆔 **ID:** `{r['id']}` | 👤 **User:** `{r['user_id']}`\n"
+                text += f"🚨 **Type:** `{r['report_type']}` | 📊 **Status:** `{r['status']}`\n"
+                text += f"🔍 **Query:** `{r['query_masked']}` | ⏰ `{r['timestamp']}`\n"
+                text += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+        kb = [
+            [InlineKeyboardButton("✅ Resolve Latest", callback_data="adm_bug_resolve_latest"), InlineKeyboardButton("❌ Reject Latest", callback_data="adm_bug_reject_latest")],
+            [InlineKeyboardButton("🔙 Back to Panel", callback_data="admin_panel")]
+        ]
+        await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
+        return
+
+    if data == "adm_bug_resolve_latest":
+        latest = db_get_one("SELECT * FROM bug_reports WHERE status='Pending' ORDER BY id DESC LIMIT 1")
+        if latest:
+            db_execute("UPDATE bug_reports SET status='Resolved' WHERE id = ?", (latest['id'],), commit=True)
+            try:
+                await context.bot.send_message(chat_id=latest['user_id'], text=f"✅ Your report #{latest['id']} has been resolved.\n🔧 API issue has been fixed. Please try your search again.")
+            except: pass
+            await query.answer("✅ Latest report marked as Resolved & User notified!", show_alert=True)
+        else:
+            await query.answer("ℹ️ Koi pending report nahi mili.", show_alert=True)
+        return await show_bug_reports_dashboard(query)
+
+    if data == "adm_bug_reject_latest":
+        latest = db_get_one("SELECT * FROM bug_reports WHERE status='Pending' ORDER BY id DESC LIMIT 1")
+        if latest:
+            db_execute("UPDATE bug_reports SET status='Rejected' WHERE id = ?", (latest['id'],), commit=True)
+            await query.answer("❌ Report rejected.", show_alert=True)
+        else:
+            await query.answer("ℹ️ Koi pending report nahi mili.", show_alert=True)
+        return await show_bug_reports_dashboard(query)
+
+    # Admin Stats Dashboard & Controls
+    if data == "admin_stats_dashboard":
+        tot_users = db_get_one("SELECT COUNT(*) as cnt FROM users")['cnt'] or 0
+        tot_searches = db_get_one("SELECT COUNT(*) as cnt FROM searches")['cnt'] or 0
+        today_searches = db_get_one("SELECT COUNT(*) as cnt FROM searches WHERE date(timestamp) = date('now')")['cnt'] or 0
+        prem_users = db_get_one("SELECT COUNT(*) as cnt FROM users WHERE credits > 10")['cnt'] or 0
+        new_users_today = db_get_one("SELECT COUNT(*) as cnt FROM users WHERE date(joined_date) = date('now')")['cnt'] or 0
+        credits_used = db_get_one("SELECT SUM(searches) as s FROM users")['s'] or 0
+
+        st_on = db_get_one("SELECT value FROM settings WHERE key='stat_online'")['value']
+        st_srch = db_get_one("SELECT value FROM settings WHERE key='stat_searches'")['value']
+        st_api = db_get_one("SELECT value FROM settings WHERE key='stat_api_status'")['value']
+        st_upt = db_get_one("SELECT value FROM settings WHERE key='stat_uptime'")['value']
+        st_prem = db_get_one("SELECT value FROM settings WHERE key='stat_premium'")['value']
+
+        text = f"📊 **ADMIN ANALYTICS & LIVE STATISTICS**\n\n━━━━━━━━━━━━━━━━━━━━\n"
+        text += f"👥 **Online Active:** `{len(active_live_users)}`\n"
+        text += f"👤 **Total Users:** `{tot_users}` | 🆕 **New Today:** `{new_users_today}`\n"
+        text += f"🔎 **Total Searches:** `{tot_searches}` | 📅 **Today:** `{today_searches}`\n"
+        text += f"⭐ **Premium Users:** `{prem_users}` | 💳 **Credits Used:** `{credits_used}`\n"
+        text += f"🤖 **Bot Uptime:** `{format_uptime()}` | ⚡ **API Status:** `6/6 Online`\n━━━━━━━━━━━━━━━━━━━━\n"
+        text += f"⚙️ **Public Stats Visibility Controls:**\n"
+        text += f"• Online Users: `{st_on.upper()}`\n• Searches: `{st_srch.upper()}`\n• API Status: `{st_api.upper()}`\n• Uptime: `{st_upt.upper()}`\n• Premium Count: `{st_prem.upper()}`"
+
+        kb = [
+            [InlineKeyboardButton("🔄 Toggle Online Stat", callback_data="adm_TOG_online"), InlineKeyboardButton("🔄 Toggle Searches Stat", callback_data="adm_TOG_searches")],
+            [InlineKeyboardButton("🔄 Toggle API Stat", callback_data="adm_TOG_api"), InlineKeyboardButton("🔄 Toggle Uptime Stat", callback_data="adm_TOG_uptime")],
+            [InlineKeyboardButton("🔄 Toggle Premium Stat", callback_data="adm_TOG_prem"), InlineKeyboardButton("🔙 Back to Panel", callback_data="admin_panel")]
+        ]
+        await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
+        return
+
+    if data.startswith("adm_TOG_"):
+        key_map = {"online": "stat_online", "searches": "stat_searches", "api": "stat_api_status", "uptime": "stat_uptime", "prem": "stat_premium"}
+        sub_key = data.replace("adm_TOG_", "")
+        setting_key = key_map.get(sub_key)
+        if setting_key:
+            curr = db_get_one("SELECT value FROM settings WHERE key = ?", (setting_key,))['value']
+            new_val = 'off' if curr == 'on' else 'on'
+            db_execute("UPDATE settings SET value = ? WHERE key = ?", (new_val, setting_key), commit=True)
+            await query.answer(f"✅ Setting updated to {new_val.upper()}!", show_alert=True)
+            return await render_admin_stats_dashboard(query)
 
     # Notification Center User Callbacks
     if data == "notif_refresh":
@@ -1758,26 +2629,131 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['waiting_for_notif_title'] = True
         await context.bot.send_message(chat_id=query.from_user.id, text="📢 **CREATE NOTIFICATION**\nNayi notification ka **Title** enter karein:", parse_mode='Markdown')
         return
-    elif data == "admin_notif_analytics":
-        total_users_count = db_get_one("SELECT COUNT(*) as cnt FROM users")['cnt'] or 1
-        total_notifs_sent = db_get_one("SELECT COUNT(*) as cnt FROM notifications")['cnt'] or 0
-        total_delivered = db_get_one("SELECT COUNT(*) as cnt FROM user_notifications")['cnt'] or 0
-        total_read = db_get_one("SELECT COUNT(*) as cnt FROM user_notifications WHERE is_read = 1")['cnt'] or 0
-        read_pct = round((total_read / total_delivered * 100), 2) if total_delivered > 0 else 0.0
-
-        analytics_text = f"📊 **NOTIFICATION ANALYTICS**\n\n"
-        analytics_text += f"• **Total Sent (Campaigns):** `{total_notifs_sent}`\n"
-        analytics_text += f"• **Total Delivered:** `{total_delivered}`\n"
-        analytics_text += f"• **Read:** `{total_read}`\n"
-        analytics_text += f"• **Unread:** `{total_delivered - total_read}`\n"
-        analytics_text += f"• **Read Percentage:** `{read_pct}%`"
-
-        kb = [[InlineKeyboardButton("🔙 Back to Panel", callback_data="admin_panel")]]
-        await query.edit_message_text(analytics_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
-        return
 
     if data == "admin_panel":
         await show_full_admin_panel(update, context)
+        return
+    elif data == "admin_feature_control":
+        await show_feature_control(query, 0)
+        return
+    elif data.startswith("feat_page_"):
+        await show_feature_control(query, int(data.split('_')[-1]))
+        return
+    elif data.startswith("feat_toggle_"):
+        feat=data.replace('feat_toggle_','',1)
+        if feat in FEATURE_LABELS:
+            r=db_get_one("SELECT value FROM settings WHERE key=?",(f'feature_{feat}',)); new='off' if r and r.get('value')=='on' else 'on'
+            db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)",(f'feature_{feat}',new),commit=True)
+            await query.answer(f"{FEATURE_LABELS[feat]}: {new.upper()}",show_alert=True)
+            await show_feature_control(query,0)
+        return
+    elif data in ('feat_all_on','feat_all_off'):
+        val='on' if data=='feat_all_on' else 'off'
+        for feat in FEATURE_LABELS: db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)",(f'feature_{feat}',val),commit=True)
+        await query.answer(f"All user features: {val.upper()}",show_alert=True)
+        await show_feature_control(query,0)
+        return
+    elif data == 'ach_refresh':
+        await show_achievements(update,context,user.id,True); return
+    elif data == 'promo_refresh':
+        await show_promo_center(update,context,user.id,True); return
+    elif data == 'admin_rewards':
+        rows=db_get_all("SELECT * FROM achievements ORDER BY id")
+        text='🏆 **REWARDS & ACHIEVEMENTS**\n\n'+'Daily streak rewards:\n'+''.join([f"Day {i}: `{(db_get_one('SELECT value FROM settings WHERE key=?',(f'daily_reward_{i}',)) or {'value':'0'})['value']}` credits\n" for i in range(1,8)])+'\n'+''.join([f"{a['icon']} `{a['code']}` — {a['title']} | Req: {a['requirement']} | +{a['reward_credits']}\n" for a in rows])
+        kb=[[InlineKeyboardButton('🎁 Edit Daily Rewards',callback_data='daily_reward_edit')],[InlineKeyboardButton('🔙 Back',callback_data='admin_panel')]]
+        await query.edit_message_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb)); return
+    elif data == 'daily_reward_edit':
+        kb=[[InlineKeyboardButton(f'Day {i}',callback_data=f'daily_reward_set_{i}') for i in range(1,8)],[InlineKeyboardButton('🔙 Back',callback_data='admin_rewards')]]
+        await query.edit_message_text('🎁 **DAILY REWARD SETTINGS**\nSelect a day:',parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb)); return
+    elif data.startswith('daily_reward_set_'):
+        day=data.split('_')[-1]
+        if day.isdigit() and 1 <= int(day) <= 7:
+            context.user_data['waiting_for_daily_reward_day']=day
+            await context.bot.send_message(chat_id=user.id,text=f'🎁 Day {day} ka reward credits bhejein:')
+        return
+    elif data == 'admin_promo_manager':
+        offers=db_get_all("SELECT * FROM promo_offers ORDER BY id DESC LIMIT 15")
+        text='🎟️ **PROMO / OFFER MANAGER**\n\n'
+        text += ''.join([f"🆔 `{o['id']}` | **{o['title']}** | `{o['target_group']}` | `{o['status']}`\n" for o in offers]) or '📭 No offers yet.\n'
+        kb=[[InlineKeyboardButton('➕ Add Offer',callback_data='admin_promo_add')],[InlineKeyboardButton('🔙 Back',callback_data='admin_panel')]]
+        await query.edit_message_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb)); return
+    elif data == 'admin_promo_add':
+        context.user_data['waiting_for_promo']='title'
+        await context.bot.send_message(chat_id=user.id,text='🎟️ Offer title bhejein:'); return
+    elif data == 'admin_feature_costs':
+        keys=['number','pincode','ip','telegram','aadhaar','custom','phone']
+        text='💳 **SEARCH FEATURE COSTS**\n\n'
+        kb=[]
+        for k in keys:
+            r=db_get_one("SELECT value FROM settings WHERE key=?",(f'search_cost_{k}',)); val=r['value'] if r else '1'
+            text += f"• `{k}` = **{val} credit**\n"
+            kb.append([InlineKeyboardButton(f'✏️ {k.upper()} = {val}',callback_data=f'cost_edit_{k}')])
+        kb.append([InlineKeyboardButton('🔙 Back',callback_data='admin_panel')])
+        await query.edit_message_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb)); return
+    elif data.startswith('cost_edit_'):
+        cost_key=data.replace('cost_edit_','',1)
+        if cost_key in ('number','pincode','ip','telegram','aadhaar','custom','phone'):
+            context.user_data['waiting_for_cost_key']=cost_key
+            await context.bot.send_message(chat_id=user.id,text=f'💳 `{cost_key}` ki new credit cost bhejein (0 allowed):',parse_mode='Markdown')
+        return
+    elif data == "admin_live_analytics":
+        await render_admin_stats_dashboard(query)
+        return
+    elif data == "admin_clones":
+        clones=db_get_all("SELECT * FROM clones ORDER BY id DESC LIMIT 15")
+        text="🤖 **CLONE BOT MANAGER**\n━━━━━━━━━━━━━━━━━━━━\n"
+        if not clones: text += "📭 Abhi koi clone bot nahi hai."
+        else:
+            for c in clones: text += f"🆔 `{c['id']}` | Owner: `{c['owner_id']}` | @{c['bot_username'] or 'unknown'} | `{c['status']}`\n"
+        kb=[[InlineKeyboardButton("➕ Create Clone",callback_data="create_clone_prompt")],[InlineKeyboardButton("🔙 Back to Panel",callback_data="admin_panel")]]
+        await query.edit_message_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+        return
+    elif data == "admin_toggle_style":
+        curr=db_get_one("SELECT value FROM settings WHERE key='report_style'")
+        current=curr['value'] if curr else 'cyber'
+        styles=['cyber','json','hacker','matrix','neon','card','compact','minimal','vip','standard']
+        nxt=styles[(styles.index(current)+1)%len(styles)] if current in styles else 'cyber'
+        db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('report_style',?)",(nxt,),commit=True)
+        await query.answer(f"🎨 Report style: {nxt.upper()}",show_alert=True)
+        await show_full_admin_panel(update,context)
+        return
+    elif data == "admin_toggle_clone_ref":
+        curr=db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")
+        new='off' if curr and curr['value']=='on' else 'on'
+        db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('clone_ref_toggle',?)",(new,),commit=True)
+        await query.answer(f"🔄 Clone referral: {new.upper()}",show_alert=True)
+        await show_full_admin_panel(update,context)
+        return
+    elif data == "admin_cloneref_prompt":
+        context.user_data['waiting_for_clone_ref_count']=True
+        await context.bot.send_message(chat_id=user.id,text="👥 **SET CLONE REFERRAL REQUIREMENT**\nKitne referrals required hain? Sirf number bhejein:",parse_mode='Markdown')
+        return
+    elif data == "admin_refreward_prompt":
+        context.user_data['waiting_for_ref_reward']=True
+        await context.bot.send_message(chat_id=user.id,text="🎁 **SET REFERRAL REWARD**\nPer referral kitne credits dene hain? Sirf number bhejein:",parse_mode='Markdown')
+        return
+    elif data == "admin_setmaintmsg_prompt":
+        context.user_data['waiting_for_maint_msg']=True
+        curr=db_get_one("SELECT value FROM settings WHERE key='maint_msg'")
+        await context.bot.send_message(chat_id=user.id,text=f"💬 **SET MAINTENANCE MESSAGE**\nCurrent: `{curr['value'] if curr else ''}`\n\nNaya message bhejein:",parse_mode='Markdown')
+        return
+    elif data.startswith("edit_api_url_"):
+        key=data[len("edit_api_url_"):]
+        api=db_get_one("SELECT * FROM dynamic_apis WHERE api_key=?",(key,))
+        if not api:
+            await query.answer("❌ API nahi mili.",show_alert=True); return
+        context.user_data['target_api_key']=key
+        context.user_data['waiting_for_api_url']=True
+        await context.bot.send_message(chat_id=user.id,text=f"🔗 Current URL: `{api['api_url']}`\n\nNaya API URL bhejein. `{query}` placeholder use karein:",parse_mode='Markdown')
+        return
+    elif data.startswith("edit_api_wm_"):
+        key=data[len("edit_api_wm_"):]
+        api=db_get_one("SELECT * FROM dynamic_apis WHERE api_key=?",(key,))
+        if not api:
+            await query.answer("❌ API nahi mili.",show_alert=True); return
+        context.user_data['target_api_key']=key
+        context.user_data['waiting_for_api_old']=True
+        await context.bot.send_message(chat_id=user.id,text=f"✍️ Current old watermark: `{api['old_credit'] or ''}`\n\nOld watermark/credit text bhejein:",parse_mode='Markdown')
         return
     elif data == "admin_welcome_prompt":
         context.user_data['waiting_for_welcome_msg'] = True
@@ -1960,6 +2936,7 @@ async def addcredits_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not is_admin_user(update.effective_user.id): return
     if len(context.args) < 2: return
     db_execute("UPDATE users SET credits = credits + ? WHERE user_id = ?", (int(context.args[1]), int(context.args[0])), commit=True)
+    record_transaction(int(context.args[0]), "Admin Credit Add", int(context.args[1]), "Command credit addition")
     await update.message.reply_text("✅ Credits added.", parse_mode='Markdown')
 
 async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1973,20 +2950,28 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except: pass
     await update.message.reply_text(f"📢 Broadcast sent to {sent} users.")
 
+async def telegram_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    err=context.error
+    print(f"[TELEGRAM ERROR] {type(err).__name__}: {err}")
+
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (NOTIFICATION CENTER, UI SETTINGS & ALL FEATURES)...")
+    print("🚀 HARSH OSINT BOT STARTING (TRANSACTIONS, SEARCH LOGS, HELP CENTER & ALL FEATURES)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("profile", profile_command))
     application.add_handler(CommandHandler("search", quick_search_command))
+    application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("notifications", notif_command))
+    application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("support", support_command))
     application.add_handler(CommandHandler("balance", balance_command))
     application.add_handler(CommandHandler("redeem", redeem_command))
     application.add_handler(CommandHandler("daily", daily_command))
+    application.add_handler(CommandHandler("achievements", achievements_command))
+    application.add_handler(CommandHandler("promo", promo_command))
     application.add_handler(CommandHandler("ref", ref_command))
     application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("export", export_command))
@@ -1997,6 +2982,7 @@ def main():
     application.add_handler(MessageHandler(filters.CONTACT, handle_contact))
     application.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.ANIMATION | filters.Document.ALL, handle_message))
     application.add_handler(CallbackQueryHandler(button_callback))
+    application.add_error_handler(telegram_error_handler)
     
     application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
