@@ -38,7 +38,7 @@ try:
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
-    os.system('pip install python-telegram-bot==20.7 requests flask')
+    os.system('pip install python-telegram-bot>=22.7 requests flask')
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
@@ -1470,6 +1470,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     active_live_users.add(user.id)
     text = update.message.text.strip() if update.message.text else ""
 
+    # Custom Emoji ID Detector (admin only)
+    if is_admin_user(user.id) and update.message.entities:
+        custom_entities = [e for e in update.message.entities if e.type == "custom_emoji"]
+        if custom_entities:
+            ids = []
+            for entity in custom_entities:
+                cid = getattr(entity, "custom_emoji_id", None)
+                if cid:
+                    ids.append(str(cid))
+            if ids:
+                unique_ids = list(dict.fromkeys(ids))
+                db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('last_custom_emoji_id',?)", (unique_ids[-1],), commit=True)
+                lines = ["🎨 **CUSTOM EMOJI DETECTED**", "", f"🆔 **ID:** `{unique_ids[-1]}`"]
+                if len(unique_ids) > 1:
+                    lines.append("\n📋 **All IDs in this message:**")
+                    lines.extend([f"{i}. `{cid}`" for i, cid in enumerate(unique_ids, 1)])
+                lines.append("\n✅ ID save ho gayi. Admin Panel → 🎨 Custom Emoji ID se dekh sakte ho.")
+                await update.message.reply_text("\n".join(lines), parse_mode='Markdown')
+                return
+
     # Strict Admin Prompt Handlers
     if is_admin_user(user.id):
         if context.user_data.get('waiting_for_admin_adjust_uid'):
@@ -1843,31 +1863,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['waiting_for_delete_api_key'] = False
             return
 
-        if context.user_data.get('waiting_for_edit_name_select'):
-            try:
-                idx = int(text.strip()) - 1
-                apis = db_get_all("SELECT api_key, api_name FROM dynamic_apis ORDER BY rowid")
-                if idx < 0 or idx >= len(apis):
-                    raise ValueError
-                existing = apis[idx]
-                context.user_data['edit_name_target_key'] = existing['api_key']
-                context.user_data['waiting_for_edit_name_select'] = False
-                context.user_data['waiting_for_edit_name_new'] = True
-                await update.message.reply_text(f"✏️ **{existing['api_name']}** ka naya button name bhejein:", parse_mode='Markdown')
-            except (ValueError, TypeError):
-                await update.message.reply_text("❌ Kripya list me diya hua valid number bhejein.")
-            return
-
         if context.user_data.get('waiting_for_edit_name_key'):
-            # Backward-compatible fallback: direct API key/name input still works.
             existing = db_get_one("SELECT * FROM dynamic_apis WHERE api_key = ? OR LOWER(api_name) = ?", (text.strip().lower(), text.strip().lower()))
             if existing:
                 context.user_data['edit_name_target_key'] = existing['api_key']
                 context.user_data['waiting_for_edit_name_key'] = False
                 context.user_data['waiting_for_edit_name_new'] = True
-                await update.message.reply_text(f"✏️ **{existing['api_name']}** ka naya button name bhejein:", parse_mode='Markdown')
+                await update.message.reply_text(f"✏️ Ab is API (`{existing['api_name']}`) ke liye **Naya Button Name** enter karein:", parse_mode='Markdown')
             else:
-                await update.message.reply_text("❌ Kripya list me diya hua number bhejein.")
+                await update.message.reply_text("❌ Aisi koi API nahi mili!", parse_mode='Markdown')
+                context.user_data['waiting_for_edit_name_key'] = False
             return
 
         if context.user_data.get('waiting_for_edit_name_new'):
@@ -2215,6 +2220,7 @@ async def show_full_admin_panel(update_or_query, context):
         [InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
         [InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api"), InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api")],
         [InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name"), InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style")],
+        [InlineKeyboardButton("🎨 Custom Emoji ID", callback_data="admin_custom_emoji")],
         [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
         [InlineKeyboardButton("🎁 ⚙ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("💬 ⚙ Set Maint Msg", callback_data="admin_setmaintmsg_prompt")],
         [InlineKeyboardButton("🖼️ ⚙ Set Banner", callback_data="admin_banner_prompt"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
@@ -2858,11 +2864,32 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         api_list_str = "\n".join([f"• `{ap['api_name']}` (Key: `{ap['api_key']}`)" for ap in apis])
         await context.bot.send_message(chat_id=query.from_user.id, text=f"🗑️ **DELETE API**\n\n{api_list_str}\n\nJise delete karna hai uska **API Key** ya **Name** bhejein:", parse_mode='Markdown')
         return
+    elif data == "admin_custom_emoji":
+        saved = db_get_one("SELECT value FROM settings WHERE key='last_custom_emoji_id'")
+        emoji_id = saved['value'] if saved and saved['value'] else None
+        if emoji_id:
+            text = ("🎨 **CUSTOM EMOJI MANAGER**\n\n"
+                    f"🆔 **Last detected ID:** `{emoji_id}`\n\n"
+                    "📌 Naya custom emoji bot ko bhejoge to ID automatically update ho jayegi.\n"
+                    "Phir isi ID ko bot messages me use kiya ja sakta hai.")
+        else:
+            text = ("🎨 **CUSTOM EMOJI MANAGER**\n\n"
+                    "📭 Abhi koi custom emoji ID save nahi hai.\n\n"
+                    "👉 Apna Instagram/custom emoji **isi bot ko send karo**.\n"
+                    "Bot automatically uska `custom_emoji_id` detect karke save karega.")
+        kb=[[InlineKeyboardButton("🗑️ Clear Saved ID",callback_data="admin_custom_emoji_clear")],[InlineKeyboardButton("🔙 Back",callback_data="admin_panel")]]
+        await query.edit_message_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+        return
+    elif data == "admin_custom_emoji_clear":
+        db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('last_custom_emoji_id','')",(),commit=True)
+        await query.answer("🗑️ Custom emoji ID cleared",show_alert=True)
+        await show_full_admin_panel(update,context)
+        return
     elif data == "admin_edit_name":
-        context.user_data['waiting_for_edit_name_select'] = True
-        apis = db_get_all("SELECT api_key, api_name FROM dynamic_apis ORDER BY rowid")
-        api_list_str = "\n".join([f"{i+1}️⃣ {ap['api_name']}" for i, ap in enumerate(apis)])
-        await context.bot.send_message(chat_id=query.from_user.id, text=f"✏️ **EDIT BUTTON NAME**\n\n{api_list_str}\n\n👇 Jis button ka name change karna hai uska **number bhejein:**", parse_mode='Markdown')
+        context.user_data['waiting_for_edit_name_key'] = True
+        apis = db_get_all("SELECT api_key, api_name FROM dynamic_apis")
+        api_list_str = "\n".join([f"• `{ap['api_name']}` (Key: `{ap['api_key']}`)" for ap in apis])
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"✏️ **EDIT BUTTON NAME**\n\n{api_list_str}\n\nJiska name change karna hai uska **API Key** bhejein:", parse_mode='Markdown')
         return
     elif data == "admin_users":
         users = db_get_all("SELECT * FROM users ORDER BY joined_date DESC LIMIT 10")
