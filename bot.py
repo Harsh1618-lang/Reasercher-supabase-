@@ -1259,11 +1259,26 @@ async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_data['last_daily'] == today_str:
         await update.message.reply_text("❌ Aapne aaj ka daily bonus pehle hi claim kar liya hai!")
         return
-    bonus = 2
-    db_execute("UPDATE users SET credits = credits + ?, last_daily = ? WHERE user_id = ?", (bonus, today_str, user.id), commit=True)
-    record_transaction(user.id, "Daily Bonus", bonus, "Claimed daily bonus reward")
-    log_activity(user.id, f"Claimed daily bonus of {bonus} credits")
-    await update.message.reply_text(f"🎁 **Daily Bonus Claimed!**\nAapko `{bonus}` free credits mile hain.", parse_mode='Markdown')
+    # Use the admin-configured 7-day reward table and update streak state.
+    prev_claim = user_data.get('last_daily_claim') or ''
+    streak = int(user_data.get('streak_days') or 0)
+    try:
+        prev_date = datetime.strptime(str(prev_claim), "%Y-%m-%d").date() if prev_claim else None
+    except Exception:
+        prev_date = None
+    today_date = datetime.strptime(today_str, "%Y-%m-%d").date()
+    if prev_date and (today_date - prev_date).days == 1:
+        streak = min(streak + 1, 7)
+    else:
+        streak = 1
+    reward_day = ((streak - 1) % 7) + 1
+    reward_row = db_get_one("SELECT value FROM settings WHERE key=?", (f"daily_reward_{reward_day}",))
+    bonus = int(reward_row['value']) if reward_row and str(reward_row.get('value','')).isdigit() else 2
+    db_execute("UPDATE users SET credits = credits + ?, last_daily = ?, last_daily_claim = ?, streak_days = ? WHERE user_id = ?", (bonus, today_str, today_str, streak, user.id), commit=True)
+    record_transaction(user.id, "Daily Bonus", bonus, f"Claimed day {reward_day} streak reward")
+    log_activity(user.id, f"Claimed daily bonus of {bonus} credits (streak {streak})")
+    await check_and_unlock_achievements(context.bot, user.id)
+    await update.message.reply_text(f"🎁 **Daily Bonus Claimed!**\n\n📅 Streak: `{streak} day(s)`\n💎 Reward: `+{bonus} credits`", parse_mode='Markdown')
 
 async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await require_feature(update, 'export', update.effective_user.id): return
@@ -1951,6 +1966,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if clean_input_text.upper() == "NOTIFICATIONS" or text == "/notifications":
         await show_notifications_center(update, context, user.id, is_callback=False)
+        return
+
+    if clean_input_text.upper() == "DAILY CHECK-IN" or text == "/daily":
+        await daily_command(update, context)
+        return
+
+    if clean_input_text.upper() == "TRANSACTIONS" or text == "/transactions":
+        if not await require_feature(update, 'transactions', user.id):
+            return
+        await show_transaction_history(update, context, user.id, is_callback=False)
         return
 
     # Smart Auto-Detect for Telegram to Number (Username vs User ID)
@@ -2996,6 +3021,19 @@ async def telegram_error_handler(update: object, context: ContextTypes.DEFAULT_T
     err=context.error
     print(f"[TELEGRAM ERROR] {type(err).__name__}: {err}")
 
+async def healthcheck_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin_user(update.effective_user.id):
+        return
+    checks = []
+    for table in ['users','searches','transactions','achievements','user_achievements','notifications','user_notifications','promo_offers','dynamic_apis','plans','faqs','support_tickets','bug_reports','settings']:
+        try:
+            row = db_get_one(f"SELECT COUNT(*) as c FROM {table}")
+            checks.append(f"✅ `{table}`: {row['c'] if row else 0}")
+        except Exception as e:
+            checks.append(f"❌ `{table}`: {type(e).__name__}")
+    await update.message.reply_text("🩺 **BOT HEALTH CHECK**\n\n" + "\n".join(checks) + "\n\nHandlers: Message + CallbackQuery active.", parse_mode='Markdown')
+
+
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
     print("🚀 HARSH OSINT BOT STARTING (TRANSACTIONS, SEARCH LOGS, HELP CENTER & ALL FEATURES)...")
@@ -3021,6 +3059,7 @@ def main():
     application.add_handler(CommandHandler("maint", maint_command))
     application.add_handler(CommandHandler("addcredits", addcredits_command))
     application.add_handler(CommandHandler("broadcast", broadcast_command))
+    application.add_handler(CommandHandler("healthcheck", healthcheck_command))
     application.add_handler(MessageHandler(filters.CONTACT, handle_contact))
     application.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.ANIMATION | filters.Document.ALL, handle_message))
     application.add_handler(CallbackQueryHandler(button_callback))
