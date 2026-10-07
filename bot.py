@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate 10 Report Styles & Fully Restored Complete Edition
+# OSINT & Pincode Bot - Ultimate 10 Report Styles & Quick Search Menu Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Contact Verification, Admin View Users & Search Results, Profile, Radar & All Features
+Description: Advanced Telegram OSINT Bot with Quick Search Inline Menu, User Profile, Radar Animation, Editable Welcome & All Features
 """
 
 import os
@@ -428,7 +428,7 @@ async def send_paginated_phone_response(msg_obj, records, phone, update, context
         text += f"System Core: {OWNER_USERNAME}"
 
     elif r_style == 'cyber':
-        text = f"🌐 𝕮𝖄𝕭𝕰𝕽 𝕴𝕹𝕿𝕰𝕃𝕃𝕴𝕲𝕰𝕹𝕮𝕰 🌐\n"
+        text = f"🌐 𝕮𝕴𝕭𝕰𝕽 𝕴𝕹𝕿𝕰𝕃𝕃𝕴𝕲𝕰𝕹𝕮𝕰 🌐\n"
         text += f"🎯 Target: `{phone}`\n"
         text += f"📊 Records: {total} | Page: {page + 1}/{total_pages}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         for idx, rec in enumerate(chunk, start=start_idx + 1):
@@ -624,7 +624,7 @@ def format_aadhaar_response(data, query_str):
         return "❌ Error formatting data: " + str(e)
 
 # ============================================
-# USER PROFILE & STATISTICS HANDLERS
+# USER PROFILE & QUICK SEARCH MENU HANDLERS
 # ============================================
 async def show_user_profile(update_or_query, context, user_id, is_callback=False):
     user_db = db_get_one("SELECT * FROM users WHERE user_id = ?", (user_id,))
@@ -672,6 +672,25 @@ async def show_user_profile(update_or_query, context, user_id, is_callback=False
 async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     await show_user_profile(update, context, user.id, is_callback=False)
+
+async def quick_search_menu(update_or_query, context, is_callback=False):
+    text = "🔍 **QUICK SEARCH MENU**\n\nNeeche diye gaye buttons mein se apna lookup type select karein:"
+    keyboard = [
+        [InlineKeyboardButton("📱 Number", callback_data="qs_number"), InlineKeyboardButton("📍 Pincode", callback_data="qs_pincode")],
+        [InlineKeyboardButton("🌐 IP", callback_data="qs_ip"), InlineKeyboardButton("🔤 Telegram", callback_data="qs_telegram")],
+        [InlineKeyboardButton("🔎 Custom API", callback_data="qs_custom"), InlineKeyboardButton("🏠 Main Menu", callback_data="profile_menu")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    if is_callback:
+        try:
+            await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        except:
+            await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+    else:
+        await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+
+async def quick_search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await quick_search_menu(update, context, is_callback=False)
 
 # ============================================
 # COMMAND HANDLERS
@@ -814,7 +833,7 @@ async def send_welcome_menu(update_or_query, context, user):
     menu_keyboard = []
     row = []
     
-    static_buttons = ["👤 MY PROFILE", "💬 Owner | Support", "💰 Refer & Earn", "🏆 Leaderboard", "🤖 My Clone Bot", "💎 Buy Premium / Credits", "🛠️ Toggle Menu"]
+    static_buttons = ["🔍 Quick Search", "👤 MY PROFILE", "💬 Owner | Support", "💰 Refer & Earn", "🏆 Leaderboard", "🤖 My Clone Bot", "💎 Buy Premium / Credits", "🛠️ Toggle Menu"]
     
     api_button_names = []
     for ap in apis:
@@ -884,9 +903,9 @@ async def show_premium_plans(update, context):
         text += f"• **{p['name']}** — `{p['price']}` for **{p['credits']} Credits**\n"
     
     chat_id = update.message.chat_id if hasattr(update, 'message') and update.message else update.callback_query.message.chat_id
-    if upi_qr:
+    if api_qr_chk := upi_qr:
         try:
-            await context.bot.send_photo(chat_id=chat_id, photo=upi_qr, caption=text, parse_mode='Markdown')
+            await context.bot.send_photo(chat_id=chat_id, photo=api_qr_chk, caption=text, parse_mode='Markdown')
             return
         except: pass
 
@@ -1213,6 +1232,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_user_profile(update, context, user.id, is_callback=False)
         return
 
+    if clean_input_text.upper() == "QUICK SEARCH" or text == "/search":
+        await quick_search_menu(update, context, is_callback=False)
+        return
+
     matched_api = db_get_one("SELECT * FROM dynamic_apis WHERE UPPER(api_name) = ? OR api_key = ?", (clean_input_text.upper(), text.lower()))
     if matched_api:
         api_k = matched_api['api_key']
@@ -1389,7 +1412,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_paginated_phone_response(msg, records, cleaned_phone, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
     else:
-        # Fallback for general text or if mode was not set but number/pincode was sent directly
         if len(cleaned_phone) >= 10:
             msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
             await show_radar_animation(msg, cleaned_phone)
@@ -1441,7 +1463,7 @@ async def show_full_admin_panel(update_or_query, context):
         await update_or_query.message.reply_text(panel_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
 # ============================================
-# ADMIN & PROFILE CALLBACK HANDLER
+# ADMIN, PROFILE & QUICK SEARCH CALLBACK HANDLER
 # ============================================
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -1456,6 +1478,29 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_paginated_phone_response(query.message, records, phone, update, context, page=page_num, is_edit=True)
         return
 
+    # Quick Search Menu Callback Handlers
+    if data == "qs_number":
+        context.user_data['mode'] = 'phone'
+        await query.message.reply_text("📱 *Number Info Mode Active*\nKripya ab 10-digit mobile number bhejein:", parse_mode='Markdown')
+        return
+    elif data == "qs_pincode":
+        context.user_data['mode'] = 'pincode'
+        await query.message.reply_text("📍 *Pincode Lookup Mode Active*\nKripya 6-digit PIN code bhejein:", parse_mode='Markdown')
+        return
+    elif data == "qs_ip":
+        context.user_data['mode'] = 'ip_info'
+        await query.message.reply_text("🌐 *IP Info Mode Active*\nKripya IP address bhejein:", parse_mode='Markdown')
+        return
+    elif data == "qs_telegram":
+        context.user_data['mode'] = 'telegram_auto_detect'
+        await query.message.reply_text("✈️ *Telegram Lookup Mode Active*\nKripya Telegram ID ya Username bhejein:", parse_mode='Markdown')
+        return
+    elif data == "qs_custom":
+        context.user_data['mode'] = 'custom_api_phone'
+        await query.message.reply_text("🔎 *Custom API Mode Active*\nQuery enter karein:", parse_mode='Markdown')
+        return
+
+    # Profile Inline Button Handlers
     if data == "profile_refresh":
         await show_user_profile(update, context, user.id, is_callback=True)
         return
@@ -1633,7 +1678,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             phone = u['phone_number'] or 'Not Verified'
             credits = u['credits']
             
-            # Fetch user searches
             user_searches = db_get_all("SELECT phone, timestamp FROM searches WHERE user_id = ? ORDER BY timestamp DESC LIMIT 3", (uid,))
             searches_str = ", ".join([f"{s['phone']}" for s in user_searches]) if user_searches else "None"
             
@@ -1726,12 +1770,13 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (CONTACT VERIFICATION & ADMIN USER SEARCH LOGS RESTORED)...")
+    print("🚀 HARSH OSINT BOT STARTING (QUICK SEARCH MENU, PROFILE, RADAR & ALL FEATURES)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("profile", profile_command))
+    application.add_handler(CommandHandler("search", quick_search_command))
     application.add_handler(CommandHandler("support", support_command))
     application.add_handler(CommandHandler("balance", balance_command))
     application.add_handler(CommandHandler("redeem", redeem_command))
