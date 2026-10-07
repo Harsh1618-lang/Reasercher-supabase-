@@ -2171,7 +2171,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     elif data == "qs_custom":
         context.user_data['mode'] = 'custom_api_phone'
-        await query.message.reply_text("🔎 *Custom API Mode Active*\nQuery enter karein:", parse_mode='Markdown')
+        await query.message.reply_text("await query.message.reply_text("🔎 *ᴄᴜꜱᴛᴏᴍ ꜱᴇᴀʀᴄʜ*\n\n╭─ ⚡ *ꜱᴍᴀʀᴛ ᴍᴏᴅᴇ ᴀᴄᴛɪᴠᴇ*\n│ 🧠 Qᴜᴇʀʏ ᴀᴜᴛᴏ-ᴅᴇᴛᴇᴄᴛɪᴏɴ\n│ 📊 Rᴇꜱᴜʟᴛ ᴡɪʟʟ ʙᴇ ᴅɪꜱᴘʟᴀʏᴇᴅ\n╰────────────────\n\n✦ *Sᴇɴᴅ ʏᴏᴜʀ ǫᴜᴇʀʏ:*", parse_mode='Markdown')
         return
 
     if data == "profile_refresh":
