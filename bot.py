@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate 10 Report Styles & Fully Restored Working Edition
+# OSINT & Pincode Bot - Ultimate 10 Report Styles & Fully Restored Complete Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Complete Restored API Handlers, User Profile, Radar Animation & All Working Features Intact
+Description: Advanced Telegram OSINT Bot with Contact Verification, Admin View Users & Search Results, Profile, Radar & All Features
 """
 
 import os
@@ -901,7 +901,9 @@ async def check_user_credit(update, user):
         await update.message.reply_text("❌ Aapko block kar diya gaya hai.")
         return False
     if not user_data.get('phone_number') or not user_data['phone_number']:
-        await update.message.reply_text("⚠️ Pehle /start dabakar apna contact verify karein!")
+        contact_button = [[KeyboardButton("📱 Share Contact to Verify & Start", request_contact=True)]]
+        reply_markup = ReplyKeyboardMarkup(contact_button, one_time_keyboard=True, resize_keyboard=True)
+        await update.message.reply_text("⚠️ *SECURITY VERIFICATION REQUIRED*\n\nScam se bachne ke liye kripya neeche diye gaye button par click karke apna contact verify karein!", parse_mode='Markdown', reply_markup=reply_markup)
         return False
     if user_data['credits'] <= 0 and not is_admin_user(user.id):
         upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
@@ -1387,7 +1389,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_paginated_phone_response(msg, records, cleaned_phone, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
     else:
-        await update.message.reply_text("❌ Kripya valid input enter karein.", parse_mode='Markdown')
+        # Fallback for general text or if mode was not set but number/pincode was sent directly
+        if len(cleaned_phone) >= 10:
+            msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
+            await show_radar_animation(msg, cleaned_phone)
+            data = await fetch_dynamic_api('phone', cleaned_phone)
+            db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, cleaned_phone, json.dumps(data)), commit=True)
+            db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
+            log_activity(user.id, f"Direct phone lookup on {cleaned_phone}")
+            records, err = parse_phone_records(data, cleaned_phone)
+            if err: await msg.edit_text(err)
+            else:
+                context.user_data['last_phone_records'] = records
+                context.user_data['last_phone_target'] = cleaned_phone
+                await send_paginated_phone_response(msg, records, cleaned_phone, update, context, page=0, is_edit=True)
+            return
+
+        await update.message.reply_text("❌ Kripya pehle menu se koi option select karein ya valid input enter karein.", parse_mode='Markdown')
 
 async def show_full_admin_panel(update_or_query, context):
     total_users = db_get_one("SELECT COUNT(*) as count FROM users")['count']
@@ -1401,7 +1419,7 @@ async def show_full_admin_panel(update_or_query, context):
     
     panel_text = f"\n📊 *ADVANCED ADMIN PANEL* ({OWNER_USERNAME})\n━━━━━━━━━━━━━━━━━━\n👥 Total Users: `{total_users}`\n🔍 Total Lookups: `{total_searches}`\n💳 UPI: `{upi_record['value'] if upi_record else 'Not Set'}`\n🎨 Report Style: `{report_style_val.upper()}`\n🚧 Maintenance: `{maint.upper()}`\n🤖 Clone Refs: `{clone_ref_val}` (`{clone_toggle_val.upper()}`)\n🎁 Ref Reward: `{ref_reward_val} Credits`\n"
     keyboard = [
-        [InlineKeyboardButton("🟢 👥 View Users", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
+        [InlineKeyboardButton("🟢 👥 View Users & Logs", callback_data="admin_users"), InlineKeyboardButton("💳 ⚙ Set UPI ID", callback_data="admin_setupi_prompt")],
         [InlineKeyboardButton("📦 📋 Manage Plans", callback_data="admin_plans"), InlineKeyboardButton("💎 ➕ Add Credits", callback_data="admin_addcredit_prompt")],
         [InlineKeyboardButton("📈 ⚡ Live Analytics", callback_data="admin_live_analytics"), InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones")],
         [InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis"), InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api")],
@@ -1438,7 +1456,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_paginated_phone_response(query.message, records, phone, update, context, page=page_num, is_edit=True)
         return
 
-    # Profile Inline Button Handlers (Security Verified via query.from_user.id)
     if data == "profile_refresh":
         await show_user_profile(update, context, user.id, is_callback=True)
         return
@@ -1451,12 +1468,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         referrals = db_get_all("SELECT COUNT(*) as cnt FROM users WHERE referred_by = ?", (user.id,))
         ref_count = referrals[0]['cnt'] if referrals else 0
         
-        stats_text = f"📊 **MY STATISTICS**\n\n"
-        stats_text += f"🔍 **Total Searches:** `{searches}`\n"
-        stats_text += f"💎 **Current Credits:** `{credits}`\n"
-        stats_text += f"🎁 **Total Referrals:** `{ref_count}`\n"
-        stats_text += f"📅 **Account Created:** `{joined}`"
-        
+        stats_text = f"📊 **MY STATISTICS**\n\n🔍 **Total Searches:** `{searches}`\n💎 **Current Credits:** `{credits}`\n🎁 **Total Referrals:** `{ref_count}`\n📅 **Account Created:** `{joined}`"
         kb = [[InlineKeyboardButton("🔙 Back to Profile", callback_data="profile_refresh")]]
         await query.edit_message_text(stats_text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
         return
@@ -1611,65 +1623,26 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         api_list_str = "\n".join([f"• `{ap['api_name']}` (Key: `{ap['api_key']}`)" for ap in apis])
         await context.bot.send_message(chat_id=query.from_user.id, text=f"✏️ **EDIT BUTTON NAME**\n\n{api_list_str}\n\nJiska name change karna hai uska **API Key** bhejein:", parse_mode='Markdown')
         return
-    elif data == "admin_toggle_style":
-        curr = db_get_one("SELECT value FROM settings WHERE key='report_style'")['value']
-        styles = ['cyber', 'json', 'hacker', 'matrix', 'neon', 'card', 'compact', 'minimal', 'vip', 'standard']
-        next_style = styles[(styles.index(curr) + 1) % len(styles)] if curr in styles else 'cyber'
-        db_execute("UPDATE settings SET value = ? WHERE key = 'report_style'", (next_style,), commit=True)
-        await query.answer(f"🎨 Report Style changed to: {next_style.upper()}!", show_alert=True)
-        await show_full_admin_panel(update, context)
-        return
-    elif data == "admin_toggle_clone_ref":
-        curr = db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")
-        new_val = 'off' if curr and curr['value'] == 'on' else 'on'
-        db_execute("UPDATE settings SET value = ? WHERE key = 'clone_ref_toggle'", (new_val,), commit=True)
-        await query.answer(f"✅ Clone Referral requirement is now {new_val.upper()}!", show_alert=True)
-        await show_full_admin_panel(update, context)
-        return
-    elif data == "admin_cloneref_prompt":
-        context.user_data['waiting_for_clone_ref_count'] = True
-        await context.bot.send_message(chat_id=query.from_user.id, text="👥 **Set Clone Referrals**\nNaya required referrals count bhejein:", parse_mode='Markdown')
-        return
-    elif data == "admin_refreward_prompt":
-        context.user_data['waiting_for_ref_reward'] = True
-        await context.bot.send_message(chat_id=query.from_user.id, text="🎁 **Set Referral Reward**\nNaye reward credits bhejein:", parse_mode='Markdown')
-        return
-    elif data == "admin_setmaintmsg_prompt":
-        context.user_data['waiting_for_maint_msg'] = True
-        await context.bot.send_message(chat_id=query.from_user.id, text="💬 **Set Maintenance Message**\nNaya message bhejein:", parse_mode='Markdown')
-        return
-    elif data.startswith("edit_api_url_"):
-        context.user_data['waiting_for_api_url'] = True
-        context.user_data['target_api_key'] = data.replace("edit_api_url_", "")
-        await context.bot.send_message(chat_id=query.from_user.id, text="🌐 Naya API URL bhejein (use `{query}` placeholder):", parse_mode='Markdown')
-        return
-    elif data.startswith("edit_api_wm_"):
-        context.user_data['waiting_for_api_old'] = True
-        context.user_data['target_api_key'] = data.replace("edit_api_wm_", "")
-        await context.bot.send_message(chat_id=query.from_user.id, text="✍️ Old watermark text bhejein:", parse_mode='Markdown')
-        return
-    elif data == "admin_live_analytics":
-        analytics = db_get_all("SELECT feature_name, count FROM analytics")
-        text = f"📈 *ANALYTICS*\nActive Live Users: `{len(active_live_users)}`\n\n"
-        for an in analytics: text += f"• `{an['feature_name']}`: `{an['count']}` uses\n"
-        keyboard = [[InlineKeyboardButton("🔵 📊 Back", callback_data="admin_panel")]]
-        try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
-        except: await query.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
-        return
-    elif data == "admin_clones":
-        clones = db_get_all("SELECT * FROM clones")
-        text = "🤖 *CLONE BOTS*\n"
-        keyboard = [[InlineKeyboardButton("🔵 📊 Back", callback_data="admin_panel")]]
-        if not clones: text += "Koi clone bot nahi hai."
-        try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
-        except: await query.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
-        return
     elif data == "admin_users":
-        users = db_get_all("SELECT user_id, username, first_name, phone_number, searches, credits, is_banned FROM users ORDER BY joined_date DESC LIMIT 15")
-        text = "👥 *Recent Users*\n"
+        users = db_get_all("SELECT * FROM users ORDER BY joined_date DESC LIMIT 10")
+        text = "👥 **ADMIN PANEL: USERS & SEARCH LOGS**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         for u in users:
-            text += f"ID: `{u['user_id']}` | Name: {u['first_name']} | Credits: {u['credits']}\n"
-        keyboard = [[InlineKeyboardButton("🔵 📊 Back", callback_data="admin_panel")]]
+            uid = u['user_id']
+            name = u['first_name'] or 'Unknown'
+            uname = "@" + u['username'] if u['username'] and u['username'] != 'NoUsername' else 'NoUsername'
+            phone = u['phone_number'] or 'Not Verified'
+            credits = u['credits']
+            
+            # Fetch user searches
+            user_searches = db_get_all("SELECT phone, timestamp FROM searches WHERE user_id = ? ORDER BY timestamp DESC LIMIT 3", (uid,))
+            searches_str = ", ".join([f"{s['phone']}" for s in user_searches]) if user_searches else "None"
+            
+            text += f"👤 **Name:** {name} ({uname})\n"
+            text += f"🆔 **ID:** `{uid}` | 📱 **Ph:** `{phone}` | 💎 **Cr:** `{credits}`\n"
+            text += f"🔍 **Recent Searches:** `{searches_str}`\n"
+            text += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        
+        keyboard = [[InlineKeyboardButton("🔙 Back to Panel", callback_data="admin_panel")]]
         try: await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         except: await query.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
         return
@@ -1753,7 +1726,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 HARSH OSINT BOT STARTING (ALL API LOOKUPS & PROFILE FULLY RESTORED)...")
+    print("🚀 HARSH OSINT BOT STARTING (CONTACT VERIFICATION & ADMIN USER SEARCH LOGS RESTORED)...")
     
     application = Application.builder().token(BOT_TOKEN).build()
     
