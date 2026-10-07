@@ -38,7 +38,7 @@ try:
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
-    os.system('pip install python-telegram-bot>=22.7 requests flask')
+    os.system('pip install python-telegram-bot==20.7 requests flask')
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
@@ -89,38 +89,6 @@ def init_database():
     )''')
     
     # Safe column checks & migrations
-    # These tables may already exist in older bot databases. CREATE TABLE IF NOT EXISTS
-    # does not add newly introduced columns, so explicitly migrate them here.
-    _schema_migrations = {
-        'notifications': {
-            'title': 'TEXT', 'message': 'TEXT', 'media_url': "TEXT DEFAULT ''",
-            'btn_text': "TEXT DEFAULT ''", 'btn_url': "TEXT DEFAULT ''",
-            'notif_type': "TEXT DEFAULT 'Announcement'",
-            'target_group': "TEXT DEFAULT 'All users'",
-            'status': "TEXT DEFAULT 'Active'",
-            'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
-        },
-        'user_notifications': {
-            'user_id': 'INTEGER', 'notif_id': 'INTEGER',
-            'is_read': 'INTEGER DEFAULT 0', 'timestamp': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
-        },
-        'faqs': {
-            'question': 'TEXT', 'answer': 'TEXT', 'category': 'TEXT',
-            'display_order': 'INTEGER DEFAULT 1', 'status': "TEXT DEFAULT 'Active'",
-            'views': 'INTEGER DEFAULT 0'
-        },
-        'support_tickets': {
-            'user_id': 'INTEGER', 'subject': 'TEXT', 'message': 'TEXT',
-            'status': "TEXT DEFAULT 'Open'", 'timestamp': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
-        }
-    }
-    for _table, _columns in _schema_migrations.items():
-        for _column, _definition in _columns.items():
-            try:
-                c.execute(f"ALTER TABLE {_table} ADD COLUMN {_column} {_definition}")
-            except sqlite3.OperationalError:
-                pass
-
     try: c.execute("ALTER TABLE users ADD COLUMN ui_theme TEXT DEFAULT 'Dark'")
     except: pass
     try: c.execute("ALTER TABLE users ADD COLUMN report_mode TEXT DEFAULT 'Full'")
@@ -312,56 +280,6 @@ def init_database():
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
-    # Comprehensive schema migration for databases created by older bot versions.
-    # CREATE TABLE IF NOT EXISTS does not add columns to an existing SQLite table.
-    _all_schema_migrations = {
-        'users': {
-            'username': 'TEXT', 'first_name': 'TEXT', 'phone_number': 'TEXT',
-            'joined_date': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP', 'searches': 'INTEGER DEFAULT 0',
-            'credits': 'INTEGER DEFAULT 2', 'is_banned': 'INTEGER DEFAULT 0', 'is_admin': 'INTEGER DEFAULT 0',
-            'referred_by': 'INTEGER DEFAULT 0', 'last_daily': "TEXT DEFAULT ''",
-            'ui_theme': "TEXT DEFAULT 'Dark'", 'report_mode': "TEXT DEFAULT 'Full'",
-            'default_style': "TEXT DEFAULT 'cyber'", 'notifications': "TEXT DEFAULT 'ON'",
-            'is_premium': 'INTEGER DEFAULT 0', 'premium_expiry': "TEXT DEFAULT ''",
-            'streak_days': 'INTEGER DEFAULT 0', 'last_daily_claim': "TEXT DEFAULT ''"
-        },
-        'searches': {'user_id': 'INTEGER', 'phone': 'TEXT', 'response': 'TEXT', 'timestamp': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'},
-        'logs': {'user_id': 'INTEGER', 'action': 'TEXT', 'timestamp': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'},
-        'sub_admins': {'user_id': 'INTEGER'},
-        'transactions': {
-            'user_id': 'INTEGER', 'tx_type': "TEXT DEFAULT 'Unknown'", 'amount': 'INTEGER DEFAULT 0',
-            'description': "TEXT DEFAULT ''", 'balance_after': 'INTEGER DEFAULT 0',
-            'timestamp': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
-        },
-        'search_logs': {
-            'user_id': 'INTEGER', 'search_type': "TEXT DEFAULT 'Unknown'", 'query_masked': "TEXT DEFAULT ''",
-            'result_count': 'INTEGER DEFAULT 0', 'api_used': "TEXT DEFAULT ''",
-            'response_time': 'REAL DEFAULT 0.0', 'status': "TEXT DEFAULT 'Success'",
-            'credits_deducted': 'INTEGER DEFAULT 1', 'timestamp': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
-        },
-        'redeem_keys': {'key': 'TEXT', 'credits': 'INTEGER DEFAULT 0', 'is_used': 'INTEGER DEFAULT 0', 'used_by': 'INTEGER DEFAULT 0'},
-        'settings': {'key': 'TEXT', 'value': "TEXT DEFAULT ''"},
-        'dynamic_apis': {'api_key': 'TEXT', 'api_name': "TEXT DEFAULT ''", 'api_url': "TEXT DEFAULT ''", 'old_credit': "TEXT DEFAULT ''", 'new_credit': "TEXT DEFAULT ''"},
-        'plans': {'name': "TEXT DEFAULT ''", 'price': "TEXT DEFAULT ''", 'credits': 'INTEGER DEFAULT 0'},
-        'coupons': {'code': 'TEXT', 'credits': 'INTEGER DEFAULT 0'},
-        'achievements': {'code': 'TEXT', 'title': "TEXT DEFAULT ''", 'description': "TEXT DEFAULT ''", 'icon': "TEXT DEFAULT '🏆'", 'requirement': 'INTEGER DEFAULT 1', 'reward_credits': 'INTEGER DEFAULT 0', 'status': "TEXT DEFAULT 'Active'"},
-        'user_achievements': {'user_id': 'INTEGER', 'achievement_id': 'INTEGER', 'unlocked_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'},
-        'promo_offers': {'title': 'TEXT', 'description': "TEXT DEFAULT ''", 'coupon_code': "TEXT DEFAULT ''", 'reward_credits': 'INTEGER DEFAULT 0', 'discount_percent': 'INTEGER DEFAULT 0', 'target_group': "TEXT DEFAULT 'All users'", 'usage_limit': 'INTEGER DEFAULT 0', 'used_count': 'INTEGER DEFAULT 0', 'expires_at': "TEXT DEFAULT ''", 'status': "TEXT DEFAULT 'Active'", 'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'},
-        'clones': {'owner_id': 'INTEGER', 'bot_token': "TEXT DEFAULT ''", 'bot_username': "TEXT DEFAULT ''", 'status': "TEXT DEFAULT 'Active'", 'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'},
-        'analytics': {'feature_name': 'TEXT', 'count': 'INTEGER DEFAULT 0'},
-        'notifications': {'title': "TEXT DEFAULT ''", 'message': "TEXT DEFAULT ''", 'media_url': "TEXT DEFAULT ''", 'btn_text': "TEXT DEFAULT ''", 'btn_url': "TEXT DEFAULT ''", 'notif_type': "TEXT DEFAULT 'Announcement'", 'target_group': "TEXT DEFAULT 'All users'", 'status': "TEXT DEFAULT 'Active'", 'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'},
-        'user_notifications': {'user_id': 'INTEGER', 'notif_id': 'INTEGER', 'is_read': 'INTEGER DEFAULT 0', 'timestamp': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'},
-        'bug_reports': {'user_id': 'INTEGER', 'search_type': "TEXT DEFAULT 'Number/Query'", 'query_masked': "TEXT DEFAULT ''", 'report_type': "TEXT DEFAULT 'Unknown'", 'message': "TEXT DEFAULT ''", 'status': "TEXT DEFAULT 'Pending'", 'timestamp': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'},
-        'faqs': {'question': "TEXT DEFAULT ''", 'answer': "TEXT DEFAULT ''", 'category': "TEXT DEFAULT ''", 'display_order': 'INTEGER DEFAULT 1', 'status': "TEXT DEFAULT 'Active'", 'views': 'INTEGER DEFAULT 0'},
-        'support_tickets': {'user_id': 'INTEGER', 'subject': "TEXT DEFAULT ''", 'message': "TEXT DEFAULT ''", 'status': "TEXT DEFAULT 'Open'", 'timestamp': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'}
-    }
-    for _table, _columns in _all_schema_migrations.items():
-        for _column, _definition in _columns.items():
-            try:
-                c.execute(f"ALTER TABLE {_table} ADD COLUMN {_column} {_definition}")
-            except sqlite3.OperationalError:
-                pass
-
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('maintenance', 'off')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('maint_msg', '🚧 Bot abhi maintenance mode par hai. Kripya baad mein koshish karein!')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('upi_id', 'harshhacker@upi')")
@@ -471,39 +389,17 @@ def feature_enabled(feature, user_id=None):
     row = db_get_one("SELECT value FROM settings WHERE key=?", (f"feature_{feature}",))
     return not row or str(row.get('value','on')).lower() == 'on'
 
-def get_setting_value(key, default=''):
-    """Read a setting without crashing if an old DB is missing the row."""
-    try:
-        row = db_get_one("SELECT value FROM settings WHERE key=?", (key,))
-        return str(row.get('value')) if row and row.get('value') is not None else default
-    except Exception:
-        return default
-
-
-def normalize_menu_text(text):
-    """Normalize Telegram reply-keyboard labels such as '📈 Live Stats'."""
-    value = (text or '').replace('\u200b', '').replace('\ufeff', '').strip()
-    value = re.sub(r'^\W+', '', value, flags=re.UNICODE).strip()
-    value = re.sub(r'\s+', ' ', value)
-    return value
-
-
 def feature_block_text(feature):
     return f"🚫 {FEATURE_LABELS.get(feature, feature.title())} abhi admin ne temporarily disabled kiya hai."
 
 async def require_feature(update, feature, user_id):
     if feature_enabled(feature, user_id):
         return True
-    # Callback queries are acknowledged centrally by button_callback().
-    # Sending a second query.answer() here causes Telegram to reject the
-    # callback response and was responsible for several buttons appearing dead.
     if getattr(update, 'message', None):
         await update.message.reply_text(feature_block_text(feature))
     elif getattr(update, 'callback_query', None):
-        try:
-            await update.callback_query.message.reply_text(feature_block_text(feature))
-        except Exception:
-            pass
+        try: await update.callback_query.answer(feature_block_text(feature), show_alert=True)
+        except Exception: pass
     return False
 
 async def check_and_unlock_achievements(bot, user_id):
@@ -1096,96 +992,64 @@ async def show_upgraded_search_history(update_or_query, context, user_id, is_cal
         try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
         except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
     else:
-        await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
 
 async def show_help_center(update_or_query, context, is_callback=False):
-    try:
-        hc_toggle = get_setting_value('help_center_toggle', 'on').lower()
-        if hc_toggle == 'off':
-            text = "🚧 Help Center is currently disabled by admin."
+    hc_toggle = db_get_one("SELECT value FROM settings WHERE key='help_center_toggle'")
+    if hc_toggle and hc_toggle['value'] == 'off':
+        text = "🚧 Help Center is currently disabled by admin."
+    else:
+        text = "🆘 **HELP CENTER & FAQ**\n\nNeeche diye gaye topics mein se apna sawaal select karein ya support par contact karein:\n━━━━━━━━━━━━━━━━━━━━\n"
+        faqs = db_get_all("SELECT * FROM faqs WHERE status='Active' ORDER BY display_order ASC")
+        if not faqs:
+            text += "📭 Filhal koi FAQ available nahi hai.\n"
         else:
-            text = "🆘 **HELP CENTER & FAQ**\n\nNeeche diye gaye topics mein se apna sawaal select karein ya support par contact karein:\n━━━━━━━━━━━━━━━━━━━━\n"
-            try:
-                faqs = db_get_all("SELECT * FROM faqs WHERE status='Active' ORDER BY display_order ASC")
-            except Exception:
-                faqs = []
-            if not faqs:
-                text += "📭 Filhal koi FAQ available nahi hai.\n"
-            else:
-                for f in faqs:
-                    text += f"❓ **{f.get('question', 'FAQ')}**\n💡 _{f.get('answer', '')}_\n━━━━━━━━━━━━━━━━━━━━\n"
+            for f in faqs:
+                text += f"❓ **{f['question']}**\n💡 _{f['answer']}_\n━━━━━━━━━━━━━━━━━━━━\n"
 
-        keyboard = [
-            [InlineKeyboardButton("💬 Contact Support", callback_data="help_support_ticket")],
-            [InlineKeyboardButton("🏠 Main Menu", callback_data="profile_menu")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        if is_callback:
-            try:
-                await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
-            except Exception:
-                await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
-        else:
-            await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
-    except Exception as e:
-        print(f"[HELP CENTER ERROR] {type(e).__name__}: {e}")
-        if is_callback:
-            try:
-                await update_or_query.callback_query.message.reply_text("🆘 Help Center temporarily unavailable. Please try again.")
-            except Exception:
-                pass
-        else:
-            try:
-                await update_or_query.message.reply_text("🆘 Help Center temporarily unavailable. Please try again.")
-            except Exception:
-                pass
+    keyboard = [
+        [InlineKeyboardButton("💬 Contact Support", callback_data="help_support_ticket")],
+        [InlineKeyboardButton("🏠 Main Menu", callback_data="profile_menu")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if is_callback:
+        try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+    else:
+        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await require_feature(update, 'faq', update.effective_user.id): return
     await show_help_center(update, context, is_callback=False)
 
 async def show_live_statistics(update_or_query, context, is_callback=False):
-    try:
-        s_online = get_setting_value('stat_online', 'on').lower() == 'on'
-        s_search = get_setting_value('stat_searches', 'on').lower() == 'on'
-        s_api = get_setting_value('stat_api_status', 'on').lower() == 'on'
-        s_uptime = get_setting_value('stat_uptime', 'on').lower() == 'on'
-        s_prem = get_setting_value('stat_premium', 'on').lower() == 'on'
+    s_online = db_get_one("SELECT value FROM settings WHERE key='stat_online'")['value'] == 'on'
+    s_search = db_get_one("SELECT value FROM settings WHERE key='stat_searches'")['value'] == 'on'
+    s_api = db_get_one("SELECT value FROM settings WHERE key='stat_api_status'")['value'] == 'on'
+    s_uptime = db_get_one("SELECT value FROM settings WHERE key='stat_uptime'")['value'] == 'on'
+    s_prem = db_get_one("SELECT value FROM settings WHERE key='stat_premium'")['value'] == 'on'
 
-        text = "📈 **LIVE BOT STATISTICS**\n\n━━━━━━━━━━━━━━━━━━━━\n"
-        if s_online:
-            text += f"👥 **Online Users:** `{len(active_live_users)} Active`\n"
-        if s_search:
-            total_searches = (db_get_one("SELECT COUNT(*) as cnt FROM searches") or {}).get('cnt', 0) or 0
-            text += f"🔎 **Total Searches:** `{total_searches:,}`\n"
-        if s_api:
-            text += "⚡ **API Status:** `6/6 Operational`\n"
-        if s_uptime:
-            text += f"🤖 **Bot Uptime:** `{format_uptime()}`\n"
-        if s_prem:
-            prem_count = (db_get_one("SELECT COUNT(*) as cnt FROM users WHERE credits > 10") or {}).get('cnt', 0) or 0
-            text += f"⭐ **Premium Users:** `{prem_count}`\n"
-        text += "━━━━━━━━━━━━━━━━━━━━"
+    text = f"📈 **LIVE BOT STATISTICS**\n\n━━━━━━━━━━━━━━━━━━━━\n"
+    if s_online: text += f"👥 **Online Users:** `{len(active_live_users)} Active`\n"
+    if s_search:
+        total_searches = db_get_one("SELECT COUNT(*) as cnt FROM searches")['cnt'] or 0
+        text += f"🔎 **Total Searches:** `{total_searches:,}`\n"
+    if s_api: text += f"⚡ **API Status:** `6/6 Operational`\n"
+    if s_uptime: text += f"🤖 **Bot Uptime:** `{format_uptime()}`\n"
+    if s_prem:
+        prem_count = db_get_one("SELECT COUNT(*) as cnt FROM users WHERE credits > 10")['cnt'] or 0
+        text += f"⭐ **Premium Users:** `{prem_count}`\n"
+    text += f"━━━━━━━━━━━━━━━━━━━━"
 
-        keyboard = [[InlineKeyboardButton("🔄 Refresh Stats", callback_data="stats_refresh"), InlineKeyboardButton("🏠 Main Menu", callback_data="profile_menu")]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        if is_callback:
-            try:
-                await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
-            except Exception:
-                await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
-        else:
-            await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
-    except Exception as e:
-        print(f"[LIVE STATS ERROR] {type(e).__name__}: {e}")
-        msg = "📈 Live Stats temporarily unavailable. Please try again."
-        try:
-            if is_callback:
-                await update_or_query.callback_query.message.reply_text(msg)
-            else:
-                await update_or_query.message.reply_text(msg)
-        except Exception:
-            pass
+    keyboard = [[InlineKeyboardButton("🔄 Refresh Stats", callback_data="stats_refresh"), InlineKeyboardButton("🏠 Main Menu", callback_data="profile_menu")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if is_callback:
+        try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+    else:
+        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await require_feature(update, 'stats', update.effective_user.id): return
@@ -1216,57 +1080,43 @@ async def deliver_notification(context, notif_id):
     return {"sent": sent, "failed": failed}
 
 async def show_notifications_center(update_or_query, context, user_id, is_callback=False):
-    try:
-        user_db = db_get_one("SELECT * FROM users WHERE user_id = ?", (user_id,))
-        if not user_db:
-            text = "❌ User profile not found."
+    user_db = db_get_one("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    if not user_db:
+        text = "❌ User profile not found."
+    else:
+        is_premium = int(user_db.get('is_premium', 0) or 0) == 1
+        all_notifs = db_get_all("SELECT * FROM notifications WHERE status = 'Active' ORDER BY id DESC LIMIT 20")
+        notifs = []
+        for n in all_notifs:
+            target = (n.get('target_group') or 'All users').strip().lower()
+            if target == 'all users' or (target == 'premium users' and is_premium):
+                notifs.append(n)
+            elif target == 'new users':
+                try:
+                    if __import__('datetime').datetime.fromisoformat(str(user_db.get('joined_date')).replace(' ', 'T')) >= __import__('datetime').datetime.now() - __import__('datetime').timedelta(days=7):
+                        notifs.append(n)
+                except Exception:
+                    pass
+        notifs = notifs[:5]
+        text = "🔔 **NOTIFICATION CENTER**\n\nLatest updates, announcements & offers:\n━━━━━━━━━━━━━━━━━━━━\n"
+        if not notifs:
+            text += "📭 Filhal koi nayi notification nahi hai.\n"
         else:
-            is_premium = int(user_db.get('is_premium', 0) or 0) == 1
-            try:
-                all_notifs = db_get_all("SELECT * FROM notifications WHERE COALESCE(status, 'Active') = 'Active' ORDER BY id DESC LIMIT 20")
-            except Exception:
-                all_notifs = []
-            notifs = []
-            for n in all_notifs:
-                target = (n.get('target_group') or 'All users').strip().lower()
-                if target == 'all users' or (target == 'premium users' and is_premium):
-                    notifs.append(n)
-                elif target == 'new users':
-                    try:
-                        joined = __import__('datetime').datetime.fromisoformat(str(user_db.get('joined_date')).replace(' ', 'T'))
-                        if joined >= __import__('datetime').datetime.now() - __import__('datetime').timedelta(days=7):
-                            notifs.append(n)
-                    except Exception:
-                        pass
-            notifs = notifs[:5]
-            text = "🔔 **NOTIFICATION CENTER**\n\nLatest updates, announcements & offers:\n━━━━━━━━━━━━━━━━━━━━\n"
-            if not notifs:
-                text += "📭 Filhal koi nayi notification nahi hai.\n"
-            else:
-                for n in notifs:
-                    read_rec = db_get_one("SELECT is_read FROM user_notifications WHERE user_id = ? AND notif_id = ?", (user_id, n['id']))
-                    status_icon = "✅ Read" if read_rec and int(read_rec.get('is_read', 0) or 0) == 1 else "🔵 Unread"
-                    icon_type = {'offer':'🎁','maintenance':'🔧','update':'🚀','important':'⚠️'}.get((n.get('notif_type') or '').lower(), '📢')
-                    text += f"{icon_type} **{n.get('title', 'Notification')}** [{status_icon}]\n{n.get('message', '')}\n━━━━━━━━━━━━━━━━━━━━\n"
-        keyboard = [
-            [InlineKeyboardButton("🔄 Refresh Notifs", callback_data="notif_refresh"), InlineKeyboardButton("✅ Mark All Read", callback_data="notif_clear")],
-            [InlineKeyboardButton("🏠 Main Menu", callback_data="profile_menu")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        if is_callback:
-            try:
-                await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup, disable_web_page_preview=True)
-            except Exception:
-                await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup, disable_web_page_preview=True)
-        else:
-            await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup, disable_web_page_preview=True)
-    except Exception as e:
-        print(f"[NOTIFICATION CENTER ERROR] {type(e).__name__}: {e}")
-        try:
-            target = update_or_query.callback_query.message if is_callback else update_or_query.message
-            await target.reply_text("🔔 Notification Center temporarily unavailable. Please try again.")
-        except Exception:
-            pass
+            for n in notifs:
+                read_rec = db_get_one("SELECT is_read FROM user_notifications WHERE user_id = ? AND notif_id = ?", (user_id, n['id']))
+                status_icon = "✅ Read" if read_rec and read_rec.get('is_read') == 1 else "🔵 Unread"
+                icon_type = {'offer':'🎁','maintenance':'🔧','update':'🚀','important':'⚠️'}.get((n.get('notif_type') or '').lower(), '📢')
+                text += f"{icon_type} **{n['title']}** [{status_icon}]\n{n['message']}\n━━━━━━━━━━━━━━━━━━━━\n"
+    keyboard = [
+        [InlineKeyboardButton("🔄 Refresh Notifs", callback_data="notif_refresh"), InlineKeyboardButton("✅ Mark All Read", callback_data="notif_clear")],
+        [InlineKeyboardButton("🏠 Main Menu", callback_data="profile_menu")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    if is_callback:
+        try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup, disable_web_page_preview=True)
+        except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup, disable_web_page_preview=True)
+    else:
+        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup, disable_web_page_preview=True)
 
 async def notif_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -1323,7 +1173,7 @@ async def show_user_profile(update_or_query, context, user_id, is_callback=False
         try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
         except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
     else:
-        await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
 
 async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await require_feature(update, 'profile', update.effective_user.id): return
@@ -1342,7 +1192,7 @@ async def quick_search_menu(update_or_query, context, is_callback=False):
         try: await update_or_query.callback_query.edit_message_text(text, parse_mode='Markdown', reply_markup=reply_markup)
         except: await update_or_query.callback_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
     else:
-        await update_or_query.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
 
 async def quick_search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await require_feature(update, 'quick_search', update.effective_user.id): return
@@ -1404,41 +1254,16 @@ async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     if not await require_feature(update, 'daily', user.id): return
-    user_data = db_get_one("SELECT last_daily, last_daily_claim, streak_days FROM users WHERE user_id = ?", (user.id,)) or {}
+    user_data = db_get_one("SELECT last_daily, last_daily_claim, streak_days FROM users WHERE user_id = ?", (user.id,))
     today_str = datetime.now().strftime("%Y-%m-%d")
-    last_claim = user_data.get('last_daily_claim') or user_data.get('last_daily') or ''
-    if last_claim == today_str:
+    if user_data['last_daily'] == today_str:
         await update.message.reply_text("❌ Aapne aaj ka daily bonus pehle hi claim kar liya hai!")
         return
-
-    # Keep the 7-day streak system functional. Consecutive claims increase the
-    # streak; a missed day starts a fresh streak. Day 7+ keeps the streak at 7
-    # for the achievement while using the configured Day-7 reward.
-    try:
-        from datetime import timedelta
-        yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-    except Exception:
-        yesterday_str = ''
-    old_streak = int(user_data.get('streak_days', 0) or 0)
-    streak = old_streak + 1 if last_claim == yesterday_str else 1
-    reward_day = min(streak, 7)
-    reward_row = db_get_one("SELECT value FROM settings WHERE key = ?", (f"daily_reward_{reward_day}",))
-    try:
-        bonus = max(0, int(reward_row['value'])) if reward_row else 2
-    except (TypeError, ValueError):
-        bonus = 2
-
-    db_execute(
-        "UPDATE users SET credits = credits + ?, last_daily = ?, last_daily_claim = ?, streak_days = ? WHERE user_id = ?",
-        (bonus, today_str, today_str, streak, user.id), commit=True
-    )
-    record_transaction(user.id, "Daily Bonus", bonus, f"Day {reward_day} daily streak reward")
-    log_activity(user.id, f"Claimed daily bonus of {bonus} credits (streak {streak})")
-    await check_and_unlock_achievements(context.bot, user.id)
-    await update.message.reply_text(
-        f"🎁 **Daily Bonus Claimed!**\n\n💎 Reward: `{bonus}` credits\n⚡ Streak: `{streak} day{'s' if streak != 1 else ''}`",
-        parse_mode='Markdown'
-    )
+    bonus = 2
+    db_execute("UPDATE users SET credits = credits + ?, last_daily = ? WHERE user_id = ?", (bonus, today_str, user.id), commit=True)
+    record_transaction(user.id, "Daily Bonus", bonus, "Claimed daily bonus reward")
+    log_activity(user.id, f"Claimed daily bonus of {bonus} credits")
+    await update.message.reply_text(f"🎁 **Daily Bonus Claimed!**\nAapko `{bonus}` free credits mile hain.", parse_mode='Markdown')
 
 async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await require_feature(update, 'export', update.effective_user.id): return
@@ -1465,9 +1290,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     active_live_users.add(user.id)
     context.user_data.clear()
     
-    maint = get_setting_value('maintenance', 'off')
+    maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
     if maint == 'on' and not is_admin_user(user.id):
-        maint_msg = get_setting_value('maint_msg', '🚧 Bot abhi maintenance mode par hai.')
+        maint_msg = db_get_one("SELECT value FROM settings WHERE key='maint_msg'")['value']
         await update.message.reply_text("🚧 " + maint_msg, parse_mode='Markdown')
         return
 
@@ -1645,25 +1470,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     active_live_users.add(user.id)
     text = update.message.text.strip() if update.message.text else ""
 
-    # Custom Emoji ID Detector (admin only)
-    if is_admin_user(user.id) and update.message.entities:
-        custom_entities = [e for e in update.message.entities if e.type == "custom_emoji"]
-        if custom_entities:
-            ids = []
-            for entity in custom_entities:
+    # CUSTOM EMOJI ID DETECTOR (admin-only, surgical addition)
+    # Sending a Telegram custom emoji to the bot automatically saves its ID.
+    if is_admin_user(user.id):
+        detected_ids = []
+        entities = list(update.message.entities or []) + list(update.message.caption_entities or [])
+        for entity in entities:
+            if getattr(entity, "type", None) == "custom_emoji":
                 cid = getattr(entity, "custom_emoji_id", None)
                 if cid:
-                    ids.append(str(cid))
-            if ids:
-                unique_ids = list(dict.fromkeys(ids))
-                db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('last_custom_emoji_id',?)", (unique_ids[-1],), commit=True)
-                lines = ["🎨 **CUSTOM EMOJI DETECTED**", "", f"🆔 **ID:** `{unique_ids[-1]}`"]
-                if len(unique_ids) > 1:
-                    lines.append("\n📋 **All IDs in this message:**")
-                    lines.extend([f"{i}. `{cid}`" for i, cid in enumerate(unique_ids, 1)])
-                lines.append("\n✅ ID save ho gayi. Admin Panel → 🎨 Custom Emoji ID se dekh sakte ho.")
-                await update.message.reply_text("\n".join(lines), parse_mode='Markdown')
-                return
+                    detected_ids.append(str(cid))
+        sticker = getattr(update.message, "sticker", None)
+        if sticker and getattr(sticker, "custom_emoji_id", None):
+            detected_ids.append(str(sticker.custom_emoji_id))
+        if detected_ids:
+            emoji_id = list(dict.fromkeys(detected_ids))[-1]
+            db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('last_custom_emoji_id',?)", (emoji_id,), commit=True)
+            await update.message.reply_text(
+                f"🎨 *CUSTOM EMOJI SAVED*\n\n🆔 ID: `{emoji_id}`\n\n"
+                "✅ Admin Panel → 🎨 Custom Emoji Manager se ID dekh sakte ho.",
+                parse_mode='Markdown'
+            )
+            return
 
     # Strict Admin Prompt Handlers
     if is_admin_user(user.id):
@@ -1755,7 +1583,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             target_map = {'all users': 'All users', 'premium users': 'Premium users', 'new users': 'New users'}
             target = target_map.get(target.lower(), target)
-            db_execute("INSERT INTO notifications (title, message, notif_type, target_group, status) VALUES (?, ?, ?, ?, 'Active')", (title, msg, ntype, target), commit=True)
+            db_execute("INSERT INTO notifications (title, message, notif_type, target_group) VALUES (?, ?, ?, ?)", (title, msg, ntype, target), commit=True)
             notif_row = db_get_one("SELECT id FROM notifications ORDER BY id DESC LIMIT 1")
             result = await deliver_notification(context, notif_row['id']) if notif_row else {'sent': 0, 'failed': 0}
             context.user_data.clear()
@@ -2083,9 +1911,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
     # Check Maintenance
-    maint = get_setting_value('maintenance', 'off')
+    maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
     if maint == 'on' and not is_admin_user(user.id):
-        await update.message.reply_text("🚧 " + get_setting_value('maint_msg', '🚧 Bot abhi maintenance mode par hai.'), parse_mode='Markdown')
+        await update.message.reply_text("🚧 " + db_get_one("SELECT value FROM settings WHERE key='maint_msg'")['value'], parse_mode='Markdown')
         return
 
     # User Support Ticket Creator Mode
@@ -2095,12 +1923,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("✅ Aapka support ticket successfully submit ho gaya hai! Admin jald hi aapse contact karega.", parse_mode='Markdown')
         return
 
-    clean_input_text = normalize_menu_text(text)
-    for prefix in [
-        "🔍 ", "📍 ", "🌐 ", "🆔 ", "🔤 ", "🔮 ", "✈️ ", "👤 ",
-        "🔔 ", "📈 ", "🆘 ", "💬 ", "💰 ", "🏆 ", "🎟️ ", "💎 ",
-        "🎁 ", "💳 ", "🤖 "
-    ]:
+    clean_input_text = text
+    for prefix in ["🔍 ", "📍 ", "🌐 ", "🆔 ", "🔤 ", "🔮 ", "✈️ ", "👤 ", "🔔 ", "📈 ", "🆘 "]:
         clean_input_text = clean_input_text.replace(prefix, "")
 
     feature_text_map = {
@@ -2119,22 +1943,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if clean_input_text.upper() in ("PROMO CENTER",) or text == "/promo":
         await show_promo_center(update, context, user.id, False)
         return
-    if clean_input_text.upper() in ("DAILY CHECK-IN",) or text == "/daily":
-        await daily_command(update, context)
-        return
-    if clean_input_text.upper() in ("TRANSACTIONS",) or text == "/balance":
-        await show_transaction_history(update, context, user.id, is_callback=False)
-        return
 
-    if normalize_menu_text(clean_input_text).upper() == "HELP CENTER" or text == "/help":
+    if clean_input_text.upper() == "HELP CENTER" or text == "/help":
         await show_help_center(update, context, is_callback=False)
         return
 
-    if normalize_menu_text(clean_input_text).upper() == "LIVE STATS" or text == "/stats":
+    if clean_input_text.upper() == "LIVE STATS" or text == "/stats":
         await show_live_statistics(update, context, is_callback=False)
         return
 
-    if normalize_menu_text(clean_input_text).upper() == "NOTIFICATIONS" or text == "/notifications":
+    if clean_input_text.upper() == "NOTIFICATIONS" or text == "/notifications":
         await show_notifications_center(update, context, user.id, is_callback=False)
         return
 
@@ -2357,7 +2175,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['last_phone_target'] = cleaned_phone
             await send_paginated_phone_response(msg, records, cleaned_phone, update, context, page=0, is_edit=True)
         context.user_data['mode'] = None
-        return
     else:
         if len(cleaned_phone) >= 10:
             msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
@@ -2386,7 +2203,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_full_admin_panel(update_or_query, context):
     total_users = db_get_one("SELECT COUNT(*) as count FROM users")['count']
     total_searches = db_get_one("SELECT COUNT(*) as count FROM searches")['count']
-    maint = get_setting_value('maintenance', 'off')
+    maint = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
     upi_record = db_get_one("SELECT value FROM settings WHERE key='upi_id'")
     clone_ref_val = db_get_one("SELECT value FROM settings WHERE key='clone_req_ref'")['value']
     clone_toggle_val = db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")['value']
@@ -2406,7 +2223,7 @@ async def show_full_admin_panel(update_or_query, context):
         [InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
         [InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api"), InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api")],
         [InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name"), InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style")],
-        [InlineKeyboardButton("🎨 Custom Emoji ID", callback_data="admin_custom_emoji")],
+        [InlineKeyboardButton("✨ Custom Emoji Manager", callback_data="admin_custom_emoji")],
         [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
         [InlineKeyboardButton("🎁 ⚙ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("💬 ⚙ Set Maint Msg", callback_data="admin_setmaintmsg_prompt")],
         [InlineKeyboardButton("🖼️ ⚙ Set Banner", callback_data="admin_banner_prompt"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
@@ -2453,7 +2270,8 @@ async def render_admin_stats_dashboard(query):
     new_users_today = db_get_one("SELECT COUNT(*) as cnt FROM users WHERE date(joined_date) = date('now')")['cnt'] or 0
     credits_used = db_get_one("SELECT SUM(searches) as s FROM users")['s'] or 0
     def setting(k, default='off'):
-        return get_setting_value(k, default)
+        r=db_get_one("SELECT value FROM settings WHERE key=?",(k,))
+        return r['value'] if r else default
     st_on, st_srch, st_api = setting('stat_online'), setting('stat_searches'), setting('stat_api_status')
     st_upt, st_prem = setting('stat_uptime'), setting('stat_premium')
     text=(f"📊 **ADMIN ANALYTICS & LIVE STATISTICS**\n\n━━━━━━━━━━━━━━━━━━━━\n👥 **Online Active:** `{len(active_live_users)}`\n"
@@ -2471,17 +2289,10 @@ async def render_admin_stats_dashboard(query):
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    data = query.data or ''
+    await query.answer()
+    data = query.data
     user = query.from_user
-
-    # ACK every callback exactly once. All later handlers must not call
-    # query.answer() again. This removes Telegram callback timeout/spinner
-    # issues across user and admin buttons.
-    try:
-        await query.answer()
-    except Exception:
-        pass
-
+    
     if data.startswith("phone_page_"):
         page_num = int(data.split("_")[-1])
         records = context.user_data.get('last_phone_records', [])
@@ -2499,11 +2310,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_upgraded_search_history(update, context, user.id, is_callback=True)
         return
     elif data == "tx_refresh":
-        if not await require_feature(update, 'transactions', user.id): return
         await show_transaction_history(update, context, user.id, is_callback=True)
         return
     elif data == "sh_refresh":
-        if not await require_feature(update, 'history', user.id): return
         await show_upgraded_search_history(update, context, user.id, is_callback=True)
         return
 
@@ -2567,7 +2376,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db_execute("INSERT INTO bug_reports (user_id, search_type, query_masked, report_type, message) VALUES (?, ?, ?, ?, ?)", 
                    (user.id, "Number/Query", masked_q, rtype, f"User reported {rtype} for target {masked_q}"), commit=True)
         
-        await query.message.reply_text(f"🚨 Bug reported successfully as '{rtype}'! Admin will review it.")
+        await query.answer(f"🚨 Bug reported successfully as '{rtype}'! Admin will review it.", show_alert=True)
         return
 
     # Live Stats Refresh Callback
@@ -2617,7 +2426,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['reply_ticket_id'] = latest_t['id']
             await context.bot.send_message(chat_id=user.id, text=f"💬 **REPLY TO TICKET #{latest_t['id']}**\nUser message: _{latest_t['message']}_\n\nApna reply message bhejein:", parse_mode='Markdown')
         else:
-            await query.message.reply_text("ℹ️ Koi open support ticket nahi hai.")
+            await query.answer("ℹ️ Koi open support ticket nahi hai.", show_alert=True)
         return
 
     # Admin Bug Reports Management Dashboard
@@ -2652,23 +2461,50 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try:
                 await context.bot.send_message(chat_id=latest['user_id'], text=f"✅ Your report #{latest['id']} has been resolved.\n🔧 API issue has been fixed. Please try your search again.")
             except: pass
-            await query.message.reply_text("✅ Latest report marked as Resolved & User notified!")
+            await query.answer("✅ Latest report marked as Resolved & User notified!", show_alert=True)
         else:
-            await query.message.reply_text("ℹ️ Koi pending report nahi mili.")
+            await query.answer("ℹ️ Koi pending report nahi mili.", show_alert=True)
         return await show_bug_reports_dashboard(query)
 
     if data == "adm_bug_reject_latest":
         latest = db_get_one("SELECT * FROM bug_reports WHERE status='Pending' ORDER BY id DESC LIMIT 1")
         if latest:
             db_execute("UPDATE bug_reports SET status='Rejected' WHERE id = ?", (latest['id'],), commit=True)
-            await query.message.reply_text("❌ Report rejected.")
+            await query.answer("❌ Report rejected.", show_alert=True)
         else:
-            await query.message.reply_text("ℹ️ Koi pending report nahi mili.")
+            await query.answer("ℹ️ Koi pending report nahi mili.", show_alert=True)
         return await show_bug_reports_dashboard(query)
 
     # Admin Stats Dashboard & Controls
     if data == "admin_stats_dashboard":
-        await render_admin_stats_dashboard(query)
+        tot_users = db_get_one("SELECT COUNT(*) as cnt FROM users")['cnt'] or 0
+        tot_searches = db_get_one("SELECT COUNT(*) as cnt FROM searches")['cnt'] or 0
+        today_searches = db_get_one("SELECT COUNT(*) as cnt FROM searches WHERE date(timestamp) = date('now')")['cnt'] or 0
+        prem_users = db_get_one("SELECT COUNT(*) as cnt FROM users WHERE credits > 10")['cnt'] or 0
+        new_users_today = db_get_one("SELECT COUNT(*) as cnt FROM users WHERE date(joined_date) = date('now')")['cnt'] or 0
+        credits_used = db_get_one("SELECT SUM(searches) as s FROM users")['s'] or 0
+
+        st_on = db_get_one("SELECT value FROM settings WHERE key='stat_online'")['value']
+        st_srch = db_get_one("SELECT value FROM settings WHERE key='stat_searches'")['value']
+        st_api = db_get_one("SELECT value FROM settings WHERE key='stat_api_status'")['value']
+        st_upt = db_get_one("SELECT value FROM settings WHERE key='stat_uptime'")['value']
+        st_prem = db_get_one("SELECT value FROM settings WHERE key='stat_premium'")['value']
+
+        text = f"📊 **ADMIN ANALYTICS & LIVE STATISTICS**\n\n━━━━━━━━━━━━━━━━━━━━\n"
+        text += f"👥 **Online Active:** `{len(active_live_users)}`\n"
+        text += f"👤 **Total Users:** `{tot_users}` | 🆕 **New Today:** `{new_users_today}`\n"
+        text += f"🔎 **Total Searches:** `{tot_searches}` | 📅 **Today:** `{today_searches}`\n"
+        text += f"⭐ **Premium Users:** `{prem_users}` | 💳 **Credits Used:** `{credits_used}`\n"
+        text += f"🤖 **Bot Uptime:** `{format_uptime()}` | ⚡ **API Status:** `6/6 Online`\n━━━━━━━━━━━━━━━━━━━━\n"
+        text += f"⚙️ **Public Stats Visibility Controls:**\n"
+        text += f"• Online Users: `{st_on.upper()}`\n• Searches: `{st_srch.upper()}`\n• API Status: `{st_api.upper()}`\n• Uptime: `{st_upt.upper()}`\n• Premium Count: `{st_prem.upper()}`"
+
+        kb = [
+            [InlineKeyboardButton("🔄 Toggle Online Stat", callback_data="adm_TOG_online"), InlineKeyboardButton("🔄 Toggle Searches Stat", callback_data="adm_TOG_searches")],
+            [InlineKeyboardButton("🔄 Toggle API Stat", callback_data="adm_TOG_api"), InlineKeyboardButton("🔄 Toggle Uptime Stat", callback_data="adm_TOG_uptime")],
+            [InlineKeyboardButton("🔄 Toggle Premium Stat", callback_data="adm_TOG_prem"), InlineKeyboardButton("🔙 Back to Panel", callback_data="admin_panel")]
+        ]
+        await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
         return
 
     if data.startswith("adm_TOG_"):
@@ -2679,7 +2515,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             curr = db_get_one("SELECT value FROM settings WHERE key = ?", (setting_key,))['value']
             new_val = 'off' if curr == 'on' else 'on'
             db_execute("UPDATE settings SET value = ? WHERE key = ?", (new_val, setting_key), commit=True)
-            await query.message.reply_text(f"✅ Setting updated to {new_val.upper()}!")
+            await query.answer(f"✅ Setting updated to {new_val.upper()}!", show_alert=True)
             return await render_admin_stats_dashboard(query)
 
     # Notification Center User Callbacks
@@ -2688,7 +2524,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     elif data == "notif_clear":
         db_execute("UPDATE user_notifications SET is_read = 1 WHERE user_id = ?", (user.id,), commit=True)
-        await query.message.reply_text("✅ Saari notifications read mark kar di gayi hain!")
+        await query.answer("✅ Saari notifications read mark kar di gayi hain!", show_alert=True)
         await show_notifications_center(update, context, user.id, is_callback=True)
         return
 
@@ -2722,27 +2558,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Quick Search Menu Callback Handlers
     if data == "qs_number":
-        if not await require_feature(update, 'number', user.id): return
         context.user_data['mode'] = 'phone'
         await query.message.reply_text("📱 *Number Info Mode Active*\nKripya ab 10-digit mobile number bhejein:", parse_mode='Markdown')
         return
     elif data == "qs_pincode":
-        if not await require_feature(update, 'pincode', user.id): return
         context.user_data['mode'] = 'pincode'
         await query.message.reply_text("📍 *Pincode Lookup Mode Active*\nKripya 6-digit PIN code bhejein:", parse_mode='Markdown')
         return
     elif data == "qs_ip":
-        if not await require_feature(update, 'ip', user.id): return
         context.user_data['mode'] = 'ip_info'
         await query.message.reply_text("🌐 *IP Info Mode Active*\nKripya IP address bhejein:", parse_mode='Markdown')
         return
     elif data == "qs_telegram":
-        if not await require_feature(update, 'telegram', user.id): return
         context.user_data['mode'] = 'telegram_auto_detect'
         await query.message.reply_text("✈️ *Telegram Lookup Mode Active*\nKripya Telegram ID ya Username bhejein:", parse_mode='Markdown')
         return
     elif data == "qs_custom":
-        if not await require_feature(update, 'custom', user.id): return
         context.user_data['mode'] = 'custom_api_phone'
         await query.message.reply_text("🔎 *Custom API Mode Active*\nQuery enter karein:", parse_mode='Markdown')
         return
@@ -2808,7 +2639,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.delete()
             await send_welcome_menu(query, context, query.from_user)
         else:
-            await query.message.reply_text("❌ Aapne abhi tak saare channels join nahi kiye hain!")
+            await query.answer("❌ Aapne abhi tak saare channels join nahi kiye hain!", show_alert=True)
         return
     elif data == "create_clone_prompt":
         context.user_data['waiting_for_clone_token'] = True
@@ -2837,13 +2668,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if feat in FEATURE_LABELS:
             r=db_get_one("SELECT value FROM settings WHERE key=?",(f'feature_{feat}',)); new='off' if r and r.get('value')=='on' else 'on'
             db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)",(f'feature_{feat}',new),commit=True)
-            await query.message.reply_text(f"{FEATURE_LABELS[feat]}: {new.upper()}")
+            await query.answer(f"{FEATURE_LABELS[feat]}: {new.upper()}",show_alert=True)
             await show_feature_control(query,0)
         return
     elif data in ('feat_all_on','feat_all_off'):
         val='on' if data=='feat_all_on' else 'off'
         for feat in FEATURE_LABELS: db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)",(f'feature_{feat}',val),commit=True)
-        await query.message.reply_text(f"All user features: {val.upper()}")
+        await query.answer(f"All user features: {val.upper()}",show_alert=True)
         await show_feature_control(query,0)
         return
     elif data == 'ach_refresh':
@@ -2907,14 +2738,14 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         styles=['cyber','json','hacker','matrix','neon','card','compact','minimal','vip','standard']
         nxt=styles[(styles.index(current)+1)%len(styles)] if current in styles else 'cyber'
         db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('report_style',?)",(nxt,),commit=True)
-        await query.message.reply_text(f"🎨 Report style: {nxt.upper()}")
+        await query.answer(f"🎨 Report style: {nxt.upper()}",show_alert=True)
         await show_full_admin_panel(update,context)
         return
     elif data == "admin_toggle_clone_ref":
         curr=db_get_one("SELECT value FROM settings WHERE key='clone_ref_toggle'")
         new='off' if curr and curr['value']=='on' else 'on'
         db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('clone_ref_toggle',?)",(new,),commit=True)
-        await query.message.reply_text(f"🔄 Clone referral: {new.upper()}")
+        await query.answer(f"🔄 Clone referral: {new.upper()}",show_alert=True)
         await show_full_admin_panel(update,context)
         return
     elif data == "admin_cloneref_prompt":
@@ -2934,7 +2765,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         key=data[len("edit_api_url_"):]
         api=db_get_one("SELECT * FROM dynamic_apis WHERE api_key=?",(key,))
         if not api:
-            await query.message.reply_text("❌ API nahi mili."); return
+            await query.answer("❌ API nahi mili.",show_alert=True); return
         context.user_data['target_api_key']=key
         context.user_data['waiting_for_api_url']=True
         await context.bot.send_message(chat_id=user.id,text=f"🔗 Current URL: `{api['api_url']}`\n\nNaya API URL bhejein. `{query}` placeholder use karein:",parse_mode='Markdown')
@@ -2943,7 +2774,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         key=data[len("edit_api_wm_"):]
         api=db_get_one("SELECT * FROM dynamic_apis WHERE api_key=?",(key,))
         if not api:
-            await query.message.reply_text("❌ API nahi mili."); return
+            await query.answer("❌ API nahi mili.",show_alert=True); return
         context.user_data['target_api_key']=key
         context.user_data['waiting_for_api_old']=True
         await context.bot.send_message(chat_id=user.id,text=f"✍️ Current old watermark: `{api['old_credit'] or ''}`\n\nOld watermark/credit text bhejein:",parse_mode='Markdown')
@@ -2988,7 +2819,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("del_plan_"):
         plan_id = int(data.split("_")[-1])
         db_execute("DELETE FROM plans WHERE id = ?", (plan_id,), commit=True)
-        await query.message.reply_text("🗑️ Plan successfully delete ho gaya!")
+        await query.answer("🗑️ Plan successfully delete ho gaya!", show_alert=True)
         plans = db_get_all("SELECT * FROM plans")
         text = "📦 *SUBSCRIPTION PLANS MANAGER*\n━━━━━━━━━━━━━━━━━━━━\n"
         keyboard = []
@@ -3040,22 +2871,24 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         saved = db_get_one("SELECT value FROM settings WHERE key='last_custom_emoji_id'")
         emoji_id = saved['value'] if saved and saved['value'] else None
         if emoji_id:
-            text = ("🎨 **CUSTOM EMOJI MANAGER**\n\n"
-                    f"🆔 **Last detected ID:** `{emoji_id}`\n\n"
-                    "📌 Naya custom emoji bot ko bhejoge to ID automatically update ho jayegi.\n"
-                    "Phir isi ID ko bot messages me use kiya ja sakta hai.")
+            text = ("✨ **CUSTOM EMOJI MANAGER**\n\n"
+                    f"🆔 **Saved ID:** `{emoji_id}`\n\n"
+                    "📌 Naya custom emoji directly bot ko send karo.\n"
+                    "Bot uska ID automatically save/update karega.\n\n"
+                    "⚠️ Telegram buttons ka background/text color Bot API se freely change nahi hota.")
         else:
-            text = ("🎨 **CUSTOM EMOJI MANAGER**\n\n"
-                    "📭 Abhi koi custom emoji ID save nahi hai.\n\n"
-                    "👉 Apna Instagram/custom emoji **isi bot ko send karo**.\n"
+            text = ("✨ **CUSTOM EMOJI MANAGER**\n\n"
+                    "📭 Abhi custom emoji ID saved nahi hai.\n\n"
+                    "👉 Telegram ka custom emoji bot ko directly send karo.\n"
                     "Bot automatically uska `custom_emoji_id` detect karke save karega.")
-        kb=[[InlineKeyboardButton("🗑️ Clear Saved ID",callback_data="admin_custom_emoji_clear")],[InlineKeyboardButton("🔙 Back",callback_data="admin_panel")]]
-        await query.edit_message_text(text,parse_mode='Markdown',reply_markup=InlineKeyboardMarkup(kb))
+        kb = [[InlineKeyboardButton("🗑️ Clear Saved ID", callback_data="admin_custom_emoji_clear")],
+              [InlineKeyboardButton("🔙 Back", callback_data="admin_panel")]]
+        await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
         return
     elif data == "admin_custom_emoji_clear":
-        db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('last_custom_emoji_id','')",(),commit=True)
-        await query.message.reply_text("🗑️ Custom emoji ID cleared")
-        await show_full_admin_panel(update,context)
+        db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES('last_custom_emoji_id','')", (), commit=True)
+        await query.answer("🗑️ Custom emoji ID cleared", show_alert=True)
+        await show_full_admin_panel(update, context)
         return
     elif data == "admin_edit_name":
         context.user_data['waiting_for_edit_name_key'] = True
@@ -3098,10 +2931,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await download_search_logs_file(update, context)
         return
     elif data == "toggle_maintenance":
-        current = get_setting_value('maintenance', 'off')
+        current = db_get_one("SELECT value FROM settings WHERE key='maintenance'")['value']
         new_val = 'off' if current == 'on' else 'on'
         db_execute("UPDATE settings SET value = ? WHERE key = 'maintenance'", (new_val,), commit=True)
-        await query.message.reply_text(f"✅ Maintenance is now {new_val.upper()}!")
+        await query.answer(f"✅ Maintenance is now {new_val.upper()}!", show_alert=True)
         await show_full_admin_panel(update, context)
         return
     elif data == "close_panel":
