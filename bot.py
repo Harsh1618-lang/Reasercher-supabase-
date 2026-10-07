@@ -1843,16 +1843,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['waiting_for_delete_api_key'] = False
             return
 
+        if context.user_data.get('waiting_for_edit_name_select'):
+            try:
+                idx = int(text.strip()) - 1
+                apis = db_get_all("SELECT api_key, api_name FROM dynamic_apis ORDER BY rowid")
+                if idx < 0 or idx >= len(apis):
+                    raise ValueError
+                existing = apis[idx]
+                context.user_data['edit_name_target_key'] = existing['api_key']
+                context.user_data['waiting_for_edit_name_select'] = False
+                context.user_data['waiting_for_edit_name_new'] = True
+                await update.message.reply_text(f"✏️ **{existing['api_name']}** ka naya button name bhejein:", parse_mode='Markdown')
+            except (ValueError, TypeError):
+                await update.message.reply_text("❌ Kripya list me diya hua valid number bhejein.")
+            return
+
         if context.user_data.get('waiting_for_edit_name_key'):
+            # Backward-compatible fallback: direct API key/name input still works.
             existing = db_get_one("SELECT * FROM dynamic_apis WHERE api_key = ? OR LOWER(api_name) = ?", (text.strip().lower(), text.strip().lower()))
             if existing:
                 context.user_data['edit_name_target_key'] = existing['api_key']
                 context.user_data['waiting_for_edit_name_key'] = False
                 context.user_data['waiting_for_edit_name_new'] = True
-                await update.message.reply_text(f"✏️ Ab is API (`{existing['api_name']}`) ke liye **Naya Button Name** enter karein:", parse_mode='Markdown')
+                await update.message.reply_text(f"✏️ **{existing['api_name']}** ka naya button name bhejein:", parse_mode='Markdown')
             else:
-                await update.message.reply_text("❌ Aisi koi API nahi mili!", parse_mode='Markdown')
-                context.user_data['waiting_for_edit_name_key'] = False
+                await update.message.reply_text("❌ Kripya list me diya hua number bhejein.")
             return
 
         if context.user_data.get('waiting_for_edit_name_new'):
@@ -2844,10 +2859,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=query.from_user.id, text=f"🗑️ **DELETE API**\n\n{api_list_str}\n\nJise delete karna hai uska **API Key** ya **Name** bhejein:", parse_mode='Markdown')
         return
     elif data == "admin_edit_name":
-        context.user_data['waiting_for_edit_name_key'] = True
-        apis = db_get_all("SELECT api_key, api_name FROM dynamic_apis")
-        api_list_str = "\n".join([f"• `{ap['api_name']}` (Key: `{ap['api_key']}`)" for ap in apis])
-        await context.bot.send_message(chat_id=query.from_user.id, text=f"✏️ **EDIT BUTTON NAME**\n\n{api_list_str}\n\nJiska name change karna hai uska **API Key** bhejein:", parse_mode='Markdown')
+        context.user_data['waiting_for_edit_name_select'] = True
+        apis = db_get_all("SELECT api_key, api_name FROM dynamic_apis ORDER BY rowid")
+        api_list_str = "\n".join([f"{i+1}️⃣ {ap['api_name']}" for i, ap in enumerate(apis)])
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"✏️ **EDIT BUTTON NAME**\n\n{api_list_str}\n\n👇 Jis button ka name change karna hai uska **number bhejein:**", parse_mode='Markdown')
         return
     elif data == "admin_users":
         users = db_get_all("SELECT * FROM users ORDER BY joined_date DESC LIMIT 10")
