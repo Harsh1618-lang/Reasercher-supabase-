@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# OSINT & Pincode Bot - Ultimate 10 Report Styles & Transaction Management + Native Button Colors Edition
+# OSINT & Pincode Bot - Ultimate 10 Report Styles & Transaction Management Edition
 """
 Developer: @Harsx1618
 Description: Advanced Telegram OSINT Bot with User/Admin Transaction Management, Advanced Search History Upgrade, Logs Analytics & All Features Intact
@@ -34,15 +34,11 @@ def run_flask():
 # TELEGRAM BOT SETUP
 # ============================================
 try:
-    import telegram
-    _ptb_version = tuple(int(x) for x in telegram.__version__.split('.')[:2])
-    if _ptb_version < (22, 7):
-        raise ImportError("python-telegram-bot >= 22.7 is required for native button styles")
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
 except ImportError:
-    os.system('pip install -U python-telegram-bot>=22.7 requests flask')
+    os.system('pip install python-telegram-bot==20.7 requests flask')
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InputFile
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
     import telegram.error
@@ -534,56 +530,6 @@ def db_get_all(query, params=()):
     result = c.execute(query, params).fetchall()
     conn.close()
     return [dict(row) for row in result]
-
-# ============================================
-# TELEGRAM NATIVE BUTTON STYLE MANAGER
-# Bot API supports: primary (blue), success (green), danger (red)
-# ============================================
-def get_button_style(button_text):
-    try:
-        rec = db_get_one("SELECT value FROM settings WHERE key = ?", (f'button_style:{button_text}',))
-        style = rec['value'] if rec else ''
-        return style if style in ('primary', 'success', 'danger') else None
-    except Exception:
-        return None
-
-def set_button_style(button_text, style):
-    if style not in ('primary', 'success', 'danger', 'default'):
-        return
-    if style == 'default':
-        db_execute("DELETE FROM settings WHERE key = ?", (f'button_style:{button_text}',), commit=True)
-    else:
-        db_execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)", (f'button_style:{button_text}', style), commit=True)
-
-def button_style_label(style):
-    return {
-        'primary': '🔵 Primary',
-        'success': '🟢 Success',
-        'danger': '🔴 Danger'
-    }.get(style, '⚪ Default')
-
-def get_configurable_button_items():
-    items = []
-    for ap in db_get_all("SELECT api_name FROM dynamic_apis ORDER BY rowid"):
-        name = ap['api_name']
-        if name == 'Number Info': items.append("🔍 NUMBER INFO")
-        elif name == 'Pincode Info': items.append("📍 PINCODE INFO")
-        elif name == 'IP Info': items.append("🌐 IP INFO")
-        elif name == 'Aadhaar Info': items.append("🆔 AADHAAR INFO")
-        elif name in ('TG Username', 'TG UserID', 'Telegram To Num'):
-            if "✈️ TELEGRAM TO NUM" not in items: items.append("✈️ TELEGRAM TO NUM")
-        else: items.append(f"🔮 {name.upper()}")
-    if "✈️ TELEGRAM TO NUM" not in items:
-        items.append("✈️ TELEGRAM TO NUM")
-    items += [
-        "💎 MY PREMIUM STATUS", "💰 MY BALANCE",
-        "🆘 Help Center", "📈 Live Stats", "🔔 Notifications", "🔍 Quick Search",
-        "👤 MY PROFILE", "💬 Owner | Support", "💰 Refer & Earn", "🏆 Achievements",
-        "🤖 My Clone Bot", "💎 Buy Premium / Credits", "🎟️ Promo Center", "🎁 Daily Check-in",
-        "💳 Transactions", "🛠️ Toggle Menu", "📊 Admin Panel"
-    ]
-    # Keep first occurrence only while preserving order.
-    return list(dict.fromkeys(items))
 
 async def check_multi_force_subscription(bot, user_id):
     channels_str = db_get_one("SELECT value FROM settings WHERE key='force_channels'")['value']
@@ -1436,14 +1382,14 @@ async def send_welcome_menu(update_or_query, context, user):
 
     all_menu_items = api_button_names + ["💎 MY PREMIUM STATUS", "💰 MY BALANCE"] + static_buttons
     for item in all_menu_items:
-        row.append(KeyboardButton(item, style=get_button_style(item)))
+        row.append(KeyboardButton(item))
         if len(row) == 2:
             menu_keyboard.append(row)
             row = []
     if row: menu_keyboard.append(row)
 
     if is_admin_user(user.id):
-        menu_keyboard.append([KeyboardButton("📊 Admin Panel", style=get_button_style("📊 Admin Panel"))])
+        menu_keyboard.append([KeyboardButton("📊 Admin Panel")])
 
     reply_markup = ReplyKeyboardMarkup(menu_keyboard, resize_keyboard=True)
     banner_media = db_get_one("SELECT value FROM settings WHERE key='banner_media'")['value']
@@ -1897,41 +1843,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['waiting_for_delete_api_key'] = False
             return
 
-        if context.user_data.get('waiting_for_button_style_select'):
+        if context.user_data.get('waiting_for_edit_name_select'):
             try:
-                choice = int(text.strip())
-                items = context.user_data.get('button_style_items', [])
-                if choice < 1 or choice > len(items):
+                idx = int(text.strip()) - 1
+                apis = db_get_all("SELECT api_key, api_name FROM dynamic_apis ORDER BY rowid")
+                if idx < 0 or idx >= len(apis):
                     raise ValueError
-                target = items[choice - 1]
-                context.user_data['button_style_target'] = target
-                context.user_data['waiting_for_button_style_select'] = False
-                current = get_button_style(target)
-                kb = [[
-                    InlineKeyboardButton('🔵 Primary', callback_data='btnstyle_primary'),
-                    InlineKeyboardButton('🟢 Success', callback_data='btnstyle_success')
-                ], [
-                    InlineKeyboardButton('🔴 Danger', callback_data='btnstyle_danger'),
-                    InlineKeyboardButton('⚪ Default', callback_data='btnstyle_default')
-                ], [InlineKeyboardButton('🔙 Cancel', callback_data='admin_button_colors')]]
-                await update.message.reply_text(
-                    f"🎨 *BUTTON COLOR MANAGER*\n\n🔘 Selected: *{target}*\n🎨 Current: *{button_style_label(current)}*\n\n👇 Select the new Telegram button style:",
-                    parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb)
-                )
-            except ValueError:
-                await update.message.reply_text('❌ Invalid number. List mein diya hua valid button number bhejein.')
+                existing = apis[idx]
+                context.user_data['edit_name_target_key'] = existing['api_key']
+                context.user_data['waiting_for_edit_name_select'] = False
+                context.user_data['waiting_for_edit_name_new'] = True
+                await update.message.reply_text(f"✏️ **{existing['api_name']}** ka naya button name bhejein:", parse_mode='Markdown')
+            except (ValueError, TypeError):
+                await update.message.reply_text("❌ Kripya list me diya hua valid number bhejein.")
             return
 
         if context.user_data.get('waiting_for_edit_name_key'):
+            # Backward-compatible fallback: direct API key/name input still works.
             existing = db_get_one("SELECT * FROM dynamic_apis WHERE api_key = ? OR LOWER(api_name) = ?", (text.strip().lower(), text.strip().lower()))
             if existing:
                 context.user_data['edit_name_target_key'] = existing['api_key']
                 context.user_data['waiting_for_edit_name_key'] = False
                 context.user_data['waiting_for_edit_name_new'] = True
-                await update.message.reply_text(f"✏️ Ab is API (`{existing['api_name']}`) ke liye **Naya Button Name** enter karein:", parse_mode='Markdown')
+                await update.message.reply_text(f"✏️ **{existing['api_name']}** ka naya button name bhejein:", parse_mode='Markdown')
             else:
-                await update.message.reply_text("❌ Aisi koi API nahi mili!", parse_mode='Markdown')
-                context.user_data['waiting_for_edit_name_key'] = False
+                await update.message.reply_text("❌ Kripya list me diya hua number bhejein.")
             return
 
         if context.user_data.get('waiting_for_edit_name_new'):
@@ -2279,7 +2215,6 @@ async def show_full_admin_panel(update_or_query, context):
         [InlineKeyboardButton("🤖 👥 Clone Bots", callback_data="admin_clones"), InlineKeyboardButton("🌐 🔌 Dynamic APIs", callback_data="admin_dynamic_apis")],
         [InlineKeyboardButton("➕ 🔌 Add New API", callback_data="admin_add_api"), InlineKeyboardButton("🗑️ 🔌 Delete API", callback_data="admin_delete_api")],
         [InlineKeyboardButton("✏️ 📝 Edit Button Name", callback_data="admin_edit_name"), InlineKeyboardButton("🎨 🔄 Change Report Style", callback_data="admin_toggle_style")],
-        [InlineKeyboardButton("🎨 Button Colors", callback_data="admin_button_colors"), InlineKeyboardButton("🔧 Button Style Reset", callback_data="admin_button_colors_reset")],
         [InlineKeyboardButton("🔄 Toggle Clone Ref", callback_data="admin_toggle_clone_ref"), InlineKeyboardButton("👥 ⚙️ Set Clone Refs", callback_data="admin_cloneref_prompt")],
         [InlineKeyboardButton("🎁 ⚙ Set Ref Reward", callback_data="admin_refreward_prompt"), InlineKeyboardButton("💬 ⚙ Set Maint Msg", callback_data="admin_setmaintmsg_prompt")],
         [InlineKeyboardButton("🖼️ ⚙ Set Banner", callback_data="admin_banner_prompt"), InlineKeyboardButton("🛡️ ➕ Add Sub-Admin", callback_data="admin_addsub_prompt")],
@@ -2923,41 +2858,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         api_list_str = "\n".join([f"• `{ap['api_name']}` (Key: `{ap['api_key']}`)" for ap in apis])
         await context.bot.send_message(chat_id=query.from_user.id, text=f"🗑️ **DELETE API**\n\n{api_list_str}\n\nJise delete karna hai uska **API Key** ya **Name** bhejein:", parse_mode='Markdown')
         return
-    elif data == "admin_button_colors":
-        items = get_configurable_button_items()
-        context.user_data['button_style_items'] = items
-        context.user_data['waiting_for_button_style_select'] = True
-        lines = ["🎨 *BUTTON COLOR MANAGER*", "━━━━━━━━━━━━━━━━━━━━"]
-        for i, item in enumerate(items, 1):
-            lines.append(f"{i}. {item} — `{button_style_label(get_button_style(item))}`")
-        lines.append("\n👇 Jis button ka color/style change karna hai uska *number* bhejein:")
-        await context.bot.send_message(chat_id=query.from_user.id, text='\n'.join(lines), parse_mode='Markdown')
-        return
-    elif data == "admin_button_colors_reset":
-        db_execute("DELETE FROM settings WHERE key LIKE 'button_style:%'", commit=True)
-        await query.answer("All button styles reset", show_alert=True)
-        await context.bot.send_message(chat_id=query.from_user.id, text="✅ *Button colors reset!*\n\nAb sabhi native buttons Telegram ke default/app-specific style mein dikhengi.", parse_mode='Markdown')
-        return
-    elif data.startswith('btnstyle_'):
-        style = data.replace('btnstyle_', '', 1)
-        target = context.user_data.get('button_style_target')
-        if not target or style not in ('primary', 'success', 'danger', 'default'):
-            await query.answer("Session expired. Button Colors dobara open karein.", show_alert=True)
-            return
-        set_button_style(target, style)
-        context.user_data.pop('button_style_target', None)
-        await query.answer("Button style saved", show_alert=True)
-        await context.bot.send_message(
-            chat_id=query.from_user.id,
-            text=f"✅ *Button style updated!*\n\n🔘 Button: *{target}*\n🎨 Style: *{button_style_label(None if style == 'default' else style)}*\n\n⚡ Menu ko refresh karne ke liye `/start` bhejein.",
-            parse_mode='Markdown'
-        )
-        return
     elif data == "admin_edit_name":
-        context.user_data['waiting_for_edit_name_key'] = True
-        apis = db_get_all("SELECT api_key, api_name FROM dynamic_apis")
-        api_list_str = "\n".join([f"• `{ap['api_name']}` (Key: `{ap['api_key']}`)" for ap in apis])
-        await context.bot.send_message(chat_id=query.from_user.id, text=f"✏️ **EDIT BUTTON NAME**\n\n{api_list_str}\n\nJiska name change karna hai uska **API Key** bhejein:", parse_mode='Markdown')
+        context.user_data['waiting_for_edit_name_select'] = True
+        apis = db_get_all("SELECT api_key, api_name FROM dynamic_apis ORDER BY rowid")
+        api_list_str = "\n".join([f"{i+1}️⃣ {ap['api_name']}" for i, ap in enumerate(apis)])
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"✏️ **EDIT BUTTON NAME**\n\n{api_list_str}\n\n👇 Jis button ka name change karna hai uska **number bhejein:**", parse_mode='Markdown')
         return
     elif data == "admin_users":
         users = db_get_all("SELECT * FROM users ORDER BY joined_date DESC LIMIT 10")
