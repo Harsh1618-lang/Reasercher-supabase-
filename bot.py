@@ -1,8 +1,8 @@
 #!/usr/init/env python3
-# OSINT & Pincode Bot - Ultimate 10 Report Styles & Complete User Profile Edition
+# OSINT & Pincode Bot - Ultimate 10 Report Styles & Fully Restored Working Edition
 """
 Developer: @Harsx1618
-Description: Advanced Telegram OSINT Bot with Complete Original Codebase, User Profile Dashboard, Radar Animation, Editable Welcome & All Features
+Description: Advanced Telegram OSINT Bot with Complete Restored API Handlers, User Profile, Radar Animation & All Working Features Intact
 """
 
 import os
@@ -308,13 +308,13 @@ async def schedule_message_deletion(context, chat_id, message_ids, doc_message_i
 async def show_radar_animation(msg_obj, target_str):
     try:
         await msg_obj.edit_text(f"📡 Scanning global nodes for `{target_str}`...\n`[ ⏳ ] 25%`", parse_mode='Markdown')
-        await asyncio.sleep(0.6)
+        await asyncio.sleep(0.5)
         await msg_obj.edit_text(f"🛰️ Connecting to encrypted servers for `{target_str}`...\n`[ 🔄 ] 50%`", parse_mode='Markdown')
-        await asyncio.sleep(0.6)
+        await asyncio.sleep(0.5)
         await msg_obj.edit_text(f"🔍 Filtering database logs for `{target_str}`...\n`[ ⚡ ] 75%`", parse_mode='Markdown')
-        await asyncio.sleep(0.6)
+        await asyncio.sleep(0.5)
         await msg_obj.edit_text(f"✅ Target details extracted successfully for `{target_str}`!\n`[ 🎯 ] 100%`", parse_mode='Markdown')
-        await asyncio.sleep(0.4)
+        await asyncio.sleep(0.3)
     except:
         pass
 
@@ -1296,7 +1296,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = context.user_data.get('mode', None)
 
     if mode == 'telegram_auto_detect':
-        msg = await update.message.reply_text("🕵️‍♂️ *TELEGRAM INTEL BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
+        await show_radar_animation(msg, text)
         if text.startswith('@') or not text.isdigit():
             query_str = text if text.startswith('@') else '@' + text
             data = await fetch_dynamic_api('tg_username', query_str)
@@ -1306,7 +1307,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             data = await fetch_dynamic_api('tg_userid', cleaned_tg)
             log_activity(user.id, f"Telegram userid lookup: {cleaned_tg}")
 
-        await show_hacking_animation(msg, text, title_type="TG")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"TG:{text}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         formatted = format_tg_response(data, text)
@@ -1316,27 +1316,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if mode == 'pincode':
-        cleaned_pin = re.sub(r'\D', '', text)
-        msg = await update.message.reply_text("📍 *PINCODE INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
-        data = await fetch_dynamic_api('pincode', cleaned_pin)
-        await show_hacking_animation(msg, cleaned_pin, title_type="PINCODE")
-        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"PIN:{cleaned_pin}", json.dumps(data)), commit=True)
+        msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
+        await show_radar_animation(msg, text)
+        data = await fetch_dynamic_api('pincode', text.strip())
+        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"PIN:{text.strip()}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
-        log_activity(user.id, f"Pincode lookup performed on {cleaned_pin}")
-        formatted = format_pincode_response(data, cleaned_pin)
+        log_activity(user.id, f"Pincode lookup performed on {text.strip()}")
+        formatted = format_pincode_response(data, text.strip())
         try: await msg.edit_text(formatted, parse_mode='Markdown')
         except: await msg.edit_text(formatted, parse_mode=None)
         context.user_data['mode'] = None
         return
 
     if mode == 'ip_info':
-        msg = await update.message.reply_text("🌐 *IP INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
-        data = await fetch_dynamic_api('ip_info', text)
-        await show_hacking_animation(msg, text, title_type="IP")
-        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"IP:{text}", json.dumps(data)), commit=True)
+        msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
+        await show_radar_animation(msg, text)
+        data = await fetch_dynamic_api('ip_info', text.strip())
+        db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"IP:{text.strip()}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
-        log_activity(user.id, f"IP lookup performed on {text}")
-        formatted = format_ip_response(data, text)
+        log_activity(user.id, f"IP lookup performed on {text.strip()}")
+        formatted = format_ip_response(data, text.strip())
         try: await msg.edit_text(formatted, parse_mode='Markdown')
         except: await msg.edit_text(formatted, parse_mode=None)
         context.user_data['mode'] = None
@@ -1344,9 +1343,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if mode == 'aadhaar_info':
         cleaned_aadhaar = re.sub(r'\D', '', text)
-        msg = await update.message.reply_text("🆔 *AADHAAR INTELLIGENCE BREACH*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
+        await show_radar_animation(msg, cleaned_aadhaar)
         data = await fetch_dynamic_api('aadhaar_info', cleaned_aadhaar)
-        await show_hacking_animation(msg, cleaned_aadhaar, title_type="AADHAAR")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"AADHAAR:{cleaned_aadhaar}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         log_activity(user.id, f"Aadhaar lookup performed on {cleaned_aadhaar}")
@@ -1358,9 +1357,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if mode and mode.startswith("custom_api_"):
         api_k = mode.replace("custom_api_", "")
-        msg = await update.message.reply_text("💻 *CUSTOM API QUERY IN PROGRESS*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
+        await show_radar_animation(msg, text)
         data = await fetch_dynamic_api(api_k, text)
-        await show_hacking_animation(msg, text, title_type="PHONE")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, f"{api_k}:{text}", json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         log_activity(user.id, f"Custom API search: {api_k}")
@@ -1374,9 +1373,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cleaned_phone = re.sub(r'\D', '', text)
     if mode == 'phone' or (10 <= len(cleaned_phone) <= 15):
-        msg = await update.message.reply_text("💻 *SYSTEM BREACH IN PROGRESS*\nInitializing...", parse_mode='Markdown')
+        msg = await update.message.reply_text("📡 Scanning global nodes...", parse_mode='Markdown')
+        await show_radar_animation(msg, cleaned_phone)
         data = await fetch_dynamic_api('phone', cleaned_phone)
-        await show_hacking_animation(msg, cleaned_phone, title_type="PHONE")
         db_execute("INSERT INTO searches (user_id, phone, response) VALUES (?, ?, ?)", (user.id, cleaned_phone, json.dumps(data)), commit=True)
         db_execute("UPDATE users SET searches = searches + 1, credits = credits - 1 WHERE user_id = ?", (user.id,), commit=True)
         log_activity(user.id, f"Phone lookup performed on {cleaned_phone}")
@@ -1753,30 +1752,29 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"📢 Broadcast sent to {sent} users.")
 
 def main():
-    if __name__ == '__main__':
-        threading.Thread(target=run_flask, daemon=True).start()
-        print("🚀 HARSH OSINT BOT STARTING (FULL WORKING CODE WITH USER PROFILE DASHBOARD & RADAR ANIMATION)...")
-        
-        application = Application.builder().token(BOT_TOKEN).build()
-        
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CommandHandler("profile", profile_command))
-        application.add_handler(CommandHandler("support", support_command))
-        application.add_handler(CommandHandler("balance", balance_command))
-        application.add_handler(CommandHandler("redeem", redeem_command))
-        application.add_handler(CommandHandler("daily", daily_command))
-        application.add_handler(CommandHandler("ref", ref_command))
-        application.add_handler(CommandHandler("status", status_command))
-        application.add_handler(CommandHandler("export", export_command))
-        application.add_handler(CommandHandler("setupi", setupi_command))
-        application.add_handler(CommandHandler("maint", maint_command))
-        application.add_handler(CommandHandler("addcredits", addcredits_command))
-        application.add_handler(CommandHandler("broadcast", broadcast_command))
-        application.add_handler(MessageHandler(filters.CONTACT, handle_contact))
-        application.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.ANIMATION | filters.Document.ALL, handle_message))
-        application.add_handler(CallbackQueryHandler(button_callback))
-        
-        application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+    threading.Thread(target=run_flask, daemon=True).start()
+    print("🚀 HARSH OSINT BOT STARTING (ALL API LOOKUPS & PROFILE FULLY RESTORED)...")
+    
+    application = Application.builder().token(BOT_TOKEN).build()
+    
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("profile", profile_command))
+    application.add_handler(CommandHandler("support", support_command))
+    application.add_handler(CommandHandler("balance", balance_command))
+    application.add_handler(CommandHandler("redeem", redeem_command))
+    application.add_handler(CommandHandler("daily", daily_command))
+    application.add_handler(CommandHandler("ref", ref_command))
+    application.add_handler(CommandHandler("status", status_command))
+    application.add_handler(CommandHandler("export", export_command))
+    application.add_handler(CommandHandler("setupi", setupi_command))
+    application.add_handler(CommandHandler("maint", maint_command))
+    application.add_handler(CommandHandler("addcredits", addcredits_command))
+    application.add_handler(CommandHandler("broadcast", broadcast_command))
+    application.add_handler(MessageHandler(filters.CONTACT, handle_contact))
+    application.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.ANIMATION | filters.Document.ALL, handle_message))
+    application.add_handler(CallbackQueryHandler(button_callback))
+    
+    application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
